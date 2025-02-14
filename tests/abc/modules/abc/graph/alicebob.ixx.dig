@@ -1,0 +1,27 @@
+export module abc.graph.alicebob;
+
+export import abc.traits;
+import abc.graph.charlie;
+
+import abc.alice;
+import abc.bob;
+import abc.ellie;
+
+namespace abc {
+
+cluster AliceBob
+{
+    alice = Alice//<p.operator()<int>(0)>
+    bob = Bob
+    ellie = Ellie
+    charlie = CharlieCluster
+
+    using a = trait::Alice, b = trait::Bob, c = trait::Charlie, e = trait::Ellie
+
+    [a] alice   <-- .., bob, charlie
+    [b] bob     <-- .., alice, charlie
+    [c] charlie <-- .., alice, bob, ellie
+    [e] ellie   <-- .., alice, bob, charlie
+}
+
+}

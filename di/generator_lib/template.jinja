@@ -1,0 +1,204 @@
+{% for namespace in repr.namespaces %}
+
+namespace {{ namespace.name }} {
+{% for trait in namespace.traits %}
+
+{{ export }}struct {{ trait.name }} : di::Trait
+{
+    {% for methodName in trait.methodNames %}
+    DI_METHOD_TAG({{ methodName }})
+    {% endfor %}
+
+    friend constexpr {{ trait.name }} traitOf(di::IsMethodOf<{{ trait.name }}> auto) { return {}; }
+
+    struct Meta
+    {
+        struct Applicable
+        {
+            {% for methodName in trait.methodNames %}
+            DI_METHOD_TAG_APPLICABLE({{ methodName }})
+            {% endfor %}
+        };
+        struct Methods
+        {
+            {% for methodName in trait.methodNames %}
+            DI_AS_FUNCTOR_METHOD({{ methodName }})
+            {% endfor %}
+
+            {% for method in trait.methods %}
+            template<di::IsTraitView Self
+                {%- for prefix, name in method.templates -%}
+                , {{ prefix }}{{ prefix.pack }} {{ name }}
+                {%- endfor -%}
+                {%- if trait.typesName -%}
+                , class {{ trait.typesName }} = std::remove_cvref_t<Self>::Types
+                {%- endif -%}
+            >
+            constexpr auto {{ method.name }}(this Self{{ " const&" if method.isConst else "&&" }} self
+                {%- for type, name in method.params -%}
+                , {{ type }}{{ type.pack }} {{ name }}
+                {%- endfor -%}
+            ){{ " -> " + method.returnType.str if method.returnType.str != "auto" else "" }}
+            {
+                return self.apply({{ method.name }}_c
+                    {%- for type, name in method.params -%}
+                    , DI_FWD({{ name }}){{ type.pack }}
+                    {%- endfor -%}
+                );
+            }
+            {% endfor %}
+        };
+        struct DuckMethods
+        {
+            {% for methodName in trait.methodNames %}
+            DI_DUCK_METHOD({{ methodName }})
+            {% endfor %}
+        };
+    };
+
+    template<class Impl
+    {%- if trait.typesName -%}
+        , class {{ trait.typesName }} = di::NodeTypes<Impl, {{ trait.name }}>
+    {%- endif -%}
+    >
+    requires requires (Impl impl_, Impl const const_)
+    {
+        requires true;
+        {% for require in trait.requires %}
+        {{ require }}
+        {% endfor %}
+        {% for method in trait.methods if not method.isTemplate %}
+
+        {% macro requireInvoke() -%}
+            {{ "const_" if method.isConst else "impl_" }}.apply({{ method.name }}_c
+            {%- for type, name in method.params -%}
+            , DI_FWD({{ name }})
+            {%- endfor -%}
+            )
+        {%- endmacro %}
+        {% set comma = joiner(", ") %}
+        requires requires (
+            {%- for type, name in method.params -%}
+            {{ comma() }}{{ type }} {{ name }}
+            {%- endfor -%}
+            {%- if not method.isUnconstrainedReturn and not method.isAutoReturn -%}
+            {{ comma() }}{{ method.returnType }} _returnType_
+            {%- endif -%}
+            ) {
+        {% if method.isUnconstrainedReturn %}
+            {{ requireInvoke() }};
+        {% elif method.isAutoReturn %}
+            { {{ requireInvoke() }} } -> {{ method.returnType.str.removesuffix("auto") }};
+        {% else %}
+            { {{ requireInvoke() }} } -> std::convertible_to<decltype(_returnType_)>;
+        {% endif %}
+        };
+        {% endfor %}
+    }
+    using Implements = void;
+} inline constexpr {{ trait.variable }}{};
+{% endfor %}
+{% for alias in namespace.traitAliases %}
+
+{% if alias | count == 2 %}
+{{ export }}using {{ alias[0] }} = di::AltTrait<{{ alias[1] }}, struct {{ alias[0] }}_Tag>;
+{% else %}
+{{ export }}using {{ alias[0] }} = di::JoinedTrait<{{ alias[1:] | join(", ") }}>;
+{% endif %}
+{{ export }}inline constexpr {{ alias[0] }} {{ alias[0][0].lower() + alias[0][1:] }}{};
+{% endfor %}
+{% for cluster in namespace.clusters %}
+
+{% if not cluster.templates %}
+template<class Context>
+struct {{ cluster.nodeName() }};
+{{ export }}using {{ cluster.name }} = di::InlineNode<{{ cluster.nodeName() }}>;
+{% else %}
+{{ export }}template<
+    {%- set comma = joiner(", ") -%}
+    {%- for prefix, name in cluster.templates -%}
+    {{ comma() }}{{ prefix }}{{ prefix.pack }} {{ name }}
+    {%- endfor -%}
+>
+struct {{ cluster.name }}
+{
+    template<class Context>
+    struct {{ cluster.nodeName() }};
+};
+{% endif %}
+{% endfor %}
+
+} // namespace {{ namespace.name }}
+{% endfor %}
+{% for namespace in repr.namespaces if namespace.clusters %}
+
+namespace {{ namespace.name }} {
+{% for cluster in namespace.clusters %}
+
+{% if cluster.templates %}
+template<
+    {%- set comma = joiner(", ") -%}
+    {%- for prefix, name in cluster.templates -%}
+    {{ comma() }}{{ prefix }}{{ prefix.pack }} {{ name }}
+    {%- endfor -%}
+>
+template<class Context>
+struct {{ cluster.name }}<
+    {%- set comma = joiner(", ") -%}
+    {%- for prefix, name in cluster.templates -%}
+    {{ comma() }}{{ name }}{{ prefix.pack }}
+    {%- endfor -%}
+>::Node : di::Cluster
+{% else %}
+template<class Context>
+struct {{ cluster.nodeName() }} : di::Cluster
+{% endif %}
+{
+    {% for node in cluster.nodes %}
+    struct {{ node.context }};
+    {% endfor %}
+    {% if cluster.aliases %}
+
+    {% for alias, type in cluster.aliases %}
+    using {{ alias }} = {{ type }};
+    {% endfor %}
+    {% endif %}
+    {% if cluster.parentNode.connections %}
+
+    {% for connection in cluster.parentNode.connections %}
+    {% if connection.isRenaming() %}
+    DI_LINK_TO(({{ connection.trait }}), {{ connection.context }}, ({{ connection.toTrait }}))
+    {% else %}
+    DI_LINK(({{ connection.trait }}), {{ connection.context }})
+    {% endif %}
+    {% endfor %}
+    {% endif %}
+
+    {% for node in cluster.nodes %}
+    struct {{ node.context }} : di::Context<{{ cluster.nodeName() }}, {{ node.impl }}>
+    {
+        {% for connection in node.connections %}
+        {% if connection.isRenaming() %}
+        DI_LINK_TO(({{ connection.trait }}), {{ connection.context }}, ({{ connection.toTrait }}))
+        {% else %}
+        DI_LINK(({{ connection.trait }}), {{ connection.context }})
+        {% endif %}
+        {% endfor %}
+    };
+    {% endfor %}
+
+    {% for node in cluster.nodes %}
+    DI_NODE({{ node.context }}, {{ node.name }})
+    {% endfor %}
+
+    constexpr void visit(this auto& self, auto const& visitor)
+    {
+        {% for node in cluster.userNodes %}
+        self.{{ node.name }}.visit(visitor);
+        {% endfor %}
+    }
+};
+{% endfor %}
+
+} // namespace {{ namespace.name }}
+{% endfor %}

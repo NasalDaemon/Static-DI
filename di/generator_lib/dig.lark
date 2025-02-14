@@ -1,0 +1,121 @@
+include: INCLUDE_LOCAL_FILE
+       | INCLUDE_GLOBAL_FILE
+INCLUDE_LOCAL_FILE: "#include \"" /[^\r\n"]+/ "\""
+INCLUDE_GLOBAL_FILE: "#include <" /[^\r\n>]+/ ">"
+
+namespace: "namespace" NAMESPACE "{" (cluster | trait)+ "}"
+
+cluster: [template_params] "cluster" NAME "{" node+ connection_block+ "}"
+
+trait: "trait" NAME [trait_types] "{" (trait_requires | trait_method)+ "}" -> trait_def
+     | "trait" NAME "=" NAME ("+" NAME)*                                -> trait_alias
+
+trait_types: "[" NAME "]"
+
+trait_requires: trait_requires_inline
+              | trait_requires_block
+
+trait_requires_inline: "requires" cpp_requires_statement
+
+# TODO: Multiple statements (parser fails with ambiguity atm)
+trait_requires_block: "requires" [cpp_func_params] "{" cpp_requires_statement "}"
+
+!cpp_requires_statement: cpp_expr [SEMICOLON]
+                       | "{" cpp_expr "}" ["->" cpp_type] [SEMICOLON]
+
+trait_method: [template_params] method_name cpp_func_params [method_qualifier] ["->" cpp_type] -> trait_method_signature
+            | NAME "(...)"                                                                     -> trait_method_elipsis
+
+method_name: NAME
+method_qualifier: "const"
+
+template_params: "template" "<" template_param ("," template_param)* ">"
+
+template_param: TPARAM_TYPE    NAME -> tparam_type_pack
+              | cpp_tmpl_param NAME -> tparam_non_type
+
+TPARAM_TYPE: (TYPENAME | "class") ["..."]
+
+node: NAME "=" node_type
+
+node_type: [TYPENAME] NAMESPACE [cpp_templ_args]
+
+connection_block: connection_context* connection_trait connection+
+
+connection_context: "using" connection_context_alias ("," connection_context_alias)*
+
+connection_context_alias: NAME "=" cpp_type
+
+connection_trait: "[" cpp_type ["<->" cpp_type] "]"
+
+connection: node_names (arrow node_names)+
+
+arrow:             "<--"             -> left_arrow
+     |             "-->"             -> right_arrow
+     |             "<->"             -> bi_arrow
+     |             "<--" arrow_trait -> left_arrow_from
+     | arrow_trait "-->"             -> right_arrow_from
+     | arrow_trait "<--"             -> left_arrow_to
+     |             "-->" arrow_trait -> right_arrow_to
+     | arrow_trait "<--" arrow_trait -> left_arrow_both
+     | arrow_trait "-->" arrow_trait -> right_arrow_both
+
+arrow_trait: "(" cpp_type ")"
+
+!cpp_type: [TYPENAME] (NAME | "::" cpp_type_no_typename) cpp_type_cont*
+!cpp_type_no_typename: (NAME | "::" cpp_type_no_typename) cpp_type_cont*
+
+!cpp_type_cont: CPP_REF | "const" | "volatile" | "auto" | "..."
+              | "::" [TEMPLATE] cpp_type_no_typename
+              | cpp_func_args
+              | cpp_templ_args
+
+!cpp_tmpl_param: [TEMPLATE "<" cpp_tmpl_param ("," cpp_tmpl_param)* ">"] cpp_type_no_typename
+
+cpp_func_params: "(" [cpp_func_param ("," cpp_func_param)*] ")"
+cpp_func_param: cpp_type NAME
+
+!cpp_func_args:  "(" [cpp_expr ("," cpp_expr)*] ")"
+!cpp_templ_args: "<" [cpp_expr ("," cpp_expr)*] ">"
+
+
+!cpp_expr: CPP_LITERALS | cpp_expr_complex
+
+!cpp_expr_complex: CPP_UNARY_OP* cpp_type cpp_expr_complex_cont*
+
+!cpp_expr_complex_cont: CPP_BINARY_OP cpp_expr
+                      | CPP_MEM_ACCESS cpp_expr_mem_access
+                      | "{" [cpp_expr ("," cpp_expr)*] "}"
+                      | "[" [cpp_expr ("," cpp_expr)*] "]"
+
+!cpp_expr_mem_access: [TEMPLATE] cpp_type_no_typename cpp_expr_complex_cont*
+                    | "operator" (CPP_BINARY_OP | ("()"|"[]") [cpp_templ_args]) cpp_func_args
+
+node_names: NODE_NAME ("," NODE_NAME)*
+
+NODE_NAME: NAME | ".."
+NAMESPACE: NAME ("::" NAME)*
+
+CPP_REF: "*"+ | "&"+
+CPP_MEM_ACCESS: "." | "->"
+CPP_UNARY_OP: "*" | "&" | "!" | "not" | "+" | "-"
+CPP_BINARY_OP: "+" | "-" | "/" | "*" | "%" | "|" | "&" | "||" | "&&" | "or" | "and" | "==" | "!=" | ".*" | "->*"
+
+TYPENAME: "typename"
+TEMPLATE: "template"
+SEMICOLON: ";"
+
+CPP_LITERALS: SIGNED_NUMBER | STRING | CHAR
+CHAR: "'" /\\?./ "'"
+
+%import common.CNAME -> NAME
+
+%import common.SIGNED_NUMBER
+%import common.ESCAPED_STRING -> STRING
+%import common.WS
+%import common.C_COMMENT
+%import common.CPP_COMMENT
+
+%ignore WS
+%ignore C_COMMENT
+%ignore CPP_COMMENT

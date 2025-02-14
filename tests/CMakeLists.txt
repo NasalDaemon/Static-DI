@@ -1,0 +1,30 @@
+project(Static-DI-Tests VERSION 1.0 LANGUAGES CXX)
+
+set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+
+add_subdirectory(abc)
+add_subdirectory(abc/modules)
+add_subdirectory(repeater)
+add_subdirectory(thread)
+
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++ -fcolor-diagnostics -Werror -Wall -Wextra -Wpedantic")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fuse-ld=mold -stdlib=libc++ -lc++abi")
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror -Wall -Wextra -Wpedantic")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fdiagnostics-all-candidates -fconcepts-diagnostics-depth=5")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fdiagnostics-color=always")
+    # Unfortunately, GCC LTO partitioning and modules do not mix well (symbols often missing at link time)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-fat-lto-objects -flto-partition=none")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fuse-ld=mold")
+endif()
+
+add_executable(di_test_abc_headers test_abc_headers.cpp)
+add_executable(di_test_abc_module test_abc_module.cpp)
+add_executable(di_test_charlie test_charlie.cpp)
+add_executable(di_test_union test_union.cpp)
+
+target_link_libraries(di_test_abc_headers PUBLIC di::abc::lib)
+target_link_libraries(di_test_abc_module PUBLIC di::abc::module)
+target_link_libraries(di_test_charlie PUBLIC di::abc::module)
+target_link_libraries(di_test_union PUBLIC di::module)
