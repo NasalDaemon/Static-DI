@@ -1,4 +1,7 @@
 #include "di/macros.hpp"
+
+#include <doctest/doctest.h>
+
 #if !DI_STD_MODULE
 #include <concepts>
 #include <cstdio>
@@ -97,7 +100,7 @@ constexpr bool testWithIndex()
 
 static_assert(testWithIndex());
 
-inline bool test()
+TEST_CASE("TestUnion")
 {
     di::InlineGraph<Union> cat{.onion{0u}};
     di::InlineGraph<Union> dog{.onion{1u}};
@@ -107,50 +110,27 @@ inline bool test()
     static_assert(requires { typename DogTypes::TypesAt<0>::CatType; });
     static_assert(requires { typename DogTypes::TypesAt<1>::DogType; });
 
-    if (42 != cat.mouse.asTrait(trait::Name{}).get())
-        return false;
+    CHECK(42 == cat.mouse.asTrait(trait::Name{}).get());
 
-    if (99 != cat.onion.asTrait(trait::Name{}).get())
-        return false;
+    CHECK(99 == cat.onion.asTrait(trait::Name{}).get());
 
-    if (99 != cat.mouse.getNode(trait::Name{}).get())
-        return false;
+    CHECK(99 == cat.mouse.getNode(trait::Name{}).get());
 
-    if (42 != dog.mouse.asTrait(trait::Name{}).get())
-        return false;
+    CHECK(42 == dog.mouse.asTrait(trait::Name{}).get());
 
-    if (42 != dog.mouse.getNode(trait::Name{}).get())
-        return false;
+    CHECK(42 == dog.mouse.getNode(trait::Name{}).get());
 
-    if (42 != dog.onion.asTrait(trait::Name{}).get())
-        return false;
+    CHECK(42 == dog.onion.asTrait(trait::Name{}).get());
 
-    if (not cat.mouse.asTrait(trait::Name{}).visit([]<class T>(T) { return requires { typename T::Types::MouseType; }; }))
-        return false;
+    CHECK(cat.mouse.asTrait(trait::Name{}).visit([]<class T>(T) { return requires { typename T::Types::MouseType; }; }));
 
-    if (not dog.mouse.asTrait(trait::Name{}).visit([]<class T>(T) { return requires { typename T::Types::MouseType; }; }))
-        return false;
+    CHECK(dog.mouse.asTrait(trait::Name{}).visit([]<class T>(T) { return requires { typename T::Types::MouseType; }; }));
 
-    if (not cat.onion.asTrait(trait::Name{}).visit([]<class T>(T) { return requires { typename T::Types::CatType; }; }))
-        return false;
+    CHECK(cat.onion.asTrait(trait::Name{}).visit([]<class T>(T) { return requires { typename T::Types::CatType; }; }));
 
-    if (not dog.onion.asTrait(trait::Name{}).visit([]<class T>(T) { return requires { typename T::Types::DogType; }; }))
-        return false;
-
-    return true;
+    CHECK(dog.onion.asTrait(trait::Name{}).visit([]<class T>(T) { return requires { typename T::Types::DogType; }; }));
 }
 
 } // test
 
 DI_INSTANTIATE(di::InlineGraph<test::Union>, onion->get<1>())
-
-int main()
-{
-    bool success = test::test();
-    if (not success)
-    {
-        std::puts("test_union failed\n");
-        return 1;
-    }
-    return 0;
-}

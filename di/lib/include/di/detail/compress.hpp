@@ -4,7 +4,7 @@
 #include "di/detail/cast.hpp"
 
 template<class T>
-inline constexpr auto _d1Cc_ = []
+inline constexpr auto _d1Cc_ = [] mutable
 {
     struct Context : T
     {
@@ -15,7 +15,7 @@ inline constexpr auto _d1Cc_ = []
 };
 
 template<class T>
-inline constexpr auto _d1Ci_ = []
+inline constexpr auto _d1Ci_ = [] mutable
 {
     struct Impl : T
     {

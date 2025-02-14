@@ -1,3 +1,5 @@
+#include <doctest/doctest.h>
+
 #if !DI_STD_MODULE
 #include <cstdio>
 #endif
@@ -62,7 +64,7 @@ struct SCharlieMocks {
 
 using SCharlieTest = di::test::TestGraph<Charlie, SCharlieMocks>;
 
-int testCharlie()
+TEST_CASE("TestCharlie")
 {
     struct Mock final : ICharlieMocks
     {
@@ -73,20 +75,8 @@ int testCharlie()
     } mock;
 
     VCharlieTest virt{.mocks{&mock}};
-    if (109 != virt.asTrait(trait::aliceRead).get())
-        return 1;
+    CHECK(109 == virt.asTrait(trait::aliceRead).get());
 
     SCharlieTest nonv;
-    if (109 != nonv.asTrait(trait::aliceRead).get())
-        return 1;
-
-    return 0;
-}
-
-int main()
-{
-    int res = testCharlie();
-    if (res != 0)
-        std::puts("Failure");
-    return res;
+    CHECK(109 == nonv.asTrait(trait::aliceRead).get());
 }

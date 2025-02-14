@@ -1,4 +1,7 @@
 #include "di/macros.hpp"
+
+#include <doctest/doctest.h>
+
 #if !DI_STD_MODULE
 #include <type_traits>
 #endif
@@ -9,7 +12,7 @@ DI_IMPORT_STD;
 
 using namespace abc;
 
-inline int test()
+TEST_CASE("Test abc module")
 {
     auto g = DI_CONSTRUCT(di::Graph<AliceBob>{.ellie{101}});
     auto aliceWrite = g.asTrait(trait::alice);
@@ -20,38 +23,25 @@ inline int test()
     static_assert(aliceWrite.isTrait(trait::aliceWrite));
     static_assert(aliceWrite.isTrait(trait::aliceRead));
 
-    if (0 != g.charlie.asTrait(trait::charlie).get() + g.charlie.charlie.asTrait(trait::charlie2).get())
-        return 1;
-    if (15 != g.charlie.charlie.asTrait(trait::charlie3).get())
-        return 1;
+    auto charlie1plus2 = g.charlie.asTrait(trait::charlie).get() + g.charlie.charlie.asTrait(trait::charlie2).get();
+    CHECK(0 == charlie1plus2);
 
-    if (64 != g.bob.asTrait(trait::bob).get())
-        return 1;
-    if (99 != g.bob.asTrait(trait::charlie).get())
-        return 1;
+    CHECK(15 == g.charlie.charlie.asTrait(trait::charlie3).get());
 
-    if (11 != g.charlie.charlie.asTrait(trait::aliceRead).get())
-        return 1;
+    CHECK(64 == g.bob.asTrait(trait::bob).get());
 
-    if (101 != g.ellie.asTrait(trait::ellie).get())
-        return 1;
+    CHECK(99 == g.bob.asTrait(trait::charlie).get());
 
-    if (99 != g.ellie.asTrait(trait::charlie).get())
-        return 1;
-    if (99 != g.ellie.asTrait(trait::charlie2).get())
-        return 1;
+    CHECK(11 == g.charlie.charlie.asTrait(trait::aliceRead).get());
+
+    CHECK(101 == g.ellie.asTrait(trait::ellie).get());
+
+    CHECK(99 == g.ellie.asTrait(trait::charlie).get());
+
+    CHECK(99 == g.ellie.asTrait(trait::charlie2).get());
 
     auto charlie2get = g.ellie.asTrait(trait::charlie2).get(di::asFunctor);
-    if (99 != charlie2get())
-        return 1;
+    CHECK(99 == charlie2get());
 
-    if (101 != g.ellie->value)
-        return 1;
-
-    return 0;
-}
-
-int main()
-{
-    return test();
+    CHECK(101 == g.ellie->value);
 }

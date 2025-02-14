@@ -12,15 +12,8 @@ endif()
 
 project(Static-DI VERSION 1.0 LANGUAGES CXX)
 
-add_subdirectory(di)
-
 if(DI_BUILD_TESTS)
-    add_subdirectory(tests)
-
-    # GCC PCH does not improve compile times
-    if(NOT CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-        add_subdirectory(di/lib/pch)
-        target_precompile_headers(di_abc_lib REUSE_FROM di::pch)
-        target_precompile_headers(di_test_abc_headers REUSE_FROM di::abc::lib)
-    endif()
+    include(tests.cmake)
+else()
+    add_subdirectory(di)
 endif()

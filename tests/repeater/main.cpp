@@ -1,3 +1,5 @@
+#include <doctest/doctest.h>
+
 #if !DI_STD_MODULE
 #include <cstdio>
 #endif
@@ -8,15 +10,10 @@ DI_IMPORT_STD;
 
 using namespace di::tests::repeater;
 
-int main()
+TEST_CASE("TestRepeater")
 {
     di::Graph<Cluster> g;
     int i = 12;
     g.a.asTrait(trait::trait).defer(i);
-    if (14 != i)
-    {
-        std::puts("failure");
-        return 1;
-    }
-    return 0;
+    CHECK(14 == i);
 }

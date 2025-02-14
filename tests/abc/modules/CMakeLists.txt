@@ -16,3 +16,5 @@ target_sources(di_abc_module_lib
         abc/alice.cpp
         abc/ellie.cpp
 )
+
+set_property(TARGET di_abc_module_lib PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)

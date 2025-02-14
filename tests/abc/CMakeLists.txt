@@ -26,3 +26,5 @@ target_generate_di_src(di_abc_lib
         bob             abc/bob.tpp
         charlie.charlie abc/charlie.tpp
 )
+
+set_property(TARGET di_abc_lib PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)

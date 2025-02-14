@@ -1,30 +1,35 @@
-project(Static-DI-Tests VERSION 1.0 LANGUAGES CXX)
-
-set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+find_package(doctest REQUIRED)
 
 add_subdirectory(abc)
 add_subdirectory(abc/modules)
-add_subdirectory(repeater)
-add_subdirectory(thread)
 
-if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++ -fcolor-diagnostics -Werror -Wall -Wextra -Wpedantic")
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fuse-ld=mold -stdlib=libc++ -lc++abi")
-elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror -Wall -Wextra -Wpedantic")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fdiagnostics-all-candidates -fconcepts-diagnostics-depth=5")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fdiagnostics-color=always")
-    # Unfortunately, GCC LTO partitioning and modules do not mix well (symbols often missing at link time)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-fat-lto-objects -flto-partition=none")
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fuse-ld=mold")
-endif()
+add_library(di_test_main test_main.cpp)
+add_library(di::test ALIAS di_test_main)
+target_link_libraries(di_test_main PUBLIC doctest::doctest)
 
-add_executable(di_test_abc_headers test_abc_headers.cpp)
-add_executable(di_test_abc_module test_abc_module.cpp)
-add_executable(di_test_charlie test_charlie.cpp)
-add_executable(di_test_union test_union.cpp)
+add_executable(di_test_headers
+    test_abc_headers.cpp
+)
+add_executable(di_test_module
+    test_abc_module.cpp
+    test_charlie.cpp
+    test_union.cpp
+    repeater/main.cpp
+    thread/main.cpp
+)
+target_sources(di_test_module
+    PUBLIC FILE_SET CXX_MODULES FILES
+        repeater/test_node.ixx
+        thread/poster.ixx
+        thread/test_node.ixx
+)
+target_generate_di_modules(di_test_module GLOB repeater thread)
 
-target_link_libraries(di_test_abc_headers PUBLIC di::abc::lib)
-target_link_libraries(di_test_abc_module PUBLIC di::abc::module)
-target_link_libraries(di_test_charlie PUBLIC di::abc::module)
-target_link_libraries(di_test_union PUBLIC di::module)
+target_link_libraries(di_test_headers PUBLIC di::abc::lib di::test)
+target_link_libraries(di_test_module PUBLIC di::abc::module di::test)
+
+set_property(TARGET di_test_headers PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+set_property(TARGET di_test_module PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+
+add_test(di_test_headers di_test_headers)
+add_test(di_test_module di_test_module)

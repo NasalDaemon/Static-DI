@@ -1,8 +1,10 @@
 #include "abc/graph_wrapper.hpp"
 
+#include <doctest/doctest.h>
+
 using namespace abc;
 
-inline int test()
+TEST_CASE("test abc")
 {
     abc::GraphWrapper wrapper;
     auto& g = wrapper.graph;
@@ -14,18 +16,10 @@ inline int test()
     static_assert(aliceWrite.isTrait(trait::aliceWrite));
     static_assert(aliceWrite.isTrait(trait::aliceRead));
 
-    if (0 != g.charlie.asTrait(trait::charlie).get() + g.charlie.charlie.asTrait(trait::charlie2).get())
-        return 1;
-    if (g.charlie.charlie.asTrait(trait::charlie3).get() != 15)
-        return 1;
+    auto charlie1plus2 = g.charlie.asTrait(trait::charlie).get() + g.charlie.charlie.asTrait(trait::charlie2).get();
+    CHECK(0 == charlie1plus2);
 
-    if (11 != g.charlie.charlie.asTrait(trait::aliceRead).get())
-        return 1;
+    CHECK(15 == g.charlie.charlie.asTrait(trait::charlie3).get());
 
-    return 0;
-}
-
-int main()
-{
-    return test();
+    CHECK(11 == g.charlie.charlie.asTrait(trait::aliceRead).get());
 }
