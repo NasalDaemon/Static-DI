@@ -1,7 +1,6 @@
 find_package(doctest REQUIRED)
 
 add_subdirectory(abc)
-add_subdirectory(abc/modules)
 
 add_library(di_test_main test_main.cpp)
 add_library(di::test ALIAS di_test_main)

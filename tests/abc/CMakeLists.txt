@@ -1,7 +1,14 @@
 add_library(di_abc_lib)
 add_library(di::abc::lib ALIAS di_abc_lib)
 
-target_link_libraries(di_abc_lib PUBLIC di::lib)
+add_library(di_abc_module_lib)
+add_library(di::abc::module ALIAS di_abc_module_lib)
+
+set_property(TARGET di_abc_lib PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+set_property(TARGET di_abc_module_lib PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+
+target_link_libraries(di_abc_lib PUBLIC di::di)
+target_link_libraries(di_abc_module_lib PUBLIC di::module)
 
 target_include_directories(di_abc_lib PUBLIC include)
 target_generate_di_headers(di_abc_lib INCLUDE_DIR include
@@ -27,4 +34,16 @@ target_generate_di_src(di_abc_lib
         charlie.charlie abc/charlie.tpp
 )
 
-set_property(TARGET di_abc_lib PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+target_generate_di_modules(di_abc_module_lib)
+
+target_sources(di_abc_module_lib
+    PUBLIC FILE_SET CXX_MODULES FILES
+        modules/abc/alice.ixx
+        modules/abc/bob.ixx
+        modules/abc/charlie.ixx
+        modules/abc/ellie.ixx
+        modules/abc/graph.ixx
+    PRIVATE
+        modules/abc/alice.cpp
+        modules/abc/ellie.cpp
+)

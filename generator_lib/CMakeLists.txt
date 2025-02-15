@@ -172,7 +172,7 @@ function(target_generate_di_headers TARGET_NAME)
 
     add_dependencies(${TARGET_NAME} "${TARGET_NAME}_dig")
     target_include_directories(${TARGET_NAME} PUBLIC ${DI_GENERATOR_INCLUDE_DIR})
-    target_link_libraries(${TARGET_NAME} PUBLIC di::lib)
+    target_link_libraries(${TARGET_NAME} PUBLIC di::di)
 
 endfunction(target_generate_di_headers)
 

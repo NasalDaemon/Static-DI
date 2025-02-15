@@ -3,6 +3,32 @@
 
 #include "di/detail/cast.hpp"
 
+#if DI_DECOMPRESS_TYPES
+
+namespace di::detail {
+
+    template<class T>
+    concept IsCompressed = false;
+
+    template<class T>
+    using Decompress = std::remove_cvref_t<T>;
+
+    template<class T>
+    using CompressContext = std::remove_cvref_t<T>;
+
+    template<class T>
+    using CompressImpl = std::remove_cvref_t<T>;
+
+    template<class T>
+    constexpr T& compressImpl(T& impl)
+    {
+        return impl;
+    }
+
+} // namespace di::detail
+
+#else
+
 template<class T>
 inline constexpr auto _d1Cc_ = [] mutable
 {
@@ -57,5 +83,7 @@ namespace di::detail {
     }
 
 } // namespace di::detail
+
+#endif
 
 #endif // DI_DETAIL_COMPRESS_HPP
