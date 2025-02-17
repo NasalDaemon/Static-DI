@@ -16,6 +16,10 @@
 #   error Unsupported compiler
 #endif
 
+#if defined(__INTELLISENSE__) or defined(DI_CLANGD)
+#   define DI_AUTOCOMPLETE 1
+#endif
+
 // Clang won't detail the failure in the build diagnostic when asserting the concept directly
 #if DI_COMPILER_CLANG
 #   define DI_ASSERT_IMPLEMENTS(Impl, Trait) \

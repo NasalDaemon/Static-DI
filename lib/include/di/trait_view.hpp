@@ -49,10 +49,10 @@ private:
     Alias<Impl> impl;
 };
 
-#ifdef __INTELLISENSE__
+#if DI_AUTOCOMPLETE
 DI_MODULE_EXPORT
 template<IsTrait Trait>
-struct IntellisenseTraitView final : Trait::Meta::Methods
+struct AutoCompleteTraitView final : Trait::Meta::Methods
 {
     static consteval std::true_type isTrait(MatchesTrait<Trait> auto) { return {}; }
     static consteval std::false_type isTrait(auto) { return {}; }
@@ -61,7 +61,7 @@ struct IntellisenseTraitView final : Trait::Meta::Methods
     struct Traits
     {
         template<IsTrait T>
-        using ResolveInterface = IntellisenseTraitView;
+        using ResolveInterface = AutoCompleteTraitView;
 
         template<IsTrait T>
         using ResolveTypes = Types;
@@ -139,9 +139,9 @@ TraitView(Trait, Impl&) -> TraitView<Trait, Impl>;
 namespace detail {
     template<class Trait, class Impl>
     constexpr bool isTraitView<TraitView<Trait, Impl>> = true;
-#ifdef __INTELLISENSE__
+#if DI_AUTOCOMPLETE
     template<class Trait>
-    constexpr bool isTraitView<IntellisenseTraitView<Trait>> = true;
+    constexpr bool isTraitView<AutoCompleteTraitView<Trait>> = true;
 #endif
 }
 

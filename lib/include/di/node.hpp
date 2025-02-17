@@ -31,9 +31,9 @@ struct Node
         return std::invoke(DI_FWD(visitor), self);
     }
 
-#ifdef __INTELLISENSE__
+#if DI_AUTOCOMPLETE
     template<IsTrait Trait, class Key = key::Default>
-    static constexpr IntellisenseTraitView<key::Trait<Key, Trait>> getNode(Trait trait, Key key = {});
+    static constexpr AutoCompleteTraitView<key::Trait<Key, Trait>> getNode(Trait trait, Key key = {});
 #else
     template<class Self, IsTrait Trait, class Key = ContextOf<Self>::Info::DefaultKey>
     constexpr IsTraitViewOf<Trait, Key> auto getNode(this Self& self, Trait trait, Key key = {})

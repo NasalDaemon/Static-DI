@@ -1,0 +1,4 @@
+CompileFlags:
+  Add: [
+    -DDI_CLANGD=1
+  ]

@@ -12,16 +12,19 @@ endif()
 project(Static-DI VERSION 1.0 LANGUAGES CXX)
 
 if(DI_BUILD_TESTS)
+    set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
     if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fcolor-diagnostics -Werror -Wall -Wextra -Wpedantic")
-        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fuse-ld=mold -lc++abi")
+        string(APPEND CMAKE_CXX_FLAGS " -Werror -Wall -Wextra -Wpedantic -fcolor-diagnostics")
+        string(APPEND CMAKE_EXE_LINKER_FLAGS " -fuse-ld=mold -lc++abi")
     elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror -Wall -Wextra -Wpedantic")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fdiagnostics-all-candidates -fconcepts-diagnostics-depth=5")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fdiagnostics-color=always")
-        # Unfortunately, GCC LTO partitioning and modules do not mix well (symbols often missing at link time)
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-fat-lto-objects -flto-partition=none")
-        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fuse-ld=mold")
+        string(APPEND CMAKE_CXX_FLAGS " "
+            "-Werror -Wall -Wextra -Wpedantic "
+            "-fdiagnostics-all-candidates -fconcepts-diagnostics-depth=5 "
+            "-fdiagnostics-color=always "
+            # Unfortunately, GCC LTO partitioning and modules do not mix well (symbols often missing at link time)
+            "-fno-fat-lto-objects -flto-partition=none "
+        )
+        string(APPEND CMAKE_EXE_LINKER_FLAGS " -fuse-ld=mold")
     endif()
 endif()
 

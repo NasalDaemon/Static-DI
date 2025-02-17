@@ -80,8 +80,8 @@ export namespace di {
     using di::Repeater;
     using di::RepeaterTrait;
 
-    #ifdef __INTELLISENSE__
-    using di::IntellisenseTraitView;
+    #ifdef DI_AUTOCOMPLETE
+    using di::AutoCompleteTraitView;
     #endif
 
     // thread.hpp
