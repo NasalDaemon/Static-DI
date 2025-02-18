@@ -1,3 +1,4 @@
 jinja2 >= 3.1.5
 lark >= 1.2.2
-lark @ git+https://github.com/NasalDaemon/lark.git@serialize-grammar
+# Fix for parser caching
+lark @ https://github.com/NasalDaemon/lark/archive/refs/heads/serialize-grammar.tar.gz

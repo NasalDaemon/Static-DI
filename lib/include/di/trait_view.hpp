@@ -49,7 +49,16 @@ private:
     Alias<Impl> impl;
 };
 
-#if DI_AUTOCOMPLETE
+namespace detail {
+    struct Unknown
+    {
+        template<class T>
+        explicit(false) constexpr operator T&&();
+        template<class T>
+        explicit(false) constexpr operator T&();
+    };
+}
+
 DI_MODULE_EXPORT
 template<IsTrait Trait>
 struct AutoCompleteTraitView final : Trait::Meta::Methods
@@ -68,11 +77,10 @@ struct AutoCompleteTraitView final : Trait::Meta::Methods
     };
 
     template<IsMethodOf<Trait> Method>
-    constexpr decltype(auto) apply(this auto&& self, Method trait, auto&&... args);
+    constexpr detail::Unknown apply(this auto&&, Method, auto&&...);
 
-    constexpr decltype(auto) visit(this auto&& self, auto&& visitor);
+    constexpr detail::Unknown visit(this auto&& self, auto&& visitor);
 };
-#endif
 
 // Presents a view over a trait implementation, where only the trait trait functions are accessible
 DI_MODULE_EXPORT
@@ -139,10 +147,8 @@ TraitView(Trait, Impl&) -> TraitView<Trait, Impl>;
 namespace detail {
     template<class Trait, class Impl>
     constexpr bool isTraitView<TraitView<Trait, Impl>> = true;
-#if DI_AUTOCOMPLETE
     template<class Trait>
     constexpr bool isTraitView<AutoCompleteTraitView<Trait>> = true;
-#endif
 }
 
 DI_MODULE_EXPORT

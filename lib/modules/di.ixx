@@ -80,9 +80,7 @@ export namespace di {
     using di::Repeater;
     using di::RepeaterTrait;
 
-    #ifdef DI_AUTOCOMPLETE
     using di::AutoCompleteTraitView;
-    #endif
 
     // thread.hpp
     using di::Environment;
@@ -95,6 +93,7 @@ export namespace di {
     using di::ThreadEnvironment;
     namespace key {
         using key::ThreadPost;
+        using key::Default;
     }
 
     // test.hpp

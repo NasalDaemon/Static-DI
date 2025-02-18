@@ -3,6 +3,7 @@
 
 // When used as a header library (not as a module)
 #ifndef DI_MODULE_EXPORT
+#   define DI_HEADER 1
 #   define DI_MODULE_EXPORT
 #endif
 

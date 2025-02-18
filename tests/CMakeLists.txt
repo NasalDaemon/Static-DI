@@ -16,6 +16,10 @@ add_executable(di_test_module
     repeater/main.cpp
     thread/main.cpp
 )
+
+set_property(TARGET di_test_headers PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+set_property(TARGET di_test_module PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+
 target_sources(di_test_module
     PUBLIC FILE_SET CXX_MODULES FILES
         repeater/test_node.ixx
@@ -26,9 +30,6 @@ target_generate_di_modules(di_test_module GLOB repeater thread)
 
 target_link_libraries(di_test_headers PUBLIC di::abc::lib di::test)
 target_link_libraries(di_test_module PUBLIC di::abc::module di::test)
-
-set_property(TARGET di_test_headers PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
-set_property(TARGET di_test_module PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
 
 add_test(di_test_headers di_test_headers)
 add_test(di_test_module di_test_module)

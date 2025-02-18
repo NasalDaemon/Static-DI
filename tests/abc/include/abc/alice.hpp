@@ -19,7 +19,7 @@ struct Alice
 
         using Traits = di::Traits<Node
             , trait::Alice(Alice)
-            // , trait::AliceRead(AliceTrait)
+            // , trait::AliceRead(Alice)
             , trait::Bob(Bob)
             , trait::Charlie
         >;
