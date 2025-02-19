@@ -10,10 +10,28 @@
 
 namespace di {
 
+namespace detail {
+    struct OnGraphConstructedVisitor
+    {
+        static constexpr void operator()(auto& node)
+        {
+            if constexpr (requires { node.onGraphConstructed(); })
+                node.onGraphConstructed();
+        }
+    };
+}
+
 DI_MODULE_EXPORT
 struct Cluster
 {
     using Environment = di::Environment<>;
+
+    template<class Self>
+    requires IsRootContext<ContextParameterOf<Self>>
+    void onConstructed(this Self& self)
+    {
+        self.visit(detail::OnGraphConstructedVisitor{});
+    }
 
     template<class Self, IsTrait Trait, class Key = ContextParameterOf<Self>::Info::DefaultKey>
     constexpr IsTraitViewOf<Trait, Key> auto getNode(this Self& cluster, Trait trait, Key key = {})

@@ -1,8 +1,37 @@
 # Modules example
 
-Example called `my_app` which shows a simple user session manager and authentication server interacting to create user tokens (such as JWTs). It is made of two nodes (`Session` and `AuthService`) in a cluster, which express their dependencies on each other via connections in the cluster. The connections are named by the trait that satisfies the dependency. A type dependency is also shown between the nodes, where `Session` derives its `Token` type from the one provided by `AuthService` using `di::ResolveTypes` static trait resolution.
+Example called `my_app` which shows a simple user session manager and authentication server interacting to create user tokens (such as JWTs). It is made of two nodes (`Session` and `AuthService`) in a cluster, which express their dependencies on each other via connections in the cluster. The connections are named by the trait that satisfies the dependency.
 
-> **_NOTE:_** don't resolve types inside nodes with `di::ResolveTypes` just because you can! While type resolution between nodes is a well-supported first-class feature, it is generally recommended for simplicity that well-known types and classes are rather defined _independently_ of and _externally_ to nodes. Humans tend to find types much more easily through a well organised file structure, rather than traversing clusters of interdependent nodes.
+To show off an advanced feature: a type dependency is also defined between the nodes, where `Session` derives its `Token` type from the one provided by `AuthService` using `di::ResolveTypes` static trait resolution.
+
+<details>
+<summary>:warning: NOTE: don't resolve types inside nodes with di::ResolveTypes just because you can!</summary>
+
+> While type resolution between nodes with `di::ResolveTypes` is a well-supported first-class feature, it is generally recommended for simplicity that well-known types and classes used by multiple nodes are rather defined _independently_ of and _externally_ to nodes. Humans tend to find types much more easily through a well organised file structure, rather than traversing clusters of interdependent nodes.
+>
+> On the other hand, it may be necessary to swap in mock types for testing purposes, in which case the feature becomes useful. In that scenario, the production type still should be indepedently defined and implemented in a well-named class that is easy to find, and simply aliased in the production node that decides which type is exposed to the other nodes in the graph.
+>
+> Alternatively, you can define your own `NullContext` with a nested `Root` type, which can be easily accessed from any node's context via `Context::Root`. The advantage of this approach is that the types in `Root` will never need to pollute any traits, as every node has immediate access to it.
+```cpp
+struct my::ProdNullContext : di::NullContext
+{
+    struct Root // can be resolved from any node via `Context::Root`
+    {
+        struct Types
+        {
+            using Token = my::Token;
+            using Hasher = my::Hasher;
+        };
+    };
+};
+```
+> Order of preference for dependencies on non-node types and classes:
+> 1. Type defined externally and used directly by nodes
+> 2. Type defined externally and aliased in `NullContext::Root`
+> 3. Type defined externally and aliased in node trait types _if number of affected nodes and traits is small_
+> 4. Type defined internally to a mock node for testing purposes and aliased in the trait types
+
+</details>
 
 ## File structure
 - [my/CMakeLists.txt](#cmakeliststxt)
@@ -13,6 +42,7 @@ Example called `my_app` which shows a simple user session manager and authentica
 - [my/main.cpp](#maincpp): Constructs and uses the full graph of nodes which satisfies all requirements of the nodes within `my::Cluster`
 - my/auth_service.cpp (not shown)
 - my/db.ixx (not shown)
+- my/hash.ixx (not shown)
 - my/task.ixx (not shown)
 
 ## CMakeLists.txt
@@ -27,6 +57,7 @@ target_sources(my_app
         auth_service.ixx
         sessions.ixx
         db.ixx # not shown
+        hash.ixx # not shown
         task.ixx # not shown
     PRIVATE
         auth_service.cpp # not shown (implements AuthService::dbValidPass etc)
@@ -209,6 +240,7 @@ struct AuthService : di::Node
 ```cpp
 export module my.sessions;
 
+import my.hash; // not shown in example
 import my.traits;
 
 import di;
@@ -218,11 +250,6 @@ namespace my {
 
 struct Sessions
 {
-    // Utilities to avoid storing passwords in plaintext
-    using PassHash = std::array<std::byte, 32>;
-    static bool sameHash(std::string_view pass, PassHash const& hash);
-    static PassHash hash(std::string_view pass);
-
     // If implementing a node with type-based dependencies on other nodes
     // a nested Node<Context> template class is needed to query the types in the graph
     template<class Context>
@@ -270,8 +297,9 @@ struct Sessions
             std::string_view pass)
         {
             // To avoid db query: return cached token if one exists that has not expired
-            if (auto const userDetails = getUserDetails(user); userDetails and userDetails->validWithPass(pass))
-                co_return userDetails->token;
+            if (auto const userDetails = getUserDetails(user))
+                if (userDetails->validWithPass(pass))
+                    co_return userDetails->token;
 
             // Else, try to log in and return token if successful
             // Note: `getNode` can be called directly, since `Context` is immediately available
@@ -281,11 +309,11 @@ struct Sessions
             co_return std::nullopt;
         }
 
-        UserDetails const* getUserDetails(std::string_view user)
+        UserDetails const* getUserDetails(std::string_view user) const
         {
             auto tokenIt = userDetails.find(user);
             return tokenIt != userDetails.end()
-                ? &tokenIt->second
+                ? std::addressof(tokenIt->second)
                 : nullptr;
         }
 
@@ -299,7 +327,7 @@ struct Sessions
             {}
 
             Token token;
-            PassHash passHash;
+            Hash passHash; // avoid storing passwords in plaintext
 
             bool validWithPass(std::string_view pass) const
             {
@@ -354,6 +382,7 @@ int main()
 
     // Note, the following do not compile (inaccessible) as they are not part of `trait::SessionManager`:
     // sessionManager.userDetails;
+    // sessionManager.getUserDetails("user1");
     // sessionManager.getNode(trait::authService);
     // sessionManager.apply(trait::TokenStore::store, "user1", Token{});
     // sessionManager.store("user1", Token{});

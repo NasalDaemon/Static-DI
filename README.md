@@ -1,5 +1,5 @@
 # Static-DI
-DI without runtime dispatch. C++23 library which may be imported as a C++20 module.
+DI without runtime dispatch. C++23 library without dependencies which may be imported as a C++20 module.
 
 ## Compiler Support
 - [x] Clang 19+ (20+ for `import std;`)
@@ -10,9 +10,7 @@ DI without runtime dispatch. C++23 library which may be imported as a C++20 modu
 Add the following to your CMake, which imports the code for the last release into your project.
 ```CMake
 include(FetchContent)
-FetchContent_Declare(di
-    URL https://github.com/NasalDaemon/Static-DI/archive/refs/tags/latest.tar.gz
-)
+FetchContent_Declare(di URL https://github.com/NasalDaemon/Static-DI/archive/refs/tags/latest.tar.gz)
 FetchContent_MakeAvailable(di) # makes available di::di and di::module
 ```
 <details>

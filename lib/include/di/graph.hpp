@@ -22,26 +22,14 @@ DI_MODULE_EXPORT
 template<IsNodeHandle Cluster, IsRootContext Context = NullContext>
 using Graph = InlineGraph<ToNodeWrapper<Cluster>::template Node, Context>;
 
-namespace detail {
-    struct OnGraphConstructedVisitor
-    {
-        static constexpr void operator()(auto& node)
-        {
-            if constexpr (requires { node.onGraphConstructed(); })
-                node.onGraphConstructed();
-        }
-    };
-}
-
 DI_MODULE_EXPORT
 template<std::invocable F>
 constexpr std::invoke_result_t<F> constructGraph(F f)
 {
     using Result = std::invoke_result_t<F>;
-    static_assert(IsRootContext<ContextParameterOf<Result>>);
     static_assert(std::derived_from<Result, Cluster>);
     Result result = std::invoke(f);
-    result.visit(detail::OnGraphConstructedVisitor{});
+    result.onConstructed();
     return result;
 }
 

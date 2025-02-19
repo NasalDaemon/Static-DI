@@ -1,17 +1,17 @@
 [settings]
-os={{detect_api.detect_os()}}
-arch={{detect_api.detect_arch()}}
-build_type=Release
+os={{ detect_api.detect_os() }}
+arch={{ detect_api.detect_arch() }}
+build_type={{ os.getenv("DI_BUILD_TYPE") }}
 {% set compiler, version, compiler_exe = detect_api.detect_default_compiler() %}
-compiler={{compiler}}
+compiler={{ compiler }}
 compiler.cppstd=gnu23
 {% set compiler_version = detect_api.default_compiler_version(compiler, version) %}
 compiler.version={{ 19 if compiler_version > 19 else compiler_version }}
 {% if compiler == 'msvc' %}
 {% set runtime, _ = detect_api.default_msvc_runtime(compiler) %}
-compiler.runtime={{runtime}}
+compiler.runtime={{ runtime }}
 {% else %}
-compiler.libcxx={{"libstdc++11" if compiler == "gcc" else "libc++" }}
+compiler.libcxx={{ "libstdc++11" if compiler == "gcc" else "libc++" }}
 {% endif %}
 
 [conf]
