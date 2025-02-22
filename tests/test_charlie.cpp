@@ -45,7 +45,7 @@ struct ICharlieMocks : di::INode
     };
 };
 
-using VCharlieTest = di::test::TestGraph<Charlie, di::Virtual<ICharlieMocks*>>;
+using VCharlieTest = di::test::Graph<Charlie, di::Virtual<ICharlieMocks*>>;
 
 struct SCharlieMocks {
     template<class Context>
@@ -58,11 +58,11 @@ struct SCharlieMocks {
 
         using Traits = di::TraitsOpen<Node>;
 
-        int apply(trait::Alice::get) const { return getNode(di::test::Local<trait::Charlie>{}).get(); }
+        int apply(trait::Alice::get) const { return getNode(di::test::local(trait::charlie)).get(); }
     };
 };
 
-using SCharlieTest = di::test::TestGraph<Charlie, SCharlieMocks>;
+using SCharlieTest = di::test::Graph<Charlie, SCharlieMocks>;
 
 TEST_CASE("TestCharlie")
 {

@@ -2,34 +2,25 @@
 
 Example called `my_app` which shows a simple user session manager and authentication server interacting to create user tokens (such as JWTs). It is made of two nodes (`Session` and `AuthService`) in a cluster, which express their dependencies on each other via connections in the cluster. The connections are named by the trait that satisfies the dependency.
 
-To show off an advanced feature: a type dependency is also defined between the nodes, where `Session` derives its `Token` type from the one provided by `AuthService` using `di::ResolveTypes` static trait resolution.
+The nodes also have two dependencies on data types:
+1. `Session` derives its `PassHash` type from the one provided at the root of the graph via `Context::Root`.
+2. `Session` derives its `Token` type from the one provided by `AuthService` via `di::ResolveTypes` static trait resolution.
 
 <details>
-<summary>:warning: NOTE: don't resolve types inside nodes with di::ResolveTypes just because you can!</summary>
+<summary>:warning: NOTE: the data type dependencies are simply showing off features! Don't resolve data types inside nodes just because you can!</summary>
 
-> While type resolution between nodes with `di::ResolveTypes` is a well-supported first-class feature, it is generally recommended for simplicity that well-known types and classes used by multiple nodes are rather defined _independently_ of and _externally_ to nodes. Humans tend to find types much more easily through a well organised file structure, rather than traversing clusters of interdependent nodes.
+> It is generally recommended for simplicity that well-known data types used by multiple nodes are defined _independently_ of and _externally_ to nodes. Humans tend to find types much more easily through a well organised file structure, rather than traversing clusters of interdependent nodes. If a data type does need to be configurable using `Context::Root` or `ResolveTypes`, the concrete type itself still should be indepedently defined in a well-named class that is easy to find. It can then be simply aliased in the custom root or the node's trait type.
 >
-> On the other hand, it may be necessary to swap in mock types for testing purposes, in which case the feature becomes useful. In that scenario, the production type still should be indepedently defined and implemented in a well-named class that is easy to find, and simply aliased in the production node that decides which type is exposed to the other nodes in the graph.
->
-> Alternatively, you can define your own `NullContext` with a nested `Root` type, which can be easily accessed from any node's context via `Context::Root`. The advantage of this approach is that the types in `Root` will never need to pollute any traits, as every node has immediate access to it.
-```cpp
-struct my::ProdNullContext : di::NullContext
-{
-    struct Root // can be resolved from any node via `Context::Root`
-    {
-        struct Types
-        {
-            using Token = my::Token;
-            using Hasher = my::Hasher;
-        };
-    };
-};
-```
-> Order of preference for dependencies on non-node types and classes:
+> Order of preference for dependencies on data types:
 > 1. Type defined externally and used directly by nodes
-> 2. Type defined externally and aliased in `NullContext::Root`
+>    - No type resolution keeps things explicit
+>    - Easier to define non-template member functions, which can easily be split into a separate .cpp for faster compilation
+> 2. Type defined externally and aliased in a custom graph root
+>    - Type alias is easy to find without walking any nodes of the graph
 > 3. Type defined externally and aliased in node trait types _if number of affected nodes and traits is small_
+>    - Type alias is not too distant from the current node
 > 4. Type defined internally to a mock node for testing purposes and aliased in the trait types
+>    - Mocks are defined in the same source file as the tests
 
 </details>
 
@@ -37,12 +28,13 @@ struct my::ProdNullContext : di::NullContext
 - [my/CMakeLists.txt](#cmakeliststxt)
 - [my/traits.ixx.dig](#traitsixxdig): `my::trait::AuthService`, `my::trait::TokenStore`, `my::trait::SessionManager`: traits for nodes to implement
 - [my/cluster.ixx.dig](#clusterixxdig): `my::Cluster`: A cluster of interconnected nodes implementing the traits
-- [my/auth_service.ixx](#auth_serviceixx): `my::AuthService` implements the trait `my::trait::AuthService`
-- [my/sessions.ixx](#sessionsixx): `my::Sessions` implements the traits `my::trait::TokenStore` and `my::trait::SessionManager`
+- [my/token.ixx](#tokenixx): `my::Token` data type stores the proof of identity for a user, issued by the AuthService with an expiry
+- [my/pass_hash.ixx](#pass_hashixx): `my::PassHash` data type stores the hash of passwords
+- [my/auth_service.ixx](#auth_serviceixx): `my::AuthService` node implements the trait `my::trait::AuthService`
+- [my/sessions.ixx](#sessionsixx): `my::Sessions` node implements the traits `my::trait::TokenStore` and `my::trait::SessionManager`
 - [my/main.cpp](#maincpp): Constructs and uses the full graph of nodes which satisfies all requirements of the nodes within `my::Cluster`
 - my/auth_service.cpp (not shown)
 - my/db.ixx (not shown)
-- my/hash.ixx (not shown)
 - my/task.ixx (not shown)
 
 ## CMakeLists.txt
@@ -54,13 +46,15 @@ target_link_libraries(my_app PUBLIC di::module)
 # Add module interface units and implementation units
 target_sources(my_app
     PUBLIC FILE_SET CXX_MODULES FILES
+        token.ixx
+        pass_hash.ixx
         auth_service.ixx
         sessions.ixx
         db.ixx # not shown
-        hash.ixx # not shown
         task.ixx # not shown
     PRIVATE
         auth_service.cpp # not shown (implements AuthService::dbValidPass etc)
+        pass_hash.cpp # not shown
 )
 
 # Adds traits.ixx (from traits.ixx.dig) and cluster.ixx (from cluster.ixx.dig)
@@ -85,16 +79,18 @@ trait AuthService [Types]
     // Check user/oldPass against database, and return if password was changed
     changePass(std::string_view user, std::string_view oldPass, std::string_view newPass) -> Task<bool>
 
-    // Token type is supplied
-    requires typename Types::Token;
+    // Ensures Token type is supplied
+    requires typename Types::Token
 }
 
-trait TokenStore [Types]
+trait TokenStore [Types, Root]
 {
-    requires typename Types::Token;
+    // Ensures PassHash is defined at the root of the graph when using this trait
+    requires typename Root::PassHash
+    requires typename Types::Token
 
     // Store latest token generated for a user
-    store(std::string_view user, std::string_view pass, Types::Token token)
+    store(std::string_view user, Root::PassHash passHash, Types::Token token)
 
     // Delete any token stored against this user
     revoke(std::string_view user)
@@ -102,7 +98,7 @@ trait TokenStore [Types]
 
 trait SessionManager [Types]
 {
-    requires typename Types::Token;
+    requires typename Types::Token
 
     // Has a token been created for user that has not expired
     hasToken(std::string_view user) const -> bool
@@ -133,16 +129,44 @@ cluster Cluster
     [trait::TokenStore <-> trait::AuthService]
     sessions <-> authService
 
-    // Equivalent to:
+    // Above is equivalent to:
     // [trait::TokenStore]  sessions <-- authService
     // [trait::AuthService] sessions --> authService
 }
 
 }
 ```
+## token.ixx
+`my::Token` data type stores the proof of identity for a user, issued by the AuthService with an expiry
+```cpp
+export module my.token;
 
+namespace my {
+    struct Token
+    {
+        bool expired() const;
+    private:
+        // ... some data fields ...
+    };
+}
+```
+## pass_hash.ixx
+`my::PassHash` data type stores the hash of passwords
+```cpp
+export module my.pass_hash;
+
+namespace my {
+    struct PassHash
+    {
+        explicit PassHash(std::string_view s);
+        friend constexpr bool sameHash(PassHash const& self, std::string_view pass);
+    private:
+        // ... some data fields ...
+    };
+}
+```
 ## auth_service.ixx
-`my::AuthService` implements the trait `my::trait::AuthService`
+`my::AuthService` node implements the trait `my::trait::AuthService`
 ```cpp
 export module my.auth_service;
 
@@ -163,16 +187,10 @@ struct AuthService : di::Node
     //          , trait::AuthService(AuthService, AuthService::Types)
     //      >
 
-    struct Token
-    {
-        // ... some data fields ...
-        bool expired() const;
-    };
-
     struct Types
     {
         // exposes Token type to client nodes, as is required by `trait::AuthService`
-        using Token = AuthService::Token;
+        using Token = my::Token;
     };
 
     // Trait methods are to be implemented with the signature: apply(<Trait>::<method>, args...)
@@ -188,13 +206,15 @@ struct AuthService : di::Node
         bool const success = co_await self.dbValidPass(user, pass);
         if (success)
         {
+            // Resolves to `my::PassHash` in this example
+            using PassHash = di::ContextOf<Self>::Root::PassHash;
             // Since the type and memory offset of `Sessions` with respect to `AuthService` is known
             // statically via the context of `Self`, this entire call can/will be inlined by the compiler:
-            self.getNode(trait::tokenStore).store(user, pass, self.makeToken(user));
+            self.getNode(trait::tokenStore).store(user, PassHash(pass), self.makeToken(user));
             // In this example project, this is effectively equivalent to:
-            // <my::Cluster>.sessions.asTrait(trait::tokenStore).store(user, pass, makeToken(...));
+            // <my::Cluster>.sessions.asTrait(trait::tokenStore).store(user, PassHash(...), makeToken(...));
             // which directly calls
-            // <my::Cluster>.sessions.apply(trait::TokenStore::store{}, user, pass, makeToken(...));
+            // <my::Cluster>.sessions.apply(trait::TokenStore::store{}, user, PassHash(...), makeToken(...));
         }
         co_return success;
     }
@@ -234,13 +254,11 @@ struct AuthService : di::Node
 
 }
 ```
-
 ## sessions.ixx
-`my::Sessions` implements the traits `my::trait::TokenStore` and `my::trait::SessionManager`
+`my::Sessions` node implements the traits `my::trait::TokenStore` and `my::trait::SessionManager`
 ```cpp
 export module my.sessions;
 
-import my.hash; // not shown in example
 import my.traits;
 
 import di;
@@ -250,8 +268,8 @@ namespace my {
 
 struct Sessions
 {
-    // If implementing a node with type-based dependencies on other nodes
-    // a nested Node<Context> template class is needed to query the types in the graph
+    // If implementing a node with data type dependencies, a nested
+    // Node<Context> template class is needed to query the types in the graph
     template<class Context>
     struct Node : di::Node
     {
@@ -272,14 +290,22 @@ struct Sessions
 
         using Token = Types::Token;
 
-        void apply(trait::TokenStore::store, std::string_view user, std::string_view pass, Token token)
+        // Resolves to `my::PassHash` in this example
+        using PassHash = Context::Root::PassHash;
+
+        void apply(trait::TokenStore::store, std::string_view user, PassHash passHash, Token token)
         {
-            userDetails.insert_or_assign(user, std::forward_as_tuple(pass, std::move(token)));
+            auto const [it, inserted] = userDetailsMap.try_emplace(user, std::move(token), std::move(passHash));
+            if (not inserted)
+            {
+                it->token = std::move(token);
+                it->passHash = std::move(passHash);
+            }
         }
 
         void apply(trait::TokenStore::revoke, std::string_view user)
         {
-            userDetails.erase(user);
+            userDetailsMap.erase(user);
         }
 
         bool apply(trait::SessionManager::hasToken, std::string_view user) const
@@ -309,10 +335,10 @@ struct Sessions
             co_return std::nullopt;
         }
 
-        UserDetails const* getUserDetails(std::string_view user) const
+        auto const* getUserDetails(std::string_view user) const
         {
-            auto tokenIt = userDetails.find(user);
-            return tokenIt != userDetails.end()
+            auto const tokenIt = userDetailsMap.find(user);
+            return tokenIt != userDetailsMap.end()
                 ? std::addressof(tokenIt->second)
                 : nullptr;
         }
@@ -321,21 +347,21 @@ struct Sessions
 
         struct UserDetails
         {
-            UserDetails(std::string_view pass, Token token)
+            UserDetails(Token token, PassHash passHash)
                 : token(std::move(token))
-                , passHash(hash(pass))
+                , passHash(std::move(passHash))
             {}
 
             Token token;
-            Hash passHash; // avoid storing passwords in plaintext
+            PassHash passHash; // avoid storing passwords in plaintext
 
             bool validWithPass(std::string_view pass) const
             {
-                return not token.expired() and sameHash(pass, passHash);
+                return not token.expired() and sameHash(passHash, pass);
             }
         };
 
-        std::unordered_map<std::string, UserDetails> userDetails;
+        std::unordered_map<std::string, UserDetails> userDetailsMap;
     };
 };
 
@@ -346,6 +372,7 @@ struct Sessions
 Constructs the full graph of nodes which satisfies all requirements of the nodes within `my::Cluster`
 ```cpp
 import my.cluster;
+import my.pass_hash;
 import my.traits;
 import di;
 
@@ -353,10 +380,15 @@ using namespace my;
 
 int main()
 {
-    di::Graph<my::Cluster> graph{
+    struct Root
+    {
+        using PassHash = my::PassHash
+    };
+
+    di::Graph<my::Cluster, Root> graph{
         .authService{"super token secret", std::chrono::seconds{600}}
     };
-    // `di::Graph<my::Cluster>` is an alias to `my::Cluster<di::NullContext>`, which is roughly:
+    // `di::Graph<my::Cluster, Root>` is an alias to `my::Cluster<di::RootContext<Root>>`, which is roughly:
     //  struct my::PsuedoGeneratedCluster
     //  {
     //      struct SessionsContext { ... };

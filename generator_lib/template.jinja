@@ -33,6 +33,9 @@ namespace {{ namespace.name }} {
                 {%- if trait.typesName -%}
                 , class {{ trait.typesName }} = std::remove_cvref_t<Self>::Types
                 {%- endif -%}
+                {%- if trait.rootName -%}
+                , class {{ trait.rootName }} = di::ContextOf<std::remove_cvref_t<Self>>::Root
+                {%- endif -%}
             >
             constexpr auto {{ method.name }}(this Self{{ " const&" if method.isConst else "&&" }} self
                 {%- for type, name in method.params -%}
@@ -56,14 +59,17 @@ namespace {{ namespace.name }} {
         };
     };
 
-    template<class Impl
+    template<class Self, class Impl
     {%- if trait.typesName -%}
-        , class {{ trait.typesName }} = di::NodeTypes<Impl, {{ trait.name }}>
+        , class {{ trait.typesName }} = di::NodeTypes<Impl, di::TraitExpects<Self>>
+    {%- endif -%}
+    {%- if trait.rootName -%}
+        , class {{ trait.rootName }} = di::ContextOf<Impl>::Root
     {%- endif -%}
     >
     requires requires (Impl impl_, Impl const const_)
     {
-        requires true;
+        typename Impl::Traits;
         {% for require in trait.requires %}
         {{ require }}
         {% endfor %}
@@ -71,9 +77,9 @@ namespace {{ namespace.name }} {
 
         {% macro requireInvoke() -%}
             {{ "const_" if method.isConst else "impl_" }}.apply({{ method.name }}_c
-            {%- for type, name in method.params -%}
-            , DI_FWD({{ name }})
-            {%- endfor -%}
+                {%- for type, name in method.params -%}
+                , DI_FWD({{ name }})
+                {%- endfor -%}
             )
         {%- endmacro %}
         {% set comma = joiner(", ") %}

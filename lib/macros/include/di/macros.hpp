@@ -62,16 +62,14 @@
     static void applicable(method);
 
 #define DI_AS_FUNCTOR_METHOD(method) \
-    template<class Self> \
-    requires ::di::IsTraitView<std::remove_reference_t<Self>> \
+    template<::di::IsTraitView Self> \
     constexpr decltype(auto) method(this Self&& self, di::AsFunctor asFunctor) \
     { \
         return self.apply(method ## _c, asFunctor); \
     }
 
 #define DI_DUCK_METHOD(method) \
-    template<class Self> \
-    requires ::di::IsTraitView<std::remove_reference_t<Self>> \
+    template<::di::IsTraitView Self> \
     constexpr decltype(auto) method(this Self&& self, auto&&... args) \
     { \
         return self.apply(method ## _c, DI_FWD(args)...); \

@@ -7,10 +7,12 @@ namespace: "namespace" NAMESPACE "{" (cluster | trait)+ "}"
 
 cluster: [template_params] "cluster" NAME "{" node+ connection_block+ "}"
 
-trait: "trait" NAME [trait_types] "{" (trait_requires | trait_method)+ "}" -> trait_def
-     | "trait" NAME "=" NAME ("+" NAME)*                                -> trait_alias
+trait: "trait" NAME [trait_annotations] "{" (trait_requires | trait_method)+ "}" -> trait_def
+     | "trait" NAME "=" NAME ("+" NAME)*                                         -> trait_alias
 
-trait_types: "[" NAME "]"
+trait_annotations: "[" trait_annotation ["," trait_annotation] "]"
+trait_annotation: TRAIT_ANNOTATION_NAME [":" NAME]
+TRAIT_ANNOTATION_NAME: "Types" | "Root"
 
 trait_requires: trait_requires_inline
               | trait_requires_block

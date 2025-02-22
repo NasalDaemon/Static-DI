@@ -29,12 +29,16 @@ struct Local : Trait
 
 DI_MODULE_EXPORT
 template<IsTrait Trait>
+constexpr Local<Trait> local(Trait) { return {}; }
+
+DI_MODULE_EXPORT
+template<IsTrait Trait>
 struct MockTrait : Trait
 {
     static TraitExpects<Trait> expects();
 
     // Mocks may implement only what is needed for testing
-    template<class T>
+    template<class Self, class T>
     using Implements = void;
 };
 
@@ -117,8 +121,8 @@ template<IsNodeHandle NodeT, IsNodeHandle MocksT>
 using Test = MapInfo<detail::Test<NodeT, MocksT>, detail::TestMapInfo>;
 
 DI_MODULE_EXPORT
-template<IsNodeHandle Node, IsNodeHandle Mocks>
-using TestGraph = di::Graph<Test<Node, Mocks>>;
+template<IsNodeHandle Node, IsNodeHandle Mocks, class Root = void>
+using Graph = di::Graph<Test<Node, Mocks>, Root>;
 
 } // namespace di::test
 

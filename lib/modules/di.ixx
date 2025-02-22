@@ -26,10 +26,12 @@ export namespace di {
     // di.hpp
     using di::NullContext;
     using di::IsContext;
+    using di::RootContext;
     using di::IsRootContext;
     using di::AdlTag;
     using di::Implements;
     using di::Trait;
+    using di::TraitExpects;
     using di::IsTrait;
     using di::IsMethodOf;
     using di::TraitOf;
@@ -100,8 +102,9 @@ export namespace di {
     namespace test {
         using test::IsTestContext;
         using test::Local;
+        using test::local;
         using test::Test;
-        using test::TestGraph;
+        using test::Graph;
     }
 
     // union.hpp

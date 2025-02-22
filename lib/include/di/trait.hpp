@@ -65,9 +65,13 @@ template<class T, class Trait>
 concept ExactlyMatchesTrait = std::same_as<T, Trait> and MatchesTrait<T, Trait>;
 
 namespace detail {
+    template<class Trait, class Impl, IsTrait... Subtraits>
+    requires (sizeof...(Subtraits) > 0)
+    using ImplementsAll = Void<typename Subtraits::template Implements<Trait, detail::Decompress<Impl>>...>;
+
     template<class Impl, IsTrait... Traits>
     requires (sizeof...(Traits) > 0)
-    using Implements = Void<typename Traits::template Implements<detail::Decompress<Impl>>...>;
+    using Implements = Void<typename Traits::template Implements<Traits, detail::Decompress<Impl>>...>;
 }
 
 DI_MODULE_EXPORT
@@ -101,8 +105,8 @@ struct JoinedTrait : Traits...
         {};
     };
 
-    template<class Impl>
-    using Implements = detail::Implements<Impl, Traits...>;
+    template<class Self, class Impl>
+    using Implements = detail::ImplementsAll<Self, Impl, Traits...>;
 
     template<class Expected>
     requires (... or TraitCanProvide<Traits, Expected>)
@@ -135,7 +139,7 @@ namespace detail {
 
         static TraitExpects<Trait_> expects();
 
-        template<class T>
+        template<class Self, class T>
         using Implements = void;
     };
 }

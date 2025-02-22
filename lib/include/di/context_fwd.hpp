@@ -68,6 +68,10 @@ DI_MODULE_EXPORT
 struct NullContext;
 
 DI_MODULE_EXPORT
+template<class Root>
+struct RootContext;
+
+DI_MODULE_EXPORT
 template<class T>
 concept IsRootContext = IsContext<T> and not requires { typename T::Parent; };
 

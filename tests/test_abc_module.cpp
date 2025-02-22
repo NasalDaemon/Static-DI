@@ -1,5 +1,3 @@
-#include "di/macros.hpp"
-
 #include <doctest/doctest.h>
 
 #if !DI_STD_MODULE
@@ -14,7 +12,8 @@ using namespace abc;
 
 TEST_CASE("Test abc module")
 {
-    auto g = DI_CONSTRUCT(di::Graph<AliceBob>{.ellie{101}});
+    di::Graph<AliceBob> g{.ellie{101}};
+    g.onConstructed();
     auto aliceWrite = g.asTrait(trait::alice);
     aliceWrite.set(11);
 

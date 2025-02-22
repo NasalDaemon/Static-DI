@@ -11,7 +11,7 @@ struct AliceRead : di::Trait
 
     DI_METHODS(AliceRead, ALICE_READ_METHODS)
 
-    template<class T, class Types = di::NodeTypes<T, trait::AliceRead>>
+    template<class Self, class T, class Types = di::NodeTypes<T, di::TraitExpects<Self>>>
     requires requires (T const c)
     {
         typename Types::AliceType;
@@ -26,7 +26,7 @@ struct AliceWrite : di::Trait
 
     DI_METHODS(AliceWrite, ALICE_WRITE_METHODS)
 
-    template<class T, class Types = di::NodeTypes<T, trait::AliceWrite>>
+    template<class Self, class T, class Types = di::NodeTypes<T, di::TraitExpects<Self>>>
     requires requires (T t, int i)
     {
         typename Types::AliceType;
@@ -46,7 +46,7 @@ struct Bob : di::Trait
 
     DI_METHODS(Bob, BOB_METHODS)
 
-    template<class T, class Types = di::NodeTypes<T, Bob>>
+    template<class Self, class T, class Types = di::NodeTypes<T, di::TraitExpects<Self>>>
     requires requires (T const c)
     {
         typename Types::BobType;
@@ -62,7 +62,7 @@ struct Charlie : di::Trait
 
     DI_METHODS(Charlie, CHARLIE_METHODS)
 
-    template<class T, class Types = di::NodeTypes<T, trait::Charlie>>
+    template<class Self, class T, class Types = di::NodeTypes<T, di::TraitExpects<Self>>>
     requires requires (T const c)
     {
         typename Types::CharlieType;

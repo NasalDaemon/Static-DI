@@ -21,7 +21,7 @@ namespace trait {
 
         DI_METHODS(Name, NAME_METHODS)
 
-        template<class T>
+        template<class Self, class T>
         requires requires (T const c)
         {
             { c.apply(get_c) } -> std::same_as<int>;

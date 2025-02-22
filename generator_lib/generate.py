@@ -321,6 +321,7 @@ class Trait:
         self.name: str = name[0].upper() + name[1:]
         self.variable: str = name[0].lower() + name[1:]
         self.typesName: str | None = None
+        self.rootName: str | None = None
         self.methods: list[Method] = []
         self.methodNames: list[str] = []
         self.requires: list[str] = []
@@ -329,8 +330,12 @@ class Trait:
 
     def walk(self, children):
         for c in children:
-            if c.data == imported('trait_types'):
-                self.typesName = c.children[0].value
+            if c.data == imported('trait_annotations'):
+                for ann in c.children:
+                    if ann.children[0].value == "Types":
+                        self.typesName = ann.children[-1].value
+                    elif ann.children[0].value == "Root":
+                        self.rootName =  ann.children[-1].value
             elif c.data == imported('trait_method_signature'):
                 method = Method()
                 method.walk(c.children)

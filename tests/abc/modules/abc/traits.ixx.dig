@@ -10,10 +10,12 @@ trait AliceRead [Types]
     requires typename Types::AliceType
 }
 
-trait AliceWrite [Types]
+trait AliceWrite [Types, Root: R]
 {
     set(int value)
 
+    //requires typename R::AliceType;
+    //requires { const_.asdasd() }
     requires typename Types::AliceType
     requires impl_.apply(set_c, std::declval<int>())
     requires { impl_.apply(set_c, std::declval<int>()) } -> std::same_as<void>

@@ -95,10 +95,13 @@ struct TraitView final : Trait::Meta::Methods
     using Types = NodeTypes<Impl, Trait>;
     struct Traits
     {
-        template<IsTrait T>
+        template<std::same_as<TraitView> = TraitView>
+        using GetContext = ContextOf<Impl>;
+
+        template<std::same_as<Trait> T>
         using ResolveInterface = TraitView;
 
-        template<IsTrait T>
+        template<std::same_as<Trait> T>
         using ResolveTypes = Types;
     };
 

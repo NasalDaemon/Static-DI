@@ -106,6 +106,12 @@ struct NullContext : detail::ContextBase
     };
 };
 
+template<class Root_>
+struct RootContext : NullContext
+{
+    using Root = Root_;
+};
+
 template<class Parent_, IsNodeHandle NodeHandle>
 struct Context : detail::ContextBase
 {
