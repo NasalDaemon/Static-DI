@@ -2,7 +2,6 @@
 #define INCLUDE_DI_TRAIT_VIEW_HPP
 
 #include "di/detail/concepts.hpp"
-#include "di/detail/finalize.hpp"
 
 #include "di/alias.hpp"
 #include "di/key.hpp"
@@ -35,18 +34,18 @@ DI_MODULE_EXPORT
 struct AsFunctor{} inline constexpr asFunctor;
 
 DI_MODULE_EXPORT
-template<class Trait, IsMethodOf<Trait> Method, Implements<Trait> Impl>
+template<class Trait, IsMethodOf<Trait> Method, class AliasImpl>
 struct TraitMethodFunctor
 {
-    constexpr explicit TraitMethodFunctor(Alias<Impl> impl) : impl(impl) {}
+    constexpr explicit TraitMethodFunctor(AliasImpl impl) : impl(impl) {}
 
     constexpr decltype(auto) operator()(this auto&& self, auto&&... args)
     {
-        return self.impl->apply(Method{}, DI_FWD(args)...);
+        return self.impl.get().apply(Method{}, DI_FWD(args)...);
     }
 
 private:
-    Alias<Impl> impl;
+    AliasImpl impl;
 };
 
 namespace detail {
@@ -84,14 +83,15 @@ struct AutoCompleteTraitView final : Trait::Meta::Methods
 
 // Presents a view over a trait implementation, where only the trait trait functions are accessible
 DI_MODULE_EXPORT
-template<IsTrait Trait, class Impl>
+template<IsTrait Trait, class ImplAlias>
 struct TraitView final : Trait::Meta::Methods
 {
-    constexpr TraitView(Trait, Impl& impl) : TraitView(Alias(impl)) {}
+    constexpr TraitView(Trait, ImplAlias impl) : TraitView(impl) {}
 
     static consteval std::true_type isTrait(MatchesTrait<Trait> auto) { return {}; }
     static consteval std::false_type isTrait(auto) { return {}; }
 
+    using Impl = ImplAlias::Impl;
     using Types = NodeTypes<Impl, Trait>;
     struct Traits
     {
@@ -108,19 +108,19 @@ struct TraitView final : Trait::Meta::Methods
     template<IsMethodOf<Trait> Method>
     constexpr decltype(auto) apply(this auto&& self, Method trait, auto&&... args)
     {
-        return self.impl->apply(trait, DI_FWD(args)...);
+        return self.impl.get().apply(trait, DI_FWD(args)...);
     }
 
     template<IsMethodOf<Trait> Method>
-    constexpr TraitMethodFunctor<Trait, Method, Impl> apply(this auto&& self, Method, di::AsFunctor)
+    constexpr TraitMethodFunctor<Trait, Method, ImplAlias> apply(this auto&& self, Method, di::AsFunctor)
     {
-        return TraitMethodFunctor<Trait, Method, Impl>(self.impl);
+        return TraitMethodFunctor<Trait, Method, ImplAlias>(self.impl);
     }
 
     // Visit the TraitView of the concrete implementation (e.g. active node of union)
     constexpr decltype(auto) visit(this auto&& self, auto&& visitor)
     {
-        return self.impl->visit(
+        return self.impl.get().visit(
             [&](auto& impl)
             {
                 return std::invoke(DI_FWD(visitor), impl.asTrait(Trait{}));
@@ -131,21 +131,21 @@ private:
     template<IsTrait Trait1, class Impl1>
     friend struct TraitView;
 
-    constexpr TraitView(Alias<Impl> impl)
+    constexpr TraitView(ImplAlias impl)
     : impl(impl)
     {
         static_assert(not IsTrait<TraitView>);
-        DI_ASSERT_IMPLEMENTS(Impl, Trait);
+        DI_ASSERT_IMPLEMENTS(typename ImplAlias::Interface, Trait);
         if constexpr (not std::is_const_v<Impl>)
             DI_ASSERT_IMPLEMENTS(TraitView, Trait);
     }
 
-    Alias<Impl> impl;
+    ImplAlias impl;
 };
 
 DI_MODULE_EXPORT
-template<IsTrait Trait, class Impl>
-TraitView(Trait, Impl&) -> TraitView<Trait, Impl>;
+template<IsTrait Trait, class ImplAlias>
+TraitView(Trait, ImplAlias) -> TraitView<Trait, ImplAlias>;
 
 namespace detail {
     template<class Trait, class Impl>
@@ -158,7 +158,7 @@ DI_MODULE_EXPORT
 template<class Trait, class Key>
 constexpr IsTraitViewOf<Trait, Key> auto makeTraitView(auto& source, auto& target, Trait, Key key)
 {
-    return TraitView(key::Trait<Key, Trait>{}, detail::finalize(source, target, key));
+    return TraitView(key::Trait<Key, Trait>{}, target.finalize(source, key));
 }
 
 

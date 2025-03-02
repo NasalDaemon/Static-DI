@@ -3,6 +3,7 @@
 
 #include "di/detail/compress.hpp"
 
+#include "di/alias.hpp"
 #include "di/context_fwd.hpp"
 #include "di/environment.hpp"
 #include "di/node.hpp"
@@ -38,10 +39,11 @@ struct Repeater
         using Traits = di::Traits<Node, Trait>;
 
         template<class Source, class Key>
-        constexpr auto& finalize(this auto& self, Source&, Key)
+        constexpr auto finalize(this auto& self, Source&, Key key)
         {
             using Environment = Source::Environment;
-            return withEnv<Environment>(detail::downCast<WithKey<Key>>(self));
+            auto& impl = withEnv<Environment>(detail::downCast<WithKey<Key>>(self));
+            return makeAlias(impl, key);
         }
     };
 };
@@ -52,21 +54,21 @@ template<class Context>
 template<class Key>
 struct Repeater<Trait, Count>::Node<Context>::WithKey : Node
 {
-    constexpr void apply(this auto& self, auto&&... args)
+    constexpr void applyWithKey(this auto& self, Key const& key, auto&&... args)
     {
-        apply2(std::make_index_sequence<Count>{}, self, args...);
+        apply2(std::make_index_sequence<Count>{}, self, key, args...);
     }
 
 private:
     template<std::size_t... Is>
-    static constexpr void apply2(std::index_sequence<Is...>, auto& repeater, auto&... args)
+    static constexpr void apply2(std::index_sequence<Is...>, auto& repeater, Key const& key, auto&... args)
     {
-        (apply3(repeater, Context{}.getNode(detail::upCast<Node>(repeater), RepeaterTrait<Is>{}), args...), ...);
+        (apply3(repeater, key, Context{}.getNode(detail::upCast<Node>(repeater), RepeaterTrait<Is>{}), args...), ...);
     }
 
-    static constexpr void apply3(auto& repeater, auto& target, auto&... args)
+    static constexpr void apply3(auto& repeater, Key const& key, auto& target, auto&... args)
     {
-        detail::finalize(repeater, target, Key{}).apply(args...);
+        target.finalize(repeater, key).get().apply(args...);
     }
 };
 

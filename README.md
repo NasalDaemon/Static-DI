@@ -1,5 +1,5 @@
 # Static-DI
-DI without runtime dispatch. C++23 library without dependencies which may be imported as a C++20 module.
+Dependency injection without runtime dispatch. Standalone C++23 library which may be imported as a C++20 module.
 
 ## Compiler Support
 - [x] Clang 19+ (20+ for `import std;`)

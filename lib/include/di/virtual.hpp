@@ -23,7 +23,7 @@ struct IRemotes
 
     virtual ~IRemotes() = default;
 
-    constexpr auto asTrait(this auto& self, auto trait) { return TraitView(trait, self); }
+    constexpr auto asTrait(this auto& self, auto trait) { return TraitView(trait, Alias(self)); }
 };
 
 DI_MODULE_EXPORT

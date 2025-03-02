@@ -5,6 +5,7 @@
 #include "di/detail/type_at.hpp"
 #include "di/detail/with_index.hpp"
 
+#include "di/alias.hpp"
 #include "di/context_fwd.hpp"
 #include "di/macros.hpp"
 #include "di/node.hpp"
@@ -132,10 +133,10 @@ struct Union<Options...>::Node<Context>::AsTrait : Node
     struct WithKey;
 
     template<class Source, class Key>
-    constexpr auto& finalize(this auto& self, Source&, Key)
+    constexpr auto finalize(this auto& self, Source&, Key key)
     {
         using Environment = Source::Environment;
-        return withEnv<Environment>(detail::downCast<WithKey<Key>>(self));
+        return makeAlias(withEnv<Environment>(detail::downCast<WithKey<Key>>(self)), key);
     }
 };
 
@@ -146,12 +147,12 @@ template<class Key>
 struct Union<Options...>::Node<Context>::AsTrait<Trait>::WithKey : AsTrait
 {
     template<class Self>
-    constexpr decltype(auto) apply(this Self& self, auto&&... args)
+    constexpr decltype(auto) applyWithKey(this Self& self, Key key, auto&&... args)
     {
         using Environment = Self::Environment;
         return self.visit([&](auto& option) -> decltype(auto)
         {
-            return withEnv<Environment>(option).asTrait(Trait{}, Key{}).apply(DI_FWD(args)...);
+            return withEnv<Environment>(option).asTrait(Trait{}, key).apply(DI_FWD(args)...);
         });
     }
 };

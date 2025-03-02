@@ -42,6 +42,7 @@ export namespace di {
     using di::CanGetNode;
     using di::HasTrait;
     using di::Alias;
+    using di::AliasWithKey;
     using di::NodeTypes;
     using di::EmptyTypes;
     using di::TraitView;

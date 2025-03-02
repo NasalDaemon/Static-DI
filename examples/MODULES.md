@@ -54,6 +54,7 @@ target_sources(my_app
         task.ixx # not shown
     PRIVATE
         auth_service.cpp # not shown (implements AuthService::dbValidPass etc)
+        token.cpp # not shown
         pass_hash.cpp # not shown
 )
 
@@ -73,14 +74,14 @@ namespace my::trait {
 
 trait AuthService [Types]
 {
+    // Ensures Token type can be resolved by clients of this trait
+    requires typename Types::Token
+
     // Check user/pass against database, and return if combo is valid
     logIn(std::string_view user, std::string_view pass) -> Task<bool>
 
     // Check user/oldPass against database, and return if password was changed
     changePass(std::string_view user, std::string_view oldPass, std::string_view newPass) -> Task<bool>
-
-    // Ensures Token type is supplied
-    requires typename Types::Token
 }
 
 trait TokenStore [Types, Root]
@@ -142,7 +143,7 @@ cluster Cluster
 export module my.token;
 
 namespace my {
-    struct Token
+    export struct Token
     {
         bool expired() const;
     private:
@@ -156,7 +157,7 @@ namespace my {
 export module my.pass_hash;
 
 namespace my {
-    struct PassHash
+    export struct PassHash
     {
         explicit PassHash(std::string_view s);
         friend constexpr bool sameHash(PassHash const& self, std::string_view pass);
@@ -170,6 +171,7 @@ namespace my {
 ```cpp
 export module my.auth_service;
 
+import my.token;
 import my.traits;
 import my.db; // not shown in example
 import my.task; // not shown in example
@@ -179,7 +181,9 @@ import std;
 
 namespace my {
 
-struct AuthService : di::Node
+// Note: non-template functions in non-template class can be easily implemented
+// in separate .cpp files for faster compilation.
+export struct AuthService : di::Node
 {
     using Traits = di::Traits<AuthService, trait::AuthService>;
     // shorthand for:
@@ -234,8 +238,6 @@ struct AuthService : di::Node
     }
 
     // Queries database asynchronously and returns `true` in calling thread if the pass is valid.
-    // Non-template functions in non-template class can be easily implemented
-    // in separate .cpp files for faster compilation.
     Task<bool> dbValidPass(std::string_view user, std::string_view pass) const;
     Task<bool> dbChangePass(std::string_view user, std::string_view oldPass, std::string_view newPass) const;
     Token makeToken(std::string_view user);
@@ -266,7 +268,7 @@ import std;
 
 namespace my {
 
-struct Sessions
+export struct Sessions
 {
     // If implementing a node with data type dependencies, a nested
     // Node<Context> template class is needed to query the types in the graph
@@ -316,7 +318,6 @@ struct Sessions
             return false;
         }
 
-        template<class Self>
         Task<std::optional<Token>> apply(
             trait::SessionManager::getToken,
             std::string_view user,

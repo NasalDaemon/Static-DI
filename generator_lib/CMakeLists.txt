@@ -19,13 +19,13 @@ endmacro()
 find_package(Python3 REQUIRED)
 
 add_custom_command(
-    OUTPUT "${DI_GENERATOR_VENV}"
+    OUTPUT "${DI_GENERATOR_PYTHON}"
     COMMAND ${Python3_EXECUTABLE} -m venv ${DI_GENERATOR_VENV}
     COMMENT "di_generator: Initialising python environment"
 )
 add_custom_command(
     OUTPUT "${DI_GENERATOR_VENV}.stamp"
-    DEPENDS ${DI_GENERATOR_VENV} "${DI_GENERATOR_DIR}/requirements.txt"
+    DEPENDS "${DI_GENERATOR_PYTHON}" "${DI_GENERATOR_DIR}/requirements.txt"
     COMMAND ${DI_GENERATOR_PYTHON} -m pip install -r "${DI_GENERATOR_DIR}/requirements.txt" --upgrade
     COMMAND touch ${DI_GENERATOR_VENV}.stamp
     COMMENT "di_generator: Installing dependencies"

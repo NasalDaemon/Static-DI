@@ -4,6 +4,9 @@ add_library(di::di ALIAS di_lib)
 add_library(di_module_lib)
 add_library(di::module ALIAS di_module_lib)
 
+target_compile_features(di_lib INTERFACE cxx_std_23)
+target_compile_features(di_module_lib PUBLIC cxx_std_23)
+
 target_include_directories(di_lib INTERFACE include macros/include)
 # Do not expose the underlying di header library from the module lib
 target_include_directories(di_module_lib PRIVATE include PUBLIC macros/include)

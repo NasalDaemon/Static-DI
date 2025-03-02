@@ -9,6 +9,7 @@
 #if !DI_STD_MODULE
 #include <concepts>
 #include <functional>
+#include <type_traits>
 #endif
 
 namespace di {

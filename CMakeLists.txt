@@ -1,7 +1,5 @@
 cmake_minimum_required(VERSION 3.28)
 
-set(CMAKE_CXX_STANDARD 23)
-
 if(CMAKE_CXX_MODULE_STD)
     # This specific value changes as experimental support evolves. See
     # `Help/dev/experimental.rst` in the CMake source corresponding to

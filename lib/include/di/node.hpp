@@ -2,7 +2,6 @@
 #define INCLUDE_DI_NODE_HPP
 
 #include "di/detail/cast.hpp"
-#include "di/detail/concepts.hpp"
 
 #include "di/environment.hpp"
 #include "di/key.hpp"
@@ -15,7 +14,6 @@
 #if !DI_STD_MODULE
 #include <functional>
 #include <type_traits>
-#include <utility>
 #endif
 
 namespace di {
@@ -30,6 +28,8 @@ struct Node
     {
         return std::invoke(DI_FWD(visitor), self);
     }
+
+    constexpr auto& getState(this auto& self) { return self; }
 
 #if DI_AUTOCOMPLETE
     template<IsTrait Trait, class Key = key::Default>
@@ -73,7 +73,7 @@ struct Node
     }
 
     template<class Self>
-    constexpr auto& finalize(this Self& self, auto& source, auto key)
+    constexpr auto finalize(this Self& self, auto& source, auto key)
     {
         return ContextOf<Self>::Info::finalize(source, self, key);
     }

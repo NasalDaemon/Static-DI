@@ -23,7 +23,7 @@ namespace di {
 namespace detail {
     struct ContextBase
     {
-        // Trait view of sibling node
+        // Impl of sibling node
         template<IsContext Self_, IsTrait Trait>
         requires detail::HasLink<detail::Decompress<Self_>, Trait>
         constexpr auto& getNode(this Self_, auto& node, Trait)
@@ -34,7 +34,7 @@ namespace detail {
             return otherNode.asTrait(typename Other::Trait{}, key::Bypass{});
         }
 
-        // Delegate to parent cluster to get the trait view
+        // Delegate to parent cluster to get the node
         template<IsContext Self_, IsTrait Trait>
         requires detail::LinksToParent<detail::Decompress<Self_>, Trait>
         constexpr auto& getNode(this Self_, auto& node, Trait)
@@ -60,26 +60,25 @@ namespace detail {
 
         // Expose utility functions from the underlying node
         using typename Node::Traits;
-        using typename Node::Types;
         using typename Node::Environment;
         using Node::getNode;
         using Node::canGetNode;
         using Node::asTrait;
         using Node::hasTrait;
 
-        constexpr void visit(this auto& self, auto const& f)
+        constexpr decltype(auto) visit(this auto& self, auto const& f)
         {
-            upCast<Node>(self).visit(f);
+            return upCast<Node>(self).visit(f);
         }
 
         template<class Self>
-        constexpr auto& get(this Self& self)
+        constexpr auto& getState(this Self& self)
         {
             ContextOf<Self>::Info::template assertAccessible<typename Self::Environment>();
-            return upCast<Node>(self);
+            return upCast<Node>(self).getState();
         }
 
-        constexpr auto* operator->(this auto& self) { return std::addressof(self.get()); }
+        constexpr auto* operator->(this auto& self) { return std::addressof(self.getState()); }
     };
 }
 
@@ -93,12 +92,12 @@ struct NullContext : detail::ContextBase
         using DefaultKey = key::Default;
 
         template<class Source, class Target, class Key>
-        static constexpr auto& finalize(Source&, Target& target, Key)
+        static constexpr auto finalize(Source&, Target& target, Key)
         {
             using Env = Source::Environment;
             using WithEnv = di::WithEnv<Env, Target>;
             using FinalInterface = Key::template Interface<WithEnv>;
-            return detail::downCast<FinalInterface>(target);
+            return makeAlias(detail::downCast<FinalInterface>(target));
         }
 
         template<class Environment>

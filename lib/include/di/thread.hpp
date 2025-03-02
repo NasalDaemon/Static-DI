@@ -74,7 +74,7 @@ struct RequireThread
         }
 
         template<class Source, class Target, class Key>
-        static constexpr auto& finalize(Source&, Target& target, Key)
+        static constexpr auto finalize(Source&, Target& target, Key)
         {
             constexpr auto currentThreadId = detail::getCurrentThread<Source>();
             if constexpr (anyThreadId() or currentThreadId == RequiredThreadId)
@@ -82,14 +82,14 @@ struct RequireThread
                 using Env = Source::Environment::template InsertOrReplace<ThreadEnvironment::WithId<currentThreadId>>;
                 using WithEnv = di::WithEnv<Env, Target>;
                 using Interface = Key::template Interface<WithEnv, currentThreadId>;
-                return detail::downCast<Interface>(target);
+                return makeAlias(detail::downCast<Interface>(target));
             }
             else
             {
-                return Key::template acquireAccess<
+                return makeAlias(Key::template acquireAccess<
                     typename Source::Environment,
                     RequiredThreadId
-                >(target);
+                >(target));
             }
         }
     };
@@ -148,7 +148,7 @@ namespace key {
             static_assert(requiredThreadId != ThreadEnvironment::AnyThreadId);
             using Env = Environment::template InsertOrReplace<ThreadEnvironment::WithId<requiredThreadId>>;
             using WithEnv = di::WithEnv<Env, Target>;
-            return di::detail::downCast<Interface<WithEnv, CurrentThreadId>>(target);
+            return detail::downCast<Interface<WithEnv, CurrentThreadId>>(target);
         }
     };
 

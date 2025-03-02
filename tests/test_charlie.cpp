@@ -40,7 +40,7 @@ struct ICharlieMocks : di::INode
 
         int apply(trait::Charlie::get) const override
         {
-            return node->getNode(trait::charlie).get();
+            return node.get().getNode(trait::charlie).get();
         }
     };
 };
