@@ -10,7 +10,7 @@ macro(di_import_properties)
     get_property(DI_GENERATOR_DIR GLOBAL PROPERTY DI_GENERATOR_DIR)
     get_property(DI_GENERATOR_VENV GLOBAL PROPERTY DI_GENERATOR_VENV)
     get_property(DI_GENERATOR_PYTHON GLOBAL PROPERTY DI_GENERATOR_PYTHON)
-    set(DI_GENERATOR_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/di_generator/output)
+    set(DI_GENERATOR_CLONE_DIR ${CMAKE_CURRENT_BINARY_DIR}/di_generator/clones)
     set(DI_GENERATOR_SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/di_generator/src)
     set(DI_GENERATOR_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/di_generator/include)
     set(DI_GENERATOR_MODULES_DIR ${CMAKE_CURRENT_BINARY_DIR}/di_generator/modules)
@@ -21,7 +21,7 @@ find_package(Python3 REQUIRED)
 add_custom_command(
     OUTPUT "${DI_GENERATOR_PYTHON}"
     COMMAND ${Python3_EXECUTABLE} -m venv ${DI_GENERATOR_VENV}
-    COMMENT "di_generator: Initialising python environment"
+    COMMENT "di_generator: Initialising python venv"
 )
 add_custom_command(
     OUTPUT "${DI_GENERATOR_VENV}.stamp"
@@ -41,7 +41,7 @@ function(target_generate_di_src TARGET_NAME)
     cmake_parse_arguments(arg "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     # Prepare common includes
-    list(APPEND arg_COMMON_HEADERS "di/graph.hpp")
+    list(APPEND arg_COMMON_HEADERS "di/graph.hpp" "di/macros.hpp")
     list(SORT arg_COMMON_HEADERS)
     list(REMOVE_DUPLICATES arg_COMMON_HEADERS)
     foreach(COMMON_HEADER ${arg_COMMON_HEADERS})
@@ -139,9 +139,9 @@ function(target_generate_di_headers TARGET_NAME)
     foreach(INPUT_FILE ${INPUT_FILES})
         get_filename_component(INPUT_FILE_NAME "${INPUT_FILE}" NAME)
         get_filename_component(INPUT_FILE_WLE "${INPUT_FILE}" NAME_WLE)
-        get_filename_component(OUTPUT_BINARY_PATH "${DI_GENERATOR_BINARY_DIR}/${INPUT_FILE}" DIRECTORY)
+        get_filename_component(INPUT_CLONE_PATH "${DI_GENERATOR_CLONE_DIR}/${INPUT_FILE}" DIRECTORY)
         get_filename_component(OUTPUT_INCLUDE_PATH "${DI_GENERATOR_INCLUDE_DIR}/${INPUT_FILE}" DIRECTORY)
-        set(INPUT_CLONE "${OUTPUT_BINARY_PATH}/${INPUT_FILE_NAME}")
+        set(INPUT_CLONE "${INPUT_CLONE_PATH}/${INPUT_FILE_NAME}")
         set(OUTPUT_FILE "${OUTPUT_INCLUDE_PATH}/${INPUT_FILE_WLE}")
 
         list(APPEND INPUT_CLONES "${INPUT_CLONE}")
@@ -161,18 +161,17 @@ function(target_generate_di_headers TARGET_NAME)
             COMMAND ${CMAKE_COMMAND} -E make_directory "${OUTPUT_INCLUDE_PATH}"
             COMMAND ${DI_GENERATOR_PYTHON} ${DI_GENERATOR_DIR}/generate.py "${INPUT_FILE}" "${OUTPUT_FILE}"
             WORKING_DIRECTORY "${INCLUDE_DIR}"
-            COMMENT "${TARGET_NAME}_dig: ${INPUT_FILE}"
+            COMMENT "${TARGET_NAME}_hxx_dig: ${INPUT_FILE}"
         )
     endforeach()
 
     add_custom_target(
-        "${TARGET_NAME}_dig"
+        "${TARGET_NAME}_hxx_dig"
         DEPENDS ${INPUT_CLONES}
     )
 
-    add_dependencies(${TARGET_NAME} "${TARGET_NAME}_dig")
+    add_dependencies(${TARGET_NAME} "${TARGET_NAME}_hxx_dig")
     target_include_directories(${TARGET_NAME} PUBLIC ${DI_GENERATOR_INCLUDE_DIR})
-    target_link_libraries(${TARGET_NAME} PUBLIC di::di)
 
 endfunction(target_generate_di_headers)
 
@@ -203,9 +202,9 @@ function(target_generate_di_modules TARGET_NAME)
     foreach(INPUT_FILE ${INPUT_FILES})
         get_filename_component(INPUT_FILE_NAME "${INPUT_FILE}" NAME)
         get_filename_component(INPUT_FILE_WLE "${INPUT_FILE}" NAME_WLE)
-        get_filename_component(OUTPUT_BINARY_PATH "${DI_GENERATOR_BINARY_DIR}/${INPUT_FILE}" DIRECTORY)
+        get_filename_component(INPUT_CLONE_PATH "${DI_GENERATOR_CLONE_DIR}/${INPUT_FILE}" DIRECTORY)
         get_filename_component(OUTPUT_MODULE_PATH "${DI_GENERATOR_MODULES_DIR}/${INPUT_FILE}" DIRECTORY)
-        set(INPUT_CLONE "${OUTPUT_BINARY_PATH}/${INPUT_FILE_NAME}")
+        set(INPUT_CLONE "${INPUT_CLONE_PATH}/${INPUT_FILE_NAME}")
         set(OUTPUT_FILE "${OUTPUT_MODULE_PATH}/${INPUT_FILE_WLE}")
 
         list(APPEND INPUT_CLONES "${INPUT_CLONE}")
@@ -226,16 +225,16 @@ function(target_generate_di_modules TARGET_NAME)
             COMMAND ${CMAKE_COMMAND} -E make_directory "${OUTPUT_MODULE_PATH}"
             COMMAND ${DI_GENERATOR_PYTHON} ${DI_GENERATOR_DIR}/generate.py "${INPUT_FILE}" "${OUTPUT_FILE}"
             WORKING_DIRECTORY "${MODULE_DIR}"
-            COMMENT "${TARGET_NAME}_mdig: ${INPUT_FILE}"
+            COMMENT "${TARGET_NAME}_ixx_dig: ${INPUT_FILE}"
         )
     endforeach()
 
     add_custom_target(
-        "${TARGET_NAME}_mdig"
+        "${TARGET_NAME}_ixx_dig"
         DEPENDS ${INPUT_CLONES}
     )
 
-    add_dependencies(${TARGET_NAME} "${TARGET_NAME}_mdig")
+    add_dependencies(${TARGET_NAME} "${TARGET_NAME}_ixx_dig")
 
     target_sources(${TARGET_NAME} PUBLIC
         FILE_SET di_modules TYPE CXX_MODULES

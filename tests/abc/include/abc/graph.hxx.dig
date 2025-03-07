@@ -14,9 +14,9 @@ cluster CharlieCluster
 
 cluster AliceBob
 {
-    alice = Alice
     bob = Bob
     charlie = CharlieCluster
+    alice = Alice
 
     using a = trait::Alice, b = trait::Bob, c = trait::Charlie
     [a] alice   (trait::Alice)   <-- (trait::Alice)   .., bob, charlie

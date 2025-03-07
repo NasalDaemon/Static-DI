@@ -9,7 +9,7 @@ The nodes also have two dependencies on data types:
 <details>
 <summary>:warning: NOTE: the data type dependencies are simply showing off features! Don't resolve data types inside nodes just because you can!</summary>
 
-> It is generally recommended for simplicity that well-known data types used by multiple nodes are defined _independently_ of and _externally_ to nodes. Humans tend to find types much more easily through a well organised file structure, rather than traversing clusters of interdependent nodes. If a data type does need to be configurable using `Context::Root` or `ResolveTypes`, the concrete type itself still should be indepedently defined in a well-named class that is easy to find. It can then be simply aliased in the custom root or the node's trait type.
+> It is generally recommended for simplicity that well-known data types used by multiple nodes are defined _independently_ of and _externally_ to nodes. Humans tend to find types much more easily through a well organised file structure, rather than traversing clusters of interdependent nodes. If a data type does need to be configurable using `Context::Root` or `ResolveTypes`, the concrete type itself still should be indepedently defined in a well-named class that is easy to find. It can then be simply aliased in the custom root or the node's trait types.
 >
 > Order of preference for dependencies on data types:
 > 1. Type defined externally and used directly by nodes
@@ -33,10 +33,6 @@ The nodes also have two dependencies on data types:
 - [my/auth_service.ixx](#auth_serviceixx): `my::AuthService` node implements the trait `my::trait::AuthService`
 - [my/sessions.ixx](#sessionsixx): `my::Sessions` node implements the traits `my::trait::TokenStore` and `my::trait::SessionManager`
 - [my/main.cpp](#maincpp): Constructs and uses the full graph of nodes which satisfies all requirements of the nodes within `my::Cluster`
-- my/auth_service.cpp (not shown)
-- my/db.ixx (not shown)
-- my/task.ixx (not shown)
-
 ## CMakeLists.txt
 ```CMake
 add_executable(my_app main.cpp)

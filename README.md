@@ -1,5 +1,5 @@
 # Static-DI
-Dependency injection without runtime dispatch. Standalone C++23 library which may be imported as a C++20 module.
+Dependency injection without runtime dispatch or heap allocations. Standalone C++23 library which may be imported as a C++20 module.
 
 ## Compiler Support
 - [x] Clang 19+ (20+ for `import std;`)
@@ -7,10 +7,10 @@ Dependency injection without runtime dispatch. Standalone C++23 library which ma
 - [ ] MSVC ?
 
 ## How to use in your project
-Add the following to your CMake, which imports the code for the last release into your project.
+Add the following to your CMake, which imports the code for the latest release into your project.
 ```CMake
 include(FetchContent)
-FetchContent_Declare(di URL https://github.com/NasalDaemon/Static-DI/archive/refs/tags/latest.tar.gz)
+FetchContent_Declare(di URL https://github.com/NasalDaemon/Static-DI/archive/refs/heads/latest.tar.gz)
 FetchContent_MakeAvailable(di) # makes available di::di and di::module
 ```
 <details>
@@ -43,14 +43,14 @@ target_generate_di_headers(your_headers_lib [INCLUDE_DIR dir=${CMAKE_CURRENT_SOU
 
 #### Generating .cpp files
 
-To generate graph.node.cpp files which instantiate your node.tpp implementation files for a specified graph, use `target_generate_di_src`. As each node TU will have visibility of all other nodes' headers (via the root cluster header which injects its Context), it is important for each node.hpp not to implement non-template functions, leaving as much of the implementation in the respective node.tpp file as possible (which should not be included anywhere).
+To generate {graph.node}.cpp files which instantiate your {node}.tpp implementation files for a specified graph, use `target_generate_di_src`. As each {graph.node}.cpp will have visibility of all other nodes' headers (via the parent cluster header which injects its Context), it is important for each {node}.hpp not to include the definitions of non-template functions, leaving as much of the implementation in the respective {node}.tpp file as possible (which should not be included in any headers).
 
-By having each node.tpp implementation instantiated in a separate graph.node.cpp file, it allows all listed nodes to be compiled in parallel which can greatly speed up compilation. It also means that only one graph.node.cpp file will need to be recompiled if its respective node.tpp implementation changes, rather than all nodes in the graph, greatly improving incremental build times during development.
+By having each {node}.tpp implementation instantiated in a separate {graph.node}.cpp file, it allows all listed nodes to be compiled in parallel which can greatly speed up compilation. It also means that only one {graph.node}.cpp file will need to be recompiled if its respective {node}.tpp implementation changes, rather than all nodes in the graph, greatly improving incremental build times during development.
 ```
 # Enable LTO so that inter-node function calls are inlined
 set_property(TARGET your_headers_lib PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
 # Alternatively, enable LTO for your whole project:
-# set(INTERPROCEDURAL_OPTIMIZATION TRUE)
+# set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
 
 # Generate .cpp files for listed nodes and add them to the target
 target_generate_di_src(your_headers_lib
@@ -71,7 +71,7 @@ target_generate_di_src(your_headers_lib
 </details>
 
 ### Documentation and Examples
-- TODO: `trait` syntax
-- TODO: `cluster` syntax
-- TODO: Header-based example project
-- [Module-based example project with type resolution](examples/MODULES.md)
+- [Module-based example project](docs/modules-example.md)
+- [Defining a node](docs/node-structure.md)
+- [Cluster syntax](docs/cluster-syntax.md)
+- [Trait syntax](docs/trait-syntax.md)
