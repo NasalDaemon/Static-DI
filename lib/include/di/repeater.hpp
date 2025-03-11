@@ -42,8 +42,7 @@ struct Repeater
         constexpr auto finalize(this auto& self, Source&, Key key)
         {
             using Environment = Source::Environment;
-            auto& impl = withEnv<Environment>(detail::downCast<WithKey<Key>>(self));
-            return makeAlias(impl, key);
+            return makeAlias(withEnv<Environment>(detail::downCast<WithKey<Key>>(self)), key);
         }
     };
 };
@@ -63,12 +62,12 @@ private:
     template<std::size_t... Is>
     static constexpr void apply2(std::index_sequence<Is...>, auto& repeater, Key const& key, auto&... args)
     {
-        (apply3(repeater, key, Context{}.getNode(detail::upCast<Node>(repeater), RepeaterTrait<Is>{}), args...), ...);
+        (apply3(Context{}.getNode(detail::upCast<Node>(repeater), RepeaterTrait<Is>{}), repeater, key, args...), ...);
     }
 
-    static constexpr void apply3(auto& repeater, Key const& key, auto& target, auto&... args)
+    static constexpr void apply3(auto& target, auto& repeater, Key const& key, auto&... args)
     {
-        target.finalize(repeater, key).get().apply(args...);
+        target.finalize(repeater, key)->apply(args...);
     }
 };
 

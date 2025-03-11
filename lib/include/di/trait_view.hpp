@@ -41,7 +41,7 @@ struct TraitMethodFunctor
 
     constexpr decltype(auto) operator()(this auto&& self, auto&&... args)
     {
-        return self.impl.get().apply(Method{}, DI_FWD(args)...);
+        return self.impl->apply(Method{}, DI_FWD(args)...);
     }
 
 private:
@@ -108,7 +108,7 @@ struct TraitView final : Trait::Meta::Methods
     template<IsMethodOf<Trait> Method>
     constexpr decltype(auto) apply(this auto&& self, Method trait, auto&&... args)
     {
-        return self.impl.get().apply(trait, DI_FWD(args)...);
+        return self.impl->apply(trait, DI_FWD(args)...);
     }
 
     template<IsMethodOf<Trait> Method>
@@ -120,7 +120,7 @@ struct TraitView final : Trait::Meta::Methods
     // Visit the TraitView of the concrete implementation (e.g. active node of union)
     constexpr decltype(auto) visit(this auto&& self, auto&& visitor)
     {
-        return self.impl.get().visit(
+        return self.impl->visit(
             [&](auto& impl)
             {
                 return std::invoke(DI_FWD(visitor), impl.asTrait(Trait{}));

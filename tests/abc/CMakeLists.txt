@@ -1,24 +1,24 @@
-add_library(di_abc_lib)
-add_library(di::abc::lib ALIAS di_abc_lib)
+add_library(di_test_abc_lib)
+add_library(di::test::abc::lib ALIAS di_test_abc_lib)
 
-add_library(di_abc_module_lib)
-add_library(di::abc::module ALIAS di_abc_module_lib)
+add_library(di_test_abc_module_lib)
+add_library(di::test::abc::module ALIAS di_test_abc_module_lib)
 
-set_property(TARGET di_abc_lib PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
-set_property(TARGET di_abc_module_lib PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+set_property(TARGET di_test_abc_lib di_test_abc_module_lib
+    PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
 
-target_link_libraries(di_abc_lib PUBLIC di::di)
-target_link_libraries(di_abc_module_lib PUBLIC di::module)
+target_link_libraries(di_test_abc_lib PUBLIC di::di)
+target_link_libraries(di_test_abc_module_lib PUBLIC di::module)
 
-target_include_directories(di_abc_lib PUBLIC include)
-target_generate_di_headers(di_abc_lib INCLUDE_DIR include
+target_include_directories(di_test_abc_lib PUBLIC include)
+target_generate_di_headers(di_test_abc_lib INCLUDE_DIR include
     # GLOB
     #     abc
     # FILES
     #     abc/graph.hxx.dig
 )
 
-target_generate_di_src(di_abc_lib
+target_generate_di_src(di_test_abc_lib
     # PRECOMPILE_HEADERS
     # ID 1
     # UNITY
@@ -34,9 +34,9 @@ target_generate_di_src(di_abc_lib
         charlie.charlie abc/charlie.tpp
 )
 
-target_generate_di_modules(di_abc_module_lib)
+target_generate_di_modules(di_test_abc_module_lib)
 
-target_sources(di_abc_module_lib
+target_sources(di_test_abc_module_lib
     PUBLIC FILE_SET CXX_MODULES FILES
         modules/abc/alice.ixx
         modules/abc/bob.ixx

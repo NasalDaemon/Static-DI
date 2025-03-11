@@ -13,12 +13,12 @@
 namespace di::test {
 
 namespace detail {
-struct TestContextTrait{};
+struct TestContextTag{};
 }
 
 DI_MODULE_EXPORT
 template<class Context>
-concept IsTestContext = IsContext<Context> and requires { Context::Info::isTestContext(detail::TestContextTrait{}); };
+concept IsTestContext = IsContext<Context> and requires { Context::Info::isTestContext(detail::TestContextTag{}); };
 
 DI_MODULE_EXPORT
 template<IsTrait Trait>
@@ -37,7 +37,7 @@ struct MockTrait : Trait
 {
     static TraitExpects<Trait> expects();
 
-    // Mocks may implement only what is needed for testing
+    // Mocks are to bypass checks, and may implement only what is needed for testing
     template<class Self, class T>
     using Implements = void;
 };
@@ -47,7 +47,7 @@ struct MockKey : di::key::Default
 {
     template<class T>
     using Trait = MockTrait<T>;
-} inline constexpr mockKey;
+};
 
 namespace detail {
 
@@ -56,12 +56,12 @@ namespace detail {
         template<class Context>
         struct MapInfo : Context::Info
         {
-            static void isTestContext(detail::TestContextTrait);
+            static void isTestContext(detail::TestContextTag);
         };
     };
 
     template<IsNodeHandle NodeT, IsNodeHandle MocksT>
-    struct Test
+    struct Cluster
     {
         template<class Context>
         struct Impl : di::Cluster
@@ -108,6 +108,12 @@ namespace detail {
 
             DI_NODE(Node, node)
             DI_NODE(Mocks, mocks)
+
+            void visit(auto const& visitor)
+            {
+                node.visit(visitor);
+                mocks.visit(visitor);
+            }
         };
 
         template<class Context>
@@ -117,12 +123,12 @@ namespace detail {
 } // namespace detail
 
 DI_MODULE_EXPORT
-template<IsNodeHandle NodeT, IsNodeHandle MocksT>
-using Test = MapInfo<detail::Test<NodeT, MocksT>, detail::TestMapInfo>;
+template<IsNodeHandle Node, IsNodeHandle Mocks>
+using Cluster = MapInfo<detail::Cluster<Node, Mocks>, detail::TestMapInfo>;
 
 DI_MODULE_EXPORT
 template<IsNodeHandle Node, IsNodeHandle Mocks, class Root = void>
-using Graph = di::Graph<Test<Node, Mocks>, Root>;
+using Graph = di::Graph<Cluster<Node, Mocks>, Root>;
 
 } // namespace di::test
 

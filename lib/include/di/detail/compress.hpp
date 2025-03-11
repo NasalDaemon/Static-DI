@@ -30,7 +30,7 @@ namespace di::detail {
 #else
 
 template<class T>
-inline constexpr auto _d1Cc_ = [] mutable
+inline constexpr auto _d1Cc_ = []
 {
     struct Context : T
     {
@@ -41,7 +41,7 @@ inline constexpr auto _d1Cc_ = [] mutable
 };
 
 template<class T>
-inline constexpr auto _d1Ci_ = [] mutable
+inline constexpr auto _d1Ci_ = []
 {
     struct Impl : T
     {
@@ -69,17 +69,17 @@ namespace di::detail {
 
     template<class T>
     requires (not IsCompressed<T>)
-    using CompressContext = decltype(_d1Cc_<T>())::type;
+    using CompressContext = decltype(_d1Cc_<std::remove_cvref_t<T>>())::type;
 
     template<class T>
     requires (not IsCompressed<T>)
-    using CompressImpl = decltype(_d1Ci_<T>())::type;
+    using CompressImpl = decltype(_d1Ci_<std::remove_cvref_t<T>>())::type;
 
     template<class T>
+    requires (not IsCompressed<T>)
     constexpr auto& compressImpl(T& impl)
     {
-        using Compressed = CompressImpl<std::remove_const_t<T>>;
-        return downCast<Compressed>(impl);
+        return downCast<CompressImpl<T>>(impl);
     }
 
 } // namespace di::detail

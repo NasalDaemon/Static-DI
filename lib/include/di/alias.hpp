@@ -13,61 +13,59 @@
 namespace di {
 
 DI_MODULE_EXPORT
-template<class T>
+template<class T, class... Key>
 struct Alias final
 {
+    static_assert(sizeof...(Key) == 0);
+
     using Impl = T;
     using Interface = T;
 
-    constexpr explicit Alias(T& ref) : ref(std::addressof(ref)) {}
+    constexpr explicit Alias(Impl& impl) : impl(std::addressof(impl)) {}
 
     template<class Self>
-    constexpr auto& get(this Self&& self) { return std::forward_like<Self&>(*self.ref); }
+    constexpr auto& get(this Self&& self) { return std::forward_like<Self&>(*self.impl); }
+    constexpr auto* operator->(this auto&& self) { return std::addressof(self.get()); }
 
 private:
-    T* ref;
+    Impl* impl;
 };
 
 DI_MODULE_EXPORT
-template<class T>
-Alias(T&) -> Alias<T>;
+template<class T, class... Key>
+Alias(T&, Key...) -> Alias<T, Key...>;
 
 DI_MODULE_EXPORT
 template<class T, class Key>
-struct AliasWithKey final
+struct Alias<T, Key> final
 {
     using Impl = T;
-    using Interface = AliasWithKey;
+    using Interface = Alias;
     using Traits = Impl::Traits;
 
-    constexpr AliasWithKey(Impl& impl, Key key) : impl(impl), key(key) {}
+    constexpr Alias(auto& impl, Key key) : impl(impl), key(key) {}
 
     constexpr auto& get(this auto&& self) { return self; }
+    constexpr auto* operator->(this auto&& self) { return std::addressof(self); }
 
     constexpr auto apply(this auto&& self, auto&&... args)
-        -> decltype(self.impl.get().applyWithKey(self.key, DI_FWD(args)...))
+        -> decltype(self.impl->applyWithKey(self.key, DI_FWD(args)...))
     {
-        return self.impl.get().applyWithKey(self.key, DI_FWD(args)...);
+        return self.impl->applyWithKey(self.key, DI_FWD(args)...);
     }
 
     constexpr decltype(auto) visit(this auto&& self, auto&& visitor)
     {
-        return self.impl.get().visit(DI_FWD(visitor));
+        return self.impl->visit(DI_FWD(visitor));
     }
 
+private:
     Alias<Impl> impl;
     [[no_unique_address]] Key key{};
 };
 
 DI_MODULE_EXPORT
-template<class Impl, class Key>
-AliasWithKey(Impl&, Key) -> AliasWithKey<Impl, Key>;
-
-DI_MODULE_EXPORT
-constexpr auto makeAlias(auto& impl) { return Alias(detail::compressImpl(impl)); }
-
-DI_MODULE_EXPORT
-constexpr auto makeAlias(auto& impl, auto key) { return AliasWithKey(detail::compressImpl(impl), key); }
+constexpr auto makeAlias(auto& impl, auto... key) { return Alias(detail::compressImpl(impl), key...); }
 
 } // namespace di
 

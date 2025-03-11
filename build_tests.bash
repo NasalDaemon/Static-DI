@@ -23,7 +23,7 @@ done
 # sudo apt install python3 pipx
 # pipx install conan
 BUILD_TYPE=$BUILD_TYPE \
-    conan install . --output-folder=build --build=missing --profile conanprofile.txt
+    conan install . --output-folder build --build missing --profile conanprofile.txt
 pushd build
 cmake .. --preset $CONAN_PRESET -DDI_BUILD_TESTS=ON -DCMAKE_CXX_MODULE_STD=$STD_MODULE
 cmake --build .

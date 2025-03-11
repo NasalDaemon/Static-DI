@@ -27,7 +27,7 @@ template<class T>
 concept IsKey = requires {
     typename di::detail::TakesUnaryClassTemplate<T::template Trait>;
     typename di::detail::TakesUnaryClassPackedAutoTemplate<T::template Interface>;
-    requires std::is_empty_v<T>;
+    requires std::is_trivially_copyable_v<T>;
 };
 
 DI_MODULE_EXPORT
