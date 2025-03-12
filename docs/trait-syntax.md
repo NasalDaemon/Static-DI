@@ -54,12 +54,22 @@ trait Complex
 // If requirements on the trait types need to be enforced
 trait Trait2 [Types: T]
 {
+    type Int
+    // equivalent to:
+    // requires typename T::Int
+
+    // Can add extra constraint to Int (using name specified after `Types:`)
     requires std::integral<typename T::Int>
 }
 
 // If requirements on the root types need to be enforced
 trait Trait3 [Root: R]
 {
+    root Int
+    // equivalent to:
+    // requires typename R::Int
+
+    // Can add extra constraint to Int (using name specified after `Root:`)
     requires std::integral<typename R::Int>
 }
 

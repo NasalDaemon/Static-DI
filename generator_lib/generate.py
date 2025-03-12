@@ -336,24 +336,34 @@ class Trait:
                         self.typesName = ann.children[-1].value
                     elif ann.children[0].value == "Root":
                         self.rootName =  ann.children[-1].value
-            elif c.data == imported('trait_method_signature'):
-                method = Method()
-                method.walk(c.children)
-                self.methods.append(method)
-            elif c.data == imported('trait_method_elipsis'):
-                method = Method()
-                method.name = c.children[0].value
-                method.params.append((CppType("auto&&...", isAuto=True), "args"))
-                self.methods.append(method)
-            elif c.data == imported('trait_requires'):
-                if c.children[0].data == imported('trait_requires_block'):
-                    addColonToRequiresStatements.visit(c.children[0])
-                    requires = "requires " + reconstuctor.reconstruct(c.children[0])
-                else:
-                    requires = reconstuctor.reconstruct(c.children[0].children[0])
-                if not requires.endswith(';'):
-                    requires += ';'
-                self.requires.append(requires)
+            elif c.data == imported('trait_body'):
+                c = c.children[0]
+                if c.data == imported('trait_type'):
+                    if self.typesName is None:
+                        self.typesName = "Types_T_" # use ugly name if not specified to avoid shadowing
+                    self.requires.append(f"typename {self.typesName}::{c.children[0].value};")
+                elif c.data == imported('trait_root'):
+                    if self.rootName is None:
+                        self.rootName = "Root_T_" # use ugly name if not specified to avoid shadowing
+                    self.requires.append(f"typename {self.rootName}::{c.children[0].value};")
+                elif c.data == imported('trait_method_signature'):
+                    method = Method()
+                    method.walk(c.children)
+                    self.methods.append(method)
+                elif c.data == imported('trait_method_elipsis'):
+                    method = Method()
+                    method.name = c.children[0].value
+                    method.params.append((CppType("auto&&...", isAuto=True), "args"))
+                    self.methods.append(method)
+                elif c.data == imported('trait_requires'):
+                    if c.children[0].data == imported('trait_requires_block'):
+                        addColonToRequiresStatements.visit(c.children[0])
+                        requires = "requires " + reconstuctor.reconstruct(c.children[0])
+                    else:
+                        requires = reconstuctor.reconstruct(c.children[0].children[0])
+                    if not requires.endswith(';'):
+                        requires += ';'
+                    self.requires.append(requires)
             else:
                 raise SyntaxError(f'Unknown trait entity: {c.data}')
         self.methods.sort(key = lambda v : (v.name, v.params))

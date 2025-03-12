@@ -16,7 +16,8 @@ trait AliceWrite [Types, Root: R]
 
     //requires typename R::AliceType;
     //requires { const_.asdasd() }
-    requires typename Types::AliceType
+    type AliceType
+
     requires impl_.apply(set_c, std::declval<int>())
     requires { impl_.apply(set_c, std::declval<int>()) } -> std::same_as<void>
 

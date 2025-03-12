@@ -71,7 +71,7 @@ namespace my::trait {
 trait AuthService [Types]
 {
     // Ensures Token type can be resolved by clients of this trait
-    requires typename Types::Token
+    type Token
 
     // Check user/pass against database, and return if combo is valid
     logIn(std::string_view user, std::string_view pass) -> Task<bool>
@@ -83,8 +83,8 @@ trait AuthService [Types]
 trait TokenStore [Types, Root]
 {
     // Ensures PassHash is defined at the root of the graph when using this trait
-    requires typename Root::PassHash
-    requires typename Types::Token
+    root PassHash
+    type Token
 
     // Store latest token generated for a user
     store(std::string_view user, Root::PassHash passHash, Types::Token token)
@@ -95,7 +95,7 @@ trait TokenStore [Types, Root]
 
 trait SessionManager [Types]
 {
-    requires typename Types::Token
+    type Token
 
     // Has a token been created for user that has not expired
     hasToken(std::string_view user) const -> bool
