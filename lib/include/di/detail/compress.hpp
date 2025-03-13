@@ -54,9 +54,9 @@ inline constexpr auto _d1Ci_ = []
 namespace di::detail {
 
     template<class T>
-    concept IsCompressed = requires {
-        T::_di_uncompressedType_();
-        { T::_di_compressedType_() } -> std::same_as<T>;
+    concept IsCompressed = requires(T t) {
+        t._di_uncompressedType_();
+        { t._di_compressedType_() } -> std::same_as<std::remove_cvref_t<T>>;
     };
 
     template<class T>

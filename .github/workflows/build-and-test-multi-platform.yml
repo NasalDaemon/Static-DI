@@ -1,0 +1,107 @@
+name: Build and run tests
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  # pull_request_target:
+  #   branches: [ "main" ]
+
+jobs:
+  build-and-test:
+    runs-on: ${{ matrix.compiler.os }}
+    # permissions:
+    #   pull-requests: write
+
+    strategy:
+      fail-fast: true
+      matrix:
+        build_type: [Release]
+        compiler:
+          - name: gcc
+            version: 14
+            os: ubuntu-latest
+          - name: clang
+            version: 20
+            std_module: 'std-module'
+            os: ubuntu-latest
+          - name: cl
+            allow_build_failure: 'allow-failure'
+            header_only: 'header-only'
+            os: windows-latest
+
+    steps:
+    - name: Git checkout
+      uses: actions/checkout@v4
+
+    - name: Set up Conan
+      uses: turtlebrowser/get-conan@main
+
+    - name: Set up GCC
+      if: matrix.compiler.name == 'gcc'
+      env:
+          GCC_VER: ${{ matrix.compiler.version }}
+      run: |
+        sudo apt install gcc-${GCC_VER} g++-${GCC_VER} mold
+        sudo update-alternatives --install /usr/bin/cc cc /usr/bin/gcc-${GCC_VER} 100
+        sudo update-alternatives --install /usr/bin/c++ c++ /usr/bin/g++-${GCC_VER} 100
+        sudo update-alternatives --set cc /usr/bin/gcc-${GCC_VER}
+        sudo update-alternatives --set c++ /usr/bin/g++-${GCC_VER}
+
+    - name: Set up Clang
+      if: matrix.compiler.name == 'clang'
+      env:
+        CLANG_VER: ${{ matrix.compiler.version }}
+      run: |
+        wget https://apt.llvm.org/llvm.sh
+        chmod +x llvm.sh
+        sudo ./llvm.sh ${CLANG_VER}
+        sudo apt install clang-tools-${CLANG_VER} libc++-${CLANG_VER}-dev mold
+        sudo update-alternatives --install /usr/bin/cc cc /usr/bin/clang-${CLANG_VER} 100
+        sudo update-alternatives --install /usr/bin/c++ c++ /usr/bin/clang++-${CLANG_VER} 100
+        sudo update-alternatives --set cc /usr/bin/clang-${CLANG_VER}
+        sudo update-alternatives --set c++ /usr/bin/clang++-${CLANG_VER}
+
+    - name: "Conan: Install dependencies"
+      working-directory: ${{ github.workspace }}
+      env:
+        BUILD_TYPE: ${{ matrix.build_type }}
+      run: |
+        conan profile detect
+        conan install . --output-folder=build --build=missing --profile=conanprofile.txt
+
+    - name: Configure CMake ${{ matrix.compiler.std_module }}
+      working-directory: ${{ github.workspace }}/build
+      run: >
+        cmake ..
+        --preset conan-default
+        -DDI_BUILD_TESTS=ON
+        -DCMAKE_COLOR_DIAGNOSTICS=ON
+        -DCMAKE_CXX_MODULE_STD=${{ matrix.compiler.std_module && 'ON' || 'OFF' }}
+
+    - name: Build
+        ${{ matrix.compiler.allow_build_failure }}
+        ${{ matrix.compiler.header_only }}
+      id: build
+      continue-on-error: ${{ !!matrix.compiler.allow_build_failure }}
+      working-directory: ${{ github.workspace }}/build
+      run: >
+        cmake --build .
+        --config ${{ matrix.build_type }}
+        ${{ matrix.compiler.header_only && '-t di_test_headers' || '' }}
+
+    # - uses: mainmatter/continue-on-error-comment@v1
+    #   if: matrix.compiler.allow_build_failure
+    #   with:
+    #     repo-token: ${{ secrets.GITHUB_TOKEN }}
+    #     outcome: ${{ steps.build.outcome }}
+    #     test-id: Allowed failure compiling with ${{ matrix.compiler.name }}
+
+    - name: Test
+      if: steps.build.outcome == 'success'
+      working-directory: ${{ github.workspace }}/build
+      run: >
+        ctest
+        --build-config ${{ matrix.build_type }}
+        ${{ matrix.compiler.header_only && '-R di_test_headers' || '' }}

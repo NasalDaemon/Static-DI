@@ -61,7 +61,7 @@ struct RequireThread
     template<class Info>
     struct MapInfo : Info
     {
-        static constexpr auto RequiredThreadId = ThreadId;
+        static constexpr std::size_t RequiredThreadId = ThreadId;
 
         template<class Environment>
         static consteval void assertAccessible()

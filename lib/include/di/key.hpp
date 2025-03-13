@@ -10,16 +10,6 @@
 #include <type_traits>
 #endif
 
-namespace di {
-    DI_MODULE_EXPORT
-    struct Node;
-    DI_MODULE_EXPORT
-    struct Cluster;
-    namespace detail {
-        struct ContextBase;
-    }
-}
-
 namespace di::key {
 
 DI_MODULE_EXPORT
@@ -31,7 +21,7 @@ concept IsKey = requires {
 };
 
 DI_MODULE_EXPORT
-template<class Key, IsTrait Trait_>
+template<IsKey Key, IsTrait Trait_>
 using Trait = Key::template Trait<Trait_>;
 
 DI_MODULE_EXPORT
@@ -42,28 +32,13 @@ struct Default
     template<class T, auto... Info>
     using Interface = T;
 
-    template<class Environment, auto SourceInfo, class Target>
+    template<class Environment, auto... SourceInfo, class Target>
     static constexpr Target& acquireAccess(Target& target)
     {
         static_assert(di::detail::alwaysFalse<Environment>, "Access denied");
         return target;
     }
 };
-
-// Bypass TraitView instantiation during intermediate asTrait/getNode calls
-struct Bypass : private Default
-{
-    using Default::Trait;
-    using Default::Interface;
-    using Default::acquireAccess;
-
-private:
-    friend struct di::Node;
-    friend struct di::Cluster;
-    friend struct di::detail::ContextBase;
-    Bypass() = default;
-};
-
 
 }
 

@@ -1,6 +1,7 @@
 #ifndef INCLUDE_DI_CONTEXT_HPP
 #define INCLUDE_DI_CONTEXT_HPP
 
+#include "di/detail/as_ref.hpp"
 #include "di/detail/cast.hpp"
 #include "di/detail/compress.hpp"
 
@@ -31,7 +32,7 @@ namespace detail {
             using Self = detail::Decompress<Self_>;
             using Other = detail::ResolveLink<Self, Trait>;
             auto& otherNode = getCluster<Self>(node).*getNodePointer(AdlTag<typename Other::Context>{});
-            return otherNode.asTrait(typename Other::Trait{}, key::Bypass{});
+            return otherNode.asTrait(detail::AsRef{}, typename Other::Trait{});
         }
 
         // Delegate to parent cluster to get the node
@@ -40,7 +41,7 @@ namespace detail {
         constexpr auto& getNode(this Self_, auto& node, Trait)
         {
             using Self = detail::Decompress<Self_>;
-            return getCluster<Self>(node).getNode(detail::ResolveLinkTrait<Self, Trait>{}, key::Bypass{});
+            return getCluster<Self>(node).getNode(detail::AsRef{}, detail::ResolveLinkTrait<Self, Trait>{});
         }
 
     private:
@@ -48,8 +49,8 @@ namespace detail {
         inline static auto& getCluster(auto& node)
         {
             constexpr auto memPtr = getNodePointer(AdlTag<Self>{});
-            auto& n = detail::downCast<ContextToNodeState<Self>>(node);
-            return n.*detail::reverseMemberPointer(memPtr);
+            auto& n = downCast<ContextToNodeState<Self>>(node);
+            return n.*reverseMemberPointer(memPtr);
         }
     };
 

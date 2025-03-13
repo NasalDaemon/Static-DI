@@ -3,14 +3,12 @@
 pushd $(dirname "$0")
 
 BUILD_TYPE="Release"
-CONAN_PRESET="conan-release"
 STD_MODULE="OFF"
 
 while [[ "$#" -gt 0 ]]; do
     case $1 in
         -c|--config)
             BUILD_TYPE="$2";
-            CONAN_PRESET="conan-$(echo $BUILD_TYPE | tr '[:upper:]' '[:lower:]')"
             shift ;;
         -m|--std-module)
             STD_MODULE="ON"
@@ -20,13 +18,16 @@ while [[ "$#" -gt 0 ]]; do
     shift
 done
 
-# sudo apt install python3 pipx
+# sudo apt install cmake ninja-build python3 pipx
 # pipx install conan
 BUILD_TYPE=$BUILD_TYPE \
-    conan install . --output-folder build --build missing --profile conanprofile.txt
+    conan install . --output-folder=build --build=missing --profile=conanprofile.txt
 pushd build
-cmake .. --preset $CONAN_PRESET -DDI_BUILD_TESTS=ON -DCMAKE_CXX_MODULE_STD=$STD_MODULE
-cmake --build .
-ctest
+cmake .. --preset conan-default \
+    -DDI_BUILD_TESTS=ON \
+    -DCMAKE_COLOR_DIAGNOSTICS=ON \
+    -DCMAKE_CXX_MODULE_STD=$STD_MODULE
+cmake --build . --config $BUILD_TYPE
+ctest --build-config $BUILD_TYPE
 popd
 popd

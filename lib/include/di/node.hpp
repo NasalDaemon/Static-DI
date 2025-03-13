@@ -1,8 +1,10 @@
 #ifndef INCLUDE_DI_NODE_HPP
 #define INCLUDE_DI_NODE_HPP
 
+#include "di/detail/as_ref.hpp"
 #include "di/detail/cast.hpp"
 
+#include "di/context_fwd.hpp"
 #include "di/environment.hpp"
 #include "di/key.hpp"
 #include "di/macros.hpp"
@@ -46,23 +48,24 @@ struct Node
 #endif
 
     template<class Self, IsTrait Trait>
-    constexpr auto canGetNode(this Self&, Trait) -> std::bool_constant<
-        requires (ContextOf<Self> c, Self::Traits::Node n, Trait trait) {
-            c.getNode(n, trait);
-        }>
+    constexpr auto canGetNode(this Self&, Trait)
     {
-        return {};
+        constexpr bool value =
+            requires (ContextOf<Self> c, Self::Traits::Node n, Trait trait) {
+                c.getNode(n, trait);
+            };
+        return std::bool_constant<value>{};
     }
 
     template<class Self, IsTrait Trait, class Key = ContextOf<Self>::Info::DefaultKey>
     constexpr IsTraitViewOf<Trait, Key> auto asTrait(this Self& self, Trait trait, Key key = {})
     {
-        auto& impl = self.asTrait(trait, key::Bypass{});
+        auto& impl = self.asTrait(detail::AsRef{}, trait);
         return makeTraitView(self, impl, trait, key);
     }
 
     template<class Self, IsTrait Trait>
-    constexpr auto& asTrait(this Self& self, Trait, key::Bypass)
+    constexpr auto& asTrait(this Self& self, detail::AsRef, Trait)
     {
         using ThisNode = Self::Traits::Node;
         auto& node = detail::upCast<ThisNode>(self);
