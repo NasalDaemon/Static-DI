@@ -31,7 +31,7 @@ namespace detail {
             using Self = detail::Decompress<Self_>;
             using Other = detail::ResolveLink<Self, Trait>;
             auto& otherNode = getCluster<Self>(node).*getNodePointer(AdlTag<typename Other::Context>{});
-            return otherNode.asTrait(typename Other::Trait{}, key::Bypass{});
+            return asTraitRef(otherNode, typename Other::Trait{}, key::Bypass{});
         }
 
         // Delegate to parent cluster to get the node
@@ -40,7 +40,7 @@ namespace detail {
         constexpr auto& getNode(this Self_, auto& node, Trait)
         {
             using Self = detail::Decompress<Self_>;
-            return getCluster<Self>(node).getNode(detail::ResolveLinkTrait<Self, Trait>{}, key::Bypass{});
+            return getNodeRef(getCluster<Self>(node), detail::ResolveLinkTrait<Self, Trait>{}, key::Bypass{});
         }
 
     private:

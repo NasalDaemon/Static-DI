@@ -4,7 +4,7 @@ Dependency injection without runtime dispatch or heap allocations. Standalone C+
 ## Compiler Support
 - [x] Clang 19+ (20+ for `import std;`)
 - [x] GCC 14.2+ (15+ for `import std;`)
-- [ ] MSVC ?
+- [ ] MSVC
 
 ## How to use in your project
 Add the following to your CMake, which imports the code for the latest release into your project.

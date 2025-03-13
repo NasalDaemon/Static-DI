@@ -8,12 +8,16 @@
 #include "di/trait.hpp"
 #include "di/trait_view.hpp"
 
+#if !DI_STD_MODULE
+#include <type_traits>
+#endif
+
 namespace di {
 
 namespace detail {
     struct OnGraphConstructedVisitor
     {
-        static constexpr void operator()(auto& node)
+        constexpr void operator()(auto& node) const
         {
             if constexpr (requires { node.onGraphConstructed(); })
                 node.onGraphConstructed();
@@ -36,50 +40,52 @@ struct Cluster
     template<class Self, IsTrait Trait, class Key = ContextParameterOf<Self>::Info::DefaultKey>
     constexpr IsTraitViewOf<Trait, Key> auto getNode(this Self& cluster, Trait trait, Key key = {})
     {
-        auto& target = cluster.getNode(trait, key::Bypass{});
+        auto& target = getNodeRef(cluster, trait, key::Bypass{});
         return makeTraitView(cluster, target, trait, key);
     }
 
     template<class Self, IsTrait Trait>
-    constexpr auto& getNode(this Self& cluster, Trait trait, key::Bypass)
+    friend constexpr auto& getNodeRef(Self& cluster, Trait trait, key::Bypass)
     {
         return detail::getContextParameter(cluster).getNode(cluster, trait);
     }
 
     template<class Self, IsTrait Trait>
-    constexpr auto canGetNode(this Self const&, Trait) -> std::bool_constant<
-        requires (Self c, Trait trait) {
-            detail::getContextParameter(c).getNode(c, trait);
-        }>
+    constexpr auto canGetNode(this Self const&, Trait)
     {
-        return {};
+        constexpr bool value =
+            requires (Self c, Trait trait) {
+                detail::getContextParameter(c).getNode(c, trait);
+            };
+        return std::bool_constant<value>{};
     }
 
     template<class Self, IsTrait Trait, class Key = ContextParameterOf<Self>::Info::DefaultKey>
     requires detail::HasLink<Self, Trait>
     constexpr IsTraitViewOf<Trait, Key> auto asTrait(this Self& self, Trait trait, Key key = {})
     {
-        auto& target = self.asTrait(trait, key::Bypass{});
+        auto& target = asTraitRef(self, trait, key::Bypass{});
         return makeTraitView(self, target, trait, key);
     }
 
     template<class Self, IsTrait Trait>
     requires detail::HasLink<Self, Trait>
-    constexpr auto& asTrait(this Self& cluster, Trait, key::Bypass key)
+    friend constexpr auto& asTraitRef(Self& cluster, Trait, key::Bypass key)
     {
         using Target = detail::ResolveLink<Self, Trait>;
         auto& node = cluster.*getNodePointer(AdlTag<typename Target::Context>{});
-        return node.asTrait(typename Target::Trait{}, key);
+        return asTraitRef(node, typename Target::Trait{}, key);
     }
 
     template<class Self, IsTrait Trait>
-    constexpr auto hasTrait(this Self const&, Trait) -> std::bool_constant<
-        detail::HasLink<Self, Trait> and
-        requires (AdlTag<detail::ResolveLinkContext<Self, Trait>> adlTag) {
-            getNodePointer(adlTag);
-        }>
+    constexpr auto hasTrait(this Self const&, Trait)
     {
-        return {};
+        constexpr bool value =
+            detail::HasLink<Self, Trait> and
+            requires (AdlTag<detail::ResolveLinkContext<Self, Trait>> adlTag) {
+                getNodePointer(adlTag);
+            };
+        return std::bool_constant<value>{};
     }
 };
 

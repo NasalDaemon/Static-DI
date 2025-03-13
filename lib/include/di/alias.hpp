@@ -21,7 +21,7 @@ struct Alias final
     using Impl = T;
     using Interface = T;
 
-    constexpr explicit Alias(Impl& impl) : impl(std::addressof(impl)) {}
+    constexpr explicit Alias(Impl& impl, Key...) : impl(std::addressof(impl)) {}
 
     template<class Self>
     constexpr auto& get(this Self&& self) { return std::forward_like<Self&>(*self.impl); }
@@ -30,10 +30,6 @@ struct Alias final
 private:
     Impl* impl;
 };
-
-DI_MODULE_EXPORT
-template<class T, class... Key>
-Alias(T&, Key...) -> Alias<T, Key...>;
 
 DI_MODULE_EXPORT
 template<class T, class Key>
@@ -63,6 +59,9 @@ private:
     Alias<Impl> impl;
     [[no_unique_address]] Key key{};
 };
+
+template<class T, class... Key>
+Alias(T&, Key...) -> Alias<T, Key...>;
 
 DI_MODULE_EXPORT
 constexpr auto makeAlias(auto& impl, auto... key) { return Alias(detail::compressImpl(impl), key...); }

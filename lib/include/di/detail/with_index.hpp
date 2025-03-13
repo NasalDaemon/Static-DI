@@ -93,7 +93,7 @@ struct WithIndex
     using Result = decltype(commonType<Visitor>(std::make_index_sequence<Count>{}));
 
     template<class Visitor>
-    static constexpr Result<Visitor> operator()(std::size_t i, Visitor&& visitor)
+    constexpr Result<Visitor> operator()(std::size_t i, Visitor&& visitor) const
     {
         return withIndexInvoke<Result<Visitor>>(
             WithIndexInvokeTag<Count, 0>(),

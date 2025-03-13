@@ -9,7 +9,8 @@ namespace {{ namespace.name }} {
     DI_METHOD_TAG({{ methodName }})
     {% endfor %}
 
-    friend constexpr {{ trait.name }} traitOf(di::IsMethodOf<{{ trait.name }}> auto) { return {}; }
+    template<di::IsMethodOf<{{ trait.name }}> Tag>
+    friend constexpr {{ trait.name }} traitOf(Tag) { return {}; }
 
     struct Meta
     {
@@ -34,7 +35,7 @@ namespace {{ namespace.name }} {
                 , class {{ trait.typesName }} = std::remove_cvref_t<Self>::Types
                 {%- endif -%}
                 {%- if trait.rootName -%}
-                , class {{ trait.rootName }} = di::ContextOf<std::remove_cvref_t<Self>>::Root
+                , class {{ trait.rootName }} = di::ResolveRoot<di::ContextOf<std::remove_cvref_t<Self>>>
                 {%- endif -%}
             >
             constexpr auto {{ method.name }}(this Self{{ " const&" if method.isConst else "&&" }} self
@@ -64,7 +65,7 @@ namespace {{ namespace.name }} {
         , class {{ trait.typesName }} = di::NodeTypes<Impl, di::TraitExpects<Self>>
     {%- endif -%}
     {%- if trait.rootName -%}
-        , class {{ trait.rootName }} = di::ContextOf<Impl>::Root
+        , class {{ trait.rootName }} = di::ResolveRoot<di::ContextOf<Impl>>
     {%- endif -%}
     >
     requires requires (Impl impl_, Impl const const_)

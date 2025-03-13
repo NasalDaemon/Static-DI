@@ -17,7 +17,7 @@ if(DI_BUILD_TESTS)
     add_subdirectory(tests)
 
     # GCC PCH does not improve compile times
-    if(NOT CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
         add_subdirectory(lib/pch)
         target_precompile_headers(di_test_abc_lib REUSE_FROM di::pch)
         target_precompile_headers(di_test_headers REUSE_FROM di::test::abc::lib)
