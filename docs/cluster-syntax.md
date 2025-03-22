@@ -14,10 +14,10 @@ Header includes and module imports should be listed at the top of the file, [see
 
 ### Defining a cluster
 
-NOTE: when defining a cluster, it must be wrapped in a namespace, which cannot be anonymous. Clusters take the following form (simplified):
+NOTE: when defining a cluster, it must either be wrapped in a namespace, which cannot be anonymous, or given a qualified name including the namespace. Clusters take the following form (simplified):
 
 ```
-namespace <fully-qualified-namespace> {
+namespace <fully::qualified::namespace> {
 
 cluster <cluster-name>
 {
@@ -141,3 +141,23 @@ cluster FruitSalad
 
 }
 ```
+
+### Qualifying cluster namespace inline
+
+It is possible to avoid wrapping the cluster in a namespace, like:
+```cpp
+cluster my::name_space::FruitSalad
+{
+    // ...
+}
+```
+
+**NOTE:** namespaces are not elided when defining a cluster. The combination of a wrapping namespace and a qualified cluster name always results in appending the namespace of the qualified cluster to the wrapping namespace. For example:
+```cpp
+namespace first::second {
+
+cluster second::third::Cluster { /* ...*/ }
+
+}
+```
+Results in `first::second::second::third::Cluster`, **not** `first::second::third::Cluster`.

@@ -1,6 +1,6 @@
-start: include* namespace+
+start: include* (namespace | cluster | trait)+
 
-%import .dig (include, namespace)
+%import .dig (include, namespace, cluster, trait)
 
 %import common.WS
 %import common.C_COMMENT

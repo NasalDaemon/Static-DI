@@ -1,4 +1,4 @@
-start: [includes] export_module import_module* namespace+
+start: [includes] export_module import_module* (namespace | cluster | trait)+
 
 includes: "module;" include*
 
@@ -8,9 +8,9 @@ import_module: MODULE_IMPORT MODULE_NAME ";"
 
 MODULE_IMPORT: "import" | "export import"
 
-MODULE_NAME: (NAME | "." | ":")+
+MODULE_NAME: (NAME | ".")+ [":" NAME]
 
-%import .dig (include, namespace, NAME)
+%import .dig (include, namespace, cluster, trait, NAME)
 
 %import common.WS
 %import common.C_COMMENT

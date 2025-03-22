@@ -372,8 +372,9 @@ class Trait:
         self.hasMutableRequires = next((not method.isConst for method in self.methods if not method.isConst and not method.isTemplate), False)
 
 class Namespace:
-    def __init__(self, name: str):
+    def __init__(self, name: str, repr: 'Repr'):
         self.name: str = name
+        self.repr: 'Repr' = repr
         self.traitNames: set[str] = set()
         self.traits: list[Trait] = []
         self.traitAliases: list[list[str]] = []
@@ -382,81 +383,63 @@ class Namespace:
 
     def walk(self, children):
         for c in children:
-            if c.data == imported('cluster'):
-                hasTemplate = not isinstance(c.children[0], Token)
-                nameIndex = 1 if hasTemplate else 0
-                name = c.children[nameIndex].value
-                assert name not in self.clusterNames, (name, self.clusterNames)
-                self.clusterNames.add(name)
-                cluster = Cluster(name)
-                if hasTemplate:
-                    cluster.addTemplate(c.children[0])
-                cluster.walk(c.children[(nameIndex+1):])
-                self.clusters.append(cluster)
+            if c.data == 'cluster':
+                self.repr.visitCluster(self.name, c)
             elif c.data == imported('trait_def'):
-                name = c.children[0].value
-                assert name not in self.traitNames, (name, self.traitNames)
-                if not name[0].isupper():
-                    raise SyntaxError(f'First character of trait name {name} is not Uppercase')
-                self.traitNames.add(name)
-                trait = Trait(name)
-                trait.walk(c.children[1:])
-                self.traits.append(trait)
+                self.repr.visitTraitDef(self.name, c)
             elif c.data == imported('trait_alias'):
-                name = c.children[0].value
-                assert name not in self.traitNames, (name, self.traitNames)
-                if not name[0].isupper():
-                    raise SyntaxError(f'First character of trait name {name} is not Uppercase')
-                self.traitAliases.append([t.value for t in c.children])
+                self.repr.visitTraitAlias(self.name, c)
             else:
                 raise SyntaxError(f'Unknown namespace entity: {c.data}')
+
+    def addCluster(self, name: str) -> Cluster:
+        assert name not in self.clusterNames, (name, self.clusterNames)
+        self.clusterNames.add(name)
+        cluster = Cluster(name)
+        self.clusters.append(cluster)
+        return cluster
+
+    def addTrait(self, name: str) -> Trait:
+        assert name not in self.traitNames, (name, self.traitNames)
+        if not name[0].isupper():
+            raise SyntaxError(f'First character of trait name {name} is not Uppercase')
+        self.traitNames.add(name)
+        trait = Trait(name)
+        self.traits.append(trait)
+        return trait
+
+    def addTraitAlias(self, names: list[str]):
+        name = names[0]
+        assert name not in self.traitNames, (name, self.traitNames)
+        self.traitNames.add(name)
+        if not name[0].isupper():
+            raise SyntaxError(f'First character of trait name {name} is not Uppercase')
+        self.traitAliases.append(names)
+
+    def finalize(self):
         self.clusters.sort(key = lambda v : v.name)
         self.traits.sort(key = lambda v : v.name)
 
-class HeaderRepr:
-    def __init__(self, parsed):
-        self.inputFile = inputFile
-        self.includes: list[str] = []
-        self.namespaces: list[Namespace] = {}
-        self.hasCluster = False
-        self.hasTrait = False
-        self.walk(parsed)
-
-    def walk(self, parsed):
-        includes: set[str] = set()
-        namespaces: dict[str, Namespace] = {}
-        for t in parsed.children:
-            if t.data == 'include':
-                includes.add(t.children[0].value)
-            elif t.data == 'namespace':
-                name = t.children[0].value
-                if name not in namespaces:
-                    namespaces[name] = Namespace(name)
-                namespaces[name].walk(t.children[1:])
-            else:
-                raise SyntaxError('Unknown token: %s' % t.data)
-        self.includes = sorted(includes)
-        self.namespaces = sorted(namespaces.values(), key = lambda v : v.name)
-        self.hasCluster = next((True for namespace in self.namespaces if len(namespace.clusters) != 0), False)
-        self.hasTrait = next((True for namespace in self.namespaces if len(namespace.traits) != 0), False)
-
-class ModuleRepr:
+class Repr:
     def __init__(self, parsed):
         self.inputFile = inputFile
         self.includes: list[str] = []
         self.exportModule: str
         self.importModules: list[tuple[str, str]] = []
         self.namespaces: list[Namespace] = {}
+        self.namespacesDict: dict[str, Namespace] = {}
         self.hasCluster = False
         self.hasTrait = False
         self.walk(parsed)
+        self.finalize()
 
     def walk(self, parsed):
         includes: set[str] = set()
         importModules: set[str] = set()
-        namespaces: dict[str, Namespace] = {}
         for t in parsed.children:
-            if t.data == 'includes':
+            if t.data == 'include':
+                includes.add(t.children[0].value)
+            elif t.data == 'includes':
                 for include in t.children:
                     includes.add(include.children[0].value)
             elif t.data == 'export_module':
@@ -465,25 +448,66 @@ class ModuleRepr:
                 importModules.add((t.children[0].value, t.children[1].value))
             elif t.data == 'namespace':
                 name = t.children[0].value
-                if name not in namespaces:
-                    namespaces[name] = Namespace(name)
-                namespaces[name].walk(t.children[1:])
+                self.getNamespace(name).walk(t.children[1:])
+            elif t.data == 'cluster':
+                self.visitCluster("", t)
+            elif t.data == imported('trait_def'):
+                self.visitTraitDef("", t)
+            elif t.data == imported('trait_alias'):
+                self.visitTraitAlias("", t)
             else:
                 raise SyntaxError('Unknown token: %s' % t.data)
         self.includes = sorted(includes)
         self.importModules = sorted(importModules)
-        self.namespaces = sorted(namespaces.values(), key = lambda v : v.name)
+
+    def visitCluster(self, sourceNs: str, tree: Tree):
+        hasTemplate = not isinstance(tree.children[0], Token)
+        nameIndex = 1 if hasTemplate else 0
+        name, namespace = self.splitNamespace(sourceNs, tree.children[nameIndex].value)
+        cluster = namespace.addCluster(name)
+        if hasTemplate:
+            cluster.addTemplate(tree.children[0])
+        cluster.walk(tree.children[(nameIndex+1):])
+
+    def visitTraitDef(self, sourceNs: str, tree: Tree):
+        name, namespace = self.splitNamespace(sourceNs, tree.children[0].value)
+        trait = namespace.addTrait(name)
+        trait.walk(tree.children[1:])
+
+    def visitTraitAlias(self, sourceNs: str, tree: Tree):
+        name, namespace = self.splitNamespace(sourceNs, tree.children[0].value)
+        namespace.addTraitAlias([t.value for t in tree.children])
+
+    def splitNamespace(self, sourceNs: str, fqName: str) -> tuple[str, Namespace]:
+        pos = fqName.rfind("::")
+        if pos == -1:
+            assert sourceNs, (f"trait/alias may not be defined in root namespace, please fully qualify {fqName} "
+                              f"as your::ns::{fqName} or wrap {fqName} in namespace your::ns {'{ ... }'}")
+            return (fqName, self.getNamespace(sourceNs))
+        else:
+            namespace = fqName[0:pos]
+            assert not namespace.startswith("::"), f"trait/alias namespace-qualifier '{namespace}' may not reference the root namespace"
+            if sourceNs:
+                namespace = sourceNs + "::" + namespace
+            name = fqName[pos+2:]
+            return (name, self.getNamespace(namespace))
+
+    def getNamespace(self, name: str) -> Namespace:
+        if name not in self.namespacesDict:
+            self.namespacesDict[name] = Namespace(name, self)
+        return self.namespacesDict[name]
+
+    def finalize(self):
+        self.namespaces = sorted(self.namespacesDict.values(), key = lambda v : v.name)
+        for n in self.namespaces:
+            n.finalize()
         self.hasCluster = next((True for namespace in self.namespaces if len(namespace.clusters) != 0), False)
         self.hasTrait = next((True for namespace in self.namespaces if len(namespace.traits) != 0), False)
 
 templateLoader = jinja2.FileSystemLoader(searchpath=dirPath)
 templateEnv = jinja2.Environment(loader=templateLoader, trim_blocks=True, lstrip_blocks=True)
-if isModule:
-    template = templateEnv.get_template("template.ixx.jinja")
-    outputText = template.render(repr=ModuleRepr(parsed), export="export ")
-else:
-    template = templateEnv.get_template("template.hxx.jinja")
-    outputText = template.render(repr=HeaderRepr(parsed), export="")
+template = templateEnv.get_template(f"template.{'ixx' if isModule else 'hxx'}.jinja")
+outputText = template.render(repr=Repr(parsed), export="export " if isModule else "")
 
 with open(outputFile, 'a+') as file:
     file.seek(0)
