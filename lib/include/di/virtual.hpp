@@ -6,6 +6,7 @@
 #include "di/macros.hpp"
 #include "di/node.hpp"
 #include "di/traits.hpp"
+#include "di/empty_types.hpp"
 
 #if !DI_STD_MODULE
 #include <memory>
@@ -23,7 +24,11 @@ struct IRemotes
 
     virtual ~IRemotes() = default;
 
-    constexpr auto asTrait(this auto& self, auto trait) { return TraitView(trait, Alias(self)); }
+    template<class Self>
+    constexpr auto asTrait(this Self& self, auto trait, auto... keys)
+    {
+        return TraitView(trait, Alias(self, keys...), std::type_identity<typename Self::Types>{});
+    }
 };
 
 DI_MODULE_EXPORT

@@ -38,7 +38,7 @@ struct MockTrait : Trait
     static TraitExpects<Trait> expects();
 
     // Mocks are to bypass checks, and may implement only what is needed for testing
-    template<class Self, class T>
+    template<class Self, class...>
     using Implements = void;
 };
 

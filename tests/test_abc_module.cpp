@@ -6,11 +6,12 @@
 
 import di;
 import abc.graph;
+import abc.ellie;
 DI_IMPORT_STD;
 
 using namespace abc;
 
-TEST_CASE("Test abc module")
+TEST_CASE("abc module")
 {
     di::Graph<AliceBob> g{.ellie{101}};
     g.onConstructed();
@@ -43,4 +44,18 @@ TEST_CASE("Test abc module")
     CHECK(99 == charlie2get());
 
     CHECK(101 == g.ellie->value);
+
+    auto e2 = g.alice.getNode(trait::ellie2);
+    static_assert(not g.ellie.hasTrait(trait::ellie2));
+    static_assert(std::is_same_v<abc::EllieType, typename decltype(e2)::Types::EllieType>);
+    CHECK(101 == e2.get());
+
+    auto e3 = g.alice.getNode(trait::ellie3);
+    static_assert(g.ellie.hasTrait(trait::ellie3));
+    static_assert(std::is_same_v<abc::EllieType3, typename decltype(e3)::Types::EllieType>);
+    CHECK(101 == e3.get());
+
+    int visitableCounter = 0;
+    g.visitTrait(trait::visitable, [&](auto v) { v.count(visitableCounter); });
+    CHECK(visitableCounter == 2);
 }

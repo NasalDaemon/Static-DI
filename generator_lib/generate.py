@@ -256,6 +256,8 @@ class Cluster:
         self.nodes.extend(self.repeaters)
 
 class Method:
+    __reserved_names__ = [ 'apply', 'visit']
+
     def __init__(self):
         self.name: str = "<unknown>"
         self.templates: list[tuple[CppType, str]] = []
@@ -279,17 +281,6 @@ class Method:
             return True
         return False
 
-    def dependsOnTypes(self, typesName: str | None):
-        if not typesName:
-            return False
-        if typesName in self.returnType.str:
-            return True
-        if next((t for t, n in self.templates if typesName in t.str), None):
-            return True
-        if next((t for t, n in self.params if typesName in t.str), None):
-            return True
-        return False
-
     @cached_property
     def isUnconstrainedReturn(self):
         return self.returnType.str == "decltype(auto)" or self.returnType.str == "void" or self.returnType.str.replace("&", "") == "auto"
@@ -306,6 +297,7 @@ class Method:
                 self.returnType = CppType.fromTree(c)
             elif c.data == imported('method_name'):
                 self.name = c.children[0].value
+                assert self.name not in self.__reserved_names__, f"'{self.name}' cannot be the name of a method, it is reserved for di::TraitView"
             elif c.data == imported('cpp_func_params'):
                 for c in c.children:
                     type = CppType.fromTree(c.children[0])
@@ -476,12 +468,12 @@ class Repr:
 
     def visitTraitAlias(self, sourceNs: str, tree: Tree):
         name, namespace = self.splitNamespace(sourceNs, tree.children[0].value)
-        namespace.addTraitAlias([t.value for t in tree.children])
+        namespace.addTraitAlias([c.value for c in tree.children])
 
     def splitNamespace(self, sourceNs: str, fqName: str) -> tuple[str, Namespace]:
         pos = fqName.rfind("::")
         if pos == -1:
-            assert sourceNs, (f"trait/alias may not be defined in root namespace, please fully qualify {fqName} "
+            assert sourceNs, (f"trait/alias may not be defined in root namespace, please namespace-qualify {fqName} "
                               f"as your::ns::{fqName} or wrap {fqName} in namespace your::ns {'{ ... }'}")
             return (fqName, self.getNamespace(sourceNs))
         else:

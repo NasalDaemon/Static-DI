@@ -60,10 +60,7 @@ namespace {{ namespace.name }} {
         };
     };
 
-    template<class Self, class Impl
-    {%- if trait.typesName -%}
-        , class {{ trait.typesName }} = di::NodeTypes<Impl, di::TraitExpects<Self>>
-    {%- endif -%}
+    template<class Self, class Impl, class {{ trait.typesName or "" }}
     {%- if trait.rootName -%}
         , class {{ trait.rootName }} = di::ResolveRoot<di::ContextOf<Impl>>
     {%- endif -%}

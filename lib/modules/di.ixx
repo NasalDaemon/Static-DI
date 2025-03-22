@@ -38,6 +38,8 @@ export namespace di {
     using di::DetachedImpl;
     using di::IsDetachedImpl;
     using di::HasDetachedContext;
+    // empty_types.hpp
+    using di::EmptyTypes;
     // environment.hpp
     using di::Environment;
     using di::EnvironmentOverlay;
@@ -64,7 +66,6 @@ export namespace di {
     using di::IsInfoMapper;
     using di::MapInfo;
     // node_fwd.hpp
-    using di::EmptyTypes;
     using di::Node;
     using di::IsNode;
     using di::IsNodeWrapper;

@@ -26,7 +26,7 @@ namespace detail {
     {
         template<class Trait>
         requires detail::HasLink<Context, Trait>
-        constexpr auto& getNode(this Context context, auto& node, Trait trait)
+        constexpr auto getNode(this Context context, auto& node, Trait trait)
         {
             return context.getNode(node, trait);
         }

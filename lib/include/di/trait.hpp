@@ -65,18 +65,18 @@ template<class T, class Trait>
 concept ExactlyMatchesTrait = std::same_as<T, Trait> and MatchesTrait<T, Trait>;
 
 namespace detail {
-    template<class Trait, class Impl, IsTrait... Subtraits>
+    template<class Trait, class Impl, class Types, IsTrait... Subtraits>
     requires (sizeof...(Subtraits) > 0)
-    using ImplementsAll = Void<typename Subtraits::template Implements<Trait, detail::Decompress<Impl>>...>;
+    using ImplementsAll = Void<typename Subtraits::template Implements<Trait, Decompress<Impl>, Decompress<Types>>...>;
 
-    template<class Impl, IsTrait... Traits>
+    template<class Impl, class Types, IsTrait... Traits>
     requires (sizeof...(Traits) > 0)
-    using Implements = Void<typename Traits::template Implements<Traits, detail::Decompress<Impl>>...>;
+    using Implements = Void<typename Traits::template Implements<Traits, Decompress<Impl>, Decompress<Types>>...>;
 }
 
 DI_MODULE_EXPORT
-template<class Impl, class... Traits>
-concept Implements = requires { typename detail::Implements<Impl, Traits...>; };
+template<class Impl, class Types, class... Traits>
+concept Implements = requires { typename detail::Implements<Impl, Types, Traits...>; };
 
 DI_MODULE_EXPORT
 template<class Method, class Trait>
@@ -105,8 +105,8 @@ struct JoinedTrait : Traits...
         {};
     };
 
-    template<class Self, class Impl>
-    using Implements = detail::ImplementsAll<Self, Impl, Traits...>;
+    template<class Self, class Impl, class Types>
+    using Implements = detail::ImplementsAll<Self, Impl, Types, Traits...>;
 
     template<class Expected>
     requires (... or TraitCanProvide<Traits, Expected>)
@@ -127,7 +127,7 @@ struct AltTrait : Trait
 };
 
 namespace detail {
-    template<class Trait_>
+    template<IsTrait Trait_>
     struct DuckTrait : di::Trait
     {
         struct Meta
@@ -139,7 +139,7 @@ namespace detail {
 
         static TraitExpects<Trait_> expects();
 
-        template<class Self, class T>
+        template<class Self, class...>
         using Implements = void;
     };
 }

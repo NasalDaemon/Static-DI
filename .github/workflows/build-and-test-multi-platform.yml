@@ -27,8 +27,8 @@ jobs:
             std_module: 'std-module'
             os: ubuntu-latest
           - name: cl
-            allow_build_failure: 'allow-failure'
             header_only: 'header-only'
+            allow_build_failure: 'allow-failure'
             os: windows-latest
 
     steps:
@@ -81,8 +81,8 @@ jobs:
         -DCMAKE_CXX_MODULE_STD=${{ matrix.compiler.std_module && 'ON' || 'OFF' }}
 
     - name: Build
-        ${{ matrix.compiler.allow_build_failure }}
         ${{ matrix.compiler.header_only }}
+        ${{ matrix.compiler.allow_build_failure }}
       id: build
       continue-on-error: ${{ !!matrix.compiler.allow_build_failure }}
       working-directory: ${{ github.workspace }}/build
@@ -103,5 +103,6 @@ jobs:
       working-directory: ${{ github.workspace }}/build
       run: >
         ctest
+        --verbose
         --build-config ${{ matrix.build_type }}
         ${{ matrix.compiler.header_only && '-R di_test_headers' || '' }}

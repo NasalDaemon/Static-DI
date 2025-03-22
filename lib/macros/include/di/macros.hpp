@@ -23,11 +23,11 @@
 
 // Clang won't detail the failure in the build diagnostic when asserting the concept directly
 #if DI_COMPILER_CLANG
-#   define DI_ASSERT_IMPLEMENTS(Impl, Trait) \
-    static_assert(::di::detail::alwaysTrue<::di::detail::Implements<Impl, Trait>>)
+#   define DI_ASSERT_IMPLEMENTS(Impl, Types, Trait) \
+    static_assert(::di::detail::alwaysTrue<::di::detail::Implements<Impl, Types, Trait>>)
 #else
-#   define DI_ASSERT_IMPLEMENTS(Impl, Trait) \
-    static_assert(::di::Implements<Impl, Trait>)
+#   define DI_ASSERT_IMPLEMENTS(Impl, Types, Trait) \
+    static_assert(::di::Implements<Impl, Types, Trait>)
 #endif
 
 #define DI_FWD(name) static_cast<decltype(name)&&>(name)

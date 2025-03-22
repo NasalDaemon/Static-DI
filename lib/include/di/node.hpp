@@ -12,6 +12,7 @@
 #include "di/trait.hpp"
 #include "di/trait_view.hpp"
 #include "di/traits_fwd.hpp"
+#include "di/empty_types.hpp"
 
 #if !DI_STD_MODULE
 #include <functional>
@@ -42,7 +43,7 @@ struct Node
     {
         using ThisNode = Self::Traits::Node;
         auto& node = detail::upCast<ThisNode>(self);
-        auto& target = ContextOf<Self>{}.getNode(node, trait);
+        auto target = ContextOf<Self>{}.getNode(node, trait);
         return makeTraitView(self, target, trait, key);
     }
 #endif
@@ -60,19 +61,20 @@ struct Node
     template<class Self, IsTrait Trait, class Key = ContextOf<Self>::Info::DefaultKey>
     constexpr IsTraitViewOf<Trait, Key> auto asTrait(this Self& self, Trait trait, Key key = {})
     {
-        auto& impl = self.asTrait(detail::AsRef{}, trait);
+        auto impl = self.asTrait(detail::AsRef{}, trait);
         return makeTraitView(self, impl, trait, key);
     }
 
     template<class Self, IsTrait Trait>
-    constexpr auto& asTrait(this Self& self, detail::AsRef, Trait)
+    constexpr auto asTrait(this Self& self, detail::AsRef, Trait)
     {
         using ThisNode = Self::Traits::Node;
         auto& node = detail::upCast<ThisNode>(self);
 
         static_assert(Self::Traits::template HasTrait<Trait>, "Missing trait");
         using Interface = Self::Traits::template ResolveInterface<Trait>;
-        return detail::downCast<Interface>(node);
+        using Types = Self::Traits::template ResolveTypes<Trait>;
+        return detail::TargetRef{detail::downCast<Interface>(node), std::type_identity<Types>{}};
     }
 
     template<class Self>

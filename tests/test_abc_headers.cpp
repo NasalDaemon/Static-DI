@@ -4,7 +4,7 @@
 
 using namespace abc;
 
-TEST_CASE("test abc")
+TEST_CASE("abc headers")
 {
     abc::GraphWrapper wrapper;
     auto& g = wrapper.graph;

@@ -40,7 +40,7 @@ struct Union
             using Root = Context::Root;
 
             template<IsTrait Trait>
-            static constexpr auto& getNode(auto& option, Trait trait)
+            static constexpr auto getNode(auto& option, Trait trait)
             {
                 using Option = std::remove_cvref_t<decltype(option)>;
                 static_assert((... || std::is_same_v<Option, typename ToNodeWrapper<Options>::template Node<InnerContext>>));

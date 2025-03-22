@@ -27,7 +27,7 @@ namespace detail {
         // Impl of sibling node
         template<IsContext Self_, IsTrait Trait>
         requires detail::HasLink<detail::Decompress<Self_>, Trait>
-        constexpr auto& getNode(this Self_, auto& node, Trait)
+        constexpr auto getNode(this Self_, auto& node, Trait)
         {
             using Self = detail::Decompress<Self_>;
             using Other = detail::ResolveLink<Self, Trait>;
@@ -38,7 +38,7 @@ namespace detail {
         // Delegate to parent cluster to get the node
         template<IsContext Self_, IsTrait Trait>
         requires detail::LinksToParent<detail::Decompress<Self_>, Trait>
-        constexpr auto& getNode(this Self_, auto& node, Trait)
+        constexpr auto getNode(this Self_, auto& node, Trait)
         {
             using Self = detail::Decompress<Self_>;
             return getCluster<Self>(node).getNode(detail::AsRef{}, detail::ResolveLinkTrait<Self, Trait>{});

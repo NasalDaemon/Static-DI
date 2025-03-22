@@ -1,14 +1,10 @@
 #ifndef INCLUDE_DI_REPEATER_HPP
 #define INCLUDE_DI_REPEATER_HPP
 
-#include "di/detail/compress.hpp"
-
 #include "di/alias.hpp"
-#include "di/context_fwd.hpp"
 #include "di/environment.hpp"
 #include "di/node.hpp"
 #include "di/macros.hpp"
-#include "di/map_info.hpp"
 #include "di/trait.hpp"
 #include "di/traits.hpp"
 
@@ -65,9 +61,9 @@ private:
         (apply3(Context{}.getNode(detail::upCast<Node>(repeater), RepeaterTrait<Is>{}), repeater, key, args...), ...);
     }
 
-    static constexpr void apply3(auto& target, auto& repeater, Key const& key, auto&... args)
+    static constexpr void apply3(auto target, auto& repeater, Key const& key, auto&... args)
     {
-        target.finalize(repeater, key)->apply(args...);
+        target.ptr->finalize(repeater, key)->apply(args...);
     }
 };
 

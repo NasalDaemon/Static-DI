@@ -20,6 +20,9 @@ namespace di::detail {
     using CompressImpl = std::remove_cvref_t<T>;
 
     template<class T>
+    using CompressTypes = std::remove_cvref_t<T>;
+
+    template<class T>
     constexpr T& compressImpl(T& impl)
     {
         return impl;
@@ -51,6 +54,17 @@ inline constexpr auto _d1Ci_ = []
     return std::type_identity<Impl>{};
 };
 
+template<class T>
+inline constexpr auto _d1Ct_ = []
+{
+    struct Types : T
+    {
+        static T _di_uncompressedType_();
+        static Types _di_compressedType_();
+    };
+    return std::type_identity<Types>{};
+};
+
 namespace di::detail {
 
     template<class T>
@@ -74,6 +88,10 @@ namespace di::detail {
     template<class T>
     requires (not IsCompressed<T>)
     using CompressImpl = decltype(_d1Ci_<std::remove_cvref_t<T>>())::type;
+
+    template<class T>
+    requires (not IsCompressed<T>)
+    using CompressTypes = decltype(_d1Ct_<std::remove_cvref_t<T>>())::type;
 
     template<class T>
     requires (not IsCompressed<T>)

@@ -21,7 +21,7 @@ namespace trait {
 
         DI_METHODS(Name, NAME_METHODS)
 
-        template<class Self, class T>
+        template<class Self, class T, class Types>
         requires requires (T const c)
         {
             { c.apply(get_c) } -> std::same_as<int>;
@@ -100,7 +100,7 @@ constexpr bool testWithIndex()
 
 static_assert(testWithIndex());
 
-TEST_CASE("TestUnion")
+TEST_CASE("di::Union")
 {
     di::InlineGraph<Union> cat{.onion{0u}};
     di::InlineGraph<Union> dog{.onion{1u}};

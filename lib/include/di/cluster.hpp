@@ -6,6 +6,7 @@
 #include "di/key.hpp"
 #include "di/link.hpp"
 #include "di/macros.hpp"
+#include "di/node_fwd.hpp"
 #include "di/trait.hpp"
 #include "di/trait_view.hpp"
 
@@ -18,7 +19,7 @@ namespace di {
 namespace detail {
     struct OnGraphConstructedVisitor
     {
-        constexpr void operator()(auto& node) const
+        constexpr void operator()(IsNode auto& node) const
         {
             if constexpr (requires { node.onGraphConstructed(); })
                 node.onGraphConstructed();
@@ -38,15 +39,27 @@ struct Cluster
         self.visit(detail::OnGraphConstructedVisitor{});
     }
 
+    template<class Self, IsTrait Trait>
+    requires IsRootContext<ContextParameterOf<Self>>
+    void visitTrait(this Self& self, Trait, auto&& visitor)
+    {
+        self.visit(
+            [&visitor]<IsNode Node>(Node& node)
+            {
+                if constexpr (HasTrait<Node, Trait>)
+                    node.asTrait(Trait{}).visit(DI_FWD(visitor));
+            });
+    }
+
     template<class Self, IsTrait Trait, class Key = ContextParameterOf<Self>::Info::DefaultKey>
     constexpr IsTraitViewOf<Trait, Key> auto getNode(this Self& cluster, Trait trait, Key key = {})
     {
-        auto& target = cluster.getNode(detail::AsRef{}, trait);
+        auto target = cluster.getNode(detail::AsRef{}, trait);
         return makeTraitView(cluster, target, trait, key);
     }
 
     template<class Self, IsTrait Trait>
-    constexpr auto& getNode(this Self& cluster, detail::AsRef, Trait trait)
+    constexpr auto getNode(this Self& cluster, detail::AsRef, Trait trait)
     {
         return detail::getContextParameter(cluster).getNode(cluster, trait);
     }
@@ -65,13 +78,13 @@ struct Cluster
     requires detail::HasLink<Self, Trait>
     constexpr IsTraitViewOf<Trait, Key> auto asTrait(this Self& self, Trait trait, Key key = {})
     {
-        auto& target = self.asTrait(detail::AsRef{}, trait);
+        auto target = self.asTrait(detail::AsRef{}, trait);
         return makeTraitView(self, target, trait, key);
     }
 
     template<class Self, IsTrait Trait>
     requires detail::HasLink<Self, Trait>
-    constexpr auto& asTrait(this Self& cluster, detail::AsRef asRef, Trait)
+    constexpr auto asTrait(this Self& cluster, detail::AsRef asRef, Trait)
     {
         using Target = detail::ResolveLink<Self, Trait>;
         auto& node = cluster.*getNodePointer(AdlTag<typename Target::Context>{});

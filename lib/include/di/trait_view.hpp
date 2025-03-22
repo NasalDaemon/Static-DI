@@ -7,8 +7,8 @@
 #include "di/key.hpp"
 #include "di/trait.hpp"
 #include "di/macros.hpp"
-#include "di/node_fwd.hpp"
 #include "di/traits_fwd.hpp"
+#include "di/empty_types.hpp"
 
 #if !DI_STD_MODULE
 #include <functional>
@@ -83,16 +83,23 @@ struct AutoCompleteTraitView final : Trait::Meta::Methods
 
 // Presents a view over a trait implementation, where only the trait trait functions are accessible
 DI_MODULE_EXPORT
-template<IsTrait Trait, class ImplAlias>
+template<IsTrait Trait, class ImplAlias, class Types_ = EmptyTypes>
 struct TraitView final : Trait::Meta::Methods
 {
-    constexpr TraitView(Trait, ImplAlias impl) : TraitView(impl) {}
+    constexpr TraitView(Trait, ImplAlias impl, std::type_identity<Types_>)
+        : impl(impl)
+    {
+        static_assert(not IsTrait<TraitView>);
+        DI_ASSERT_IMPLEMENTS(typename ImplAlias::Interface, Types, Trait);
+        if constexpr (not std::is_const_v<Impl>)
+            DI_ASSERT_IMPLEMENTS(TraitView, Types, Trait);
+    }
 
     static consteval std::true_type isTrait(MatchesTrait<Trait> auto) { return {}; }
     static consteval std::false_type isTrait(auto) { return {}; }
 
     using Impl = ImplAlias::Impl;
-    using Types = NodeTypes<Impl, Trait>;
+    using Types = detail::Decompress<Types_>;
     struct Traits
     {
         template<std::same_as<TraitView> = TraitView>
@@ -128,37 +135,25 @@ struct TraitView final : Trait::Meta::Methods
     }
 
 private:
-    template<IsTrait Trait1, class Impl1>
-    friend struct TraitView;
-
-    constexpr TraitView(ImplAlias impl)
-    : impl(impl)
-    {
-        static_assert(not IsTrait<TraitView>);
-        DI_ASSERT_IMPLEMENTS(typename ImplAlias::Interface, Trait);
-        if constexpr (not std::is_const_v<Impl>)
-            DI_ASSERT_IMPLEMENTS(TraitView, Trait);
-    }
-
     ImplAlias impl;
 };
 
 DI_MODULE_EXPORT
-template<IsTrait Trait, class ImplAlias>
-TraitView(Trait, ImplAlias) -> TraitView<Trait, ImplAlias>;
+template<IsTrait Trait, class ImplAlias, class Types>
+TraitView(Trait, ImplAlias, std::type_identity<Types>) -> TraitView<Trait, ImplAlias, Types>;
 
 namespace detail {
-    template<class Trait, class Impl>
-    constexpr bool isTraitView<TraitView<Trait, Impl>> = true;
+    template<class Trait, class Impl, class Types>
+    constexpr bool isTraitView<TraitView<Trait, Impl, Types>> = true;
     template<class Trait>
     constexpr bool isTraitView<AutoCompleteTraitView<Trait>> = true;
 }
 
 DI_MODULE_EXPORT
 template<class Trait, class Key>
-constexpr IsTraitViewOf<Trait, Key> auto makeTraitView(auto& source, auto& target, Trait, Key key)
+constexpr IsTraitViewOf<Trait, Key> auto makeTraitView(auto& source, auto target, Trait, Key key)
 {
-    return TraitView(key::Trait<Key, Trait>{}, target.finalize(source, key));
+    return TraitView(key::Trait<Key, Trait>{}, target.ptr->finalize(source, key), target.types());
 }
 
 

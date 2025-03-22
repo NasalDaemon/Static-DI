@@ -19,6 +19,8 @@ struct Alice
         int apply(trait::Alice::get) const;
         void apply(trait::Alice::set, int value);
 
+        void apply(trait::Visitable::count, int& counter);
+
         int alice = 92;
     };
 
@@ -34,6 +36,7 @@ struct Alice
             , trait::Alice*(Types)
             , trait::Bob
             , trait::Charlie
+            , trait::Visitable
         >;
 
         using AliceType = Types::AliceType;

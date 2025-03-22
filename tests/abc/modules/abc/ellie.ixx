@@ -10,6 +10,9 @@ DI_IMPORT_STD;
 
 export namespace abc {
 
+struct EllieType{};
+struct EllieType3{};
+
 struct Ellie : di::Node
 {
     struct Charlie;
@@ -24,9 +27,14 @@ struct Ellie : di::Node
             return self.getNode(trait::charlie).get();
         }
     };
+    struct Ellie3Types
+    {
+        using EllieType = abc::EllieType3;
+    };
 
     using Traits = di::Traits<Ellie
         , trait::Ellie
+        , trait::Ellie3*(Ellie3Types)
         , trait::Charlie(Charlie)
         , trait::Charlie2(Charlie2)
     >;
@@ -34,6 +42,7 @@ struct Ellie : di::Node
     struct Types
     {
         using CharlieType = int;
+        using EllieType = abc::EllieType;
     };
 
     inline Ellie(int value = 101) : value(value) {}

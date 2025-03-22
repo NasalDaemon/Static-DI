@@ -64,7 +64,7 @@ struct SCharlieMocks {
 
 using SCharlieTest = di::test::Graph<Charlie, SCharlieMocks>;
 
-TEST_CASE("TestCharlie")
+TEST_CASE("di::test::Graph")
 {
     struct Mock final : ICharlieMocks
     {

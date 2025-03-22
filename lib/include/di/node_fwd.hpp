@@ -13,9 +13,6 @@
 namespace di {
 
 DI_MODULE_EXPORT
-struct EmptyTypes{};
-
-DI_MODULE_EXPORT
 struct Node;
 
 DI_MODULE_EXPORT

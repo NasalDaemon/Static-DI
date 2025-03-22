@@ -59,12 +59,19 @@ struct Charlie
             , trait::Charlie(Charlie, CharlieTypes)
             , trait::Charlie2(Charlie2, CharlieTypes)
             , trait::Charlie3(Charlie3, CharlieTypes)
+            , trait::Visitable
         >;
 
         using AliceType = AliceTypes::AliceType;
         using CharlieType = CharlieTypes::CharlieType;
 
         void onGraphConstructed() { std::puts("Constructed Charlie"); }
+
+        void apply(trait::Visitable::count, int& counter)
+        {
+            std::puts("trait::Visitable::count: Visited Charlie");
+            counter++;
+        }
 
         ~Node() { std::puts("~Charlie"); }
 

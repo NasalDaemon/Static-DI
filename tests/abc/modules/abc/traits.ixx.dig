@@ -47,8 +47,18 @@ trait Charlie3 = Charlie
 
 trait Ellie
 {
+    type EllieType
+
     get() const -> std::same_as<int> auto
     hi(...)
+}
+
+trait Ellie2 = Ellie
+trait Ellie3 = Ellie
+
+trait Visitable
+{
+    count(int& counter) -> void
 }
 
 }
