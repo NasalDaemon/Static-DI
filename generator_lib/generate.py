@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+import argparse
 import jinja2
 
 from lark import Lark, Tree, Token
@@ -9,24 +10,26 @@ from lark.reconstruct import Reconstructor
 
 from functools import cached_property
 
-import os
 import os.path
-import sys
 
 dirPath = os.path.dirname(os.path.realpath(__file__))
-inputFile, outputFile = sys.argv[1:]
 
-assert inputFile.endswith('.dig'), inputFile
+argParser = argparse.ArgumentParser(
+                    prog='Static-DI generator',
+                    description='Generates cpp source files from Static-DI DSL called dig')
 
-if inputFile.endswith('.ixx.dig'):
-    isModule = True
-    grammarFile = f'{dirPath}/dig_module.lark'
-elif inputFile.endswith('.hxx.dig'):
-    isModule = False
-    grammarFile = f'{dirPath}/dig_header.lark'
-else:
-    assert False, f"{inputFile} has incorrect extension: must end with .ixx.dig or .hxx.dig"
+argParser.add_argument('-i', '--input')
+argParser.add_argument('-o', '--output')
+argParser.add_argument('-m', '--module', action='store_true')
 
+args = argParser.parse_args()
+
+inputFile: str = args.input
+outputFile: str = args.output
+isModule: bool = args.module
+isEmbedded: bool = not inputFile.endswith('.dig')
+
+grammarFile = os.path.join(dirPath, 'dig_module.lark' if isModule else 'dig_header.lark')
 digParser = Lark.open(grammarFile, maybe_placeholders=False, parser='lalr', cache=True)
 
 # Workaround until this PR is merged: https://github.com/lark-parser/lark/pull/1506
@@ -37,7 +40,26 @@ digParser = Lark.open(grammarFile, maybe_placeholders=False, parser='lalr', cach
 reconstuctor = Reconstructor(digParser)
 
 with open(inputFile, 'r') as file:
-    parsed = digParser.parse(file.read())
+    text = file.read()
+    embeddedText = ""
+    if isEmbedded:
+        begin = 'di-embed-begin'
+        end = 'di-embed-end'
+        while True:
+            beginPos = text.find(begin)
+            if beginPos == -1 and embeddedText:
+                break
+            else:
+                assert beginPos != -1, f"'{begin}' not found in {inputFile}"
+
+            beginPos += len(begin)
+            endPos = text.find(end, beginPos)
+            assert endPos != -1, f"matching '{end}' not found in {inputFile}"
+
+            embeddedText += text[beginPos:endPos] + "\n"
+            text = text[endPos + len(end):]
+
+    parsed = digParser.parse(embeddedText or text)
 
 def imported(larkRule: str):
     return f'dig__{larkRule}'
@@ -140,7 +162,10 @@ class Cluster:
     def __init__(self, name: str):
         self.name = name
         self.templates: list[tuple[CppType, str]] = []
-        self.parentNode = Node("..", f"{self.name}<Context>")
+        self.contextName: str = "Context"
+        self.rootName: str | None = None
+        self.infoName: str | None = None
+        self.parentNode = Node("..", self.name)
         self.userNodes: list[Node] = []
         self.repeaters: list[Repeater] = []
         self.nodes: list[Node | Repeater] = []
@@ -169,7 +194,17 @@ class Cluster:
         leftTrait: str
         rightTrait: str
         for child in children:
-            if child.data == imported('node'):
+            if child.data == imported('cluster_annotations'):
+                for ann in child.children:
+                    if ann.children[-1].value == "Context":
+                        self.contextName = ann.children[0].value
+                    elif ann.children[-1].value == "Root":
+                        self.rootName = ann.children[0].value
+                    elif ann.children[-1].value == "Info":
+                        self.infoName = ann.children[0].value
+                    else:
+                        raise SyntaxError(f"Unknown cluster annotation: {ann.children[0].value}")
+            elif child.data == imported('node'):
                 name = child.children[0].value
                 assert name not in nodes, (name, nodes)
                 impl = reconstuctor.reconstruct(child.children[1])
@@ -314,6 +349,7 @@ class Trait:
         self.variable: str = name[0].lower() + name[1:]
         self.typesName: str | None = None
         self.rootName: str | None = None
+        self.infoName: str | None = None
         self.methods: list[Method] = []
         self.methodNames: list[str] = []
         self.requires: list[str] = []
@@ -324,10 +360,14 @@ class Trait:
         for c in children:
             if c.data == imported('trait_annotations'):
                 for ann in c.children:
-                    if ann.children[0].value == "Types":
-                        self.typesName = ann.children[-1].value
-                    elif ann.children[0].value == "Root":
-                        self.rootName =  ann.children[-1].value
+                    if ann.children[-1].value == "Types":
+                        self.typesName = ann.children[0].value
+                    elif ann.children[-1].value == "Root":
+                        self.rootName =  ann.children[0].value
+                    elif ann.children[-1].value == "Info":
+                        self.infoName =  ann.children[0].value
+                    else:
+                        raise SyntaxError(f"Unknown trait annotation: {ann.children[0].value}")
             elif c.data == imported('trait_body'):
                 c = c.children[0]
                 if c.data == imported('trait_type'):
@@ -338,6 +378,10 @@ class Trait:
                     if self.rootName is None:
                         self.rootName = "Root_T_" # use ugly name if not specified to avoid shadowing
                     self.requires.append(f"typename {self.rootName}::{c.children[0].value};")
+                elif c.data == imported('trait_info'):
+                    if self.infoName is None:
+                        self.infoName = "Info_T_" # use ugly name if not specified to avoid shadowing
+                    self.requires.append(f"typename {self.infoName}::{c.children[0].value};")
                 elif c.data == imported('trait_method_signature'):
                     method = Method()
                     method.walk(c.children)

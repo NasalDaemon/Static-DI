@@ -64,6 +64,9 @@ namespace {{ namespace.name }} {
     {%- if trait.rootName -%}
         , class {{ trait.rootName }} = di::ResolveRoot<di::ContextOf<Impl>>
     {%- endif -%}
+    {%- if trait.infoName -%}
+        , class {{ trait.infoName }} = di::ResolveInfo<di::ContextOf<Impl>>
+    {%- endif -%}
     >
     requires requires (Impl impl_, Impl const const_)
     {
@@ -146,7 +149,7 @@ template<
     {{ comma() }}{{ prefix }}{{ prefix.pack }} {{ name }}
     {%- endfor -%}
 >
-template<class Context>
+template<class {{ cluster.contextName }}>
 struct {{ cluster.name }}<
     {%- set comma = joiner(", ") -%}
     {%- for prefix, name in cluster.templates -%}
@@ -154,10 +157,16 @@ struct {{ cluster.name }}<
     {%- endfor -%}
 >::Node : di::Cluster
 {% else %}
-template<class Context>
+template<class {{ cluster.contextName }}>
 struct {{ cluster.nodeName() }} : di::Cluster
 {% endif %}
 {
+    {% if cluster.rootName %}
+    using {{ cluster.rootName }} = di::ResolveRoot<{{ cluster.contextName }}>;
+    {% endif %}
+    {% if cluster.infoName %}
+    using {{ cluster.infoName }} = di::ResolveInfo<{{ cluster.contextName }}>;
+    {% endif %}
     {% for node in cluster.nodes %}
     struct {{ node.context }};
     {% endfor %}
@@ -179,7 +188,8 @@ struct {{ cluster.nodeName() }} : di::Cluster
     {% endif %}
 
     {% for node in cluster.nodes %}
-    struct {{ node.context }} : di::Context<{{ cluster.nodeName() }}, {{ node.impl }}>
+    using {{ node.context }}Node_ = {{ node.impl }};
+    struct {{ node.context }} : di::Context<{{ cluster.nodeName() }}, {{ node.context }}Node_>
     {
         {% for connection in node.connections %}
         {% if connection.isRenaming() %}

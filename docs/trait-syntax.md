@@ -2,7 +2,7 @@
 
 A trait is an interface to be presented by one node to another in order to satisfy a dependency. In a [cluster](cluster-syntax.md), all node dependencies are to be satisfied by connecting to the appropriate providing nodes by the name of the trait that they implement. As a result, on each dependent node, a `my::TraitName::method` on the providing node can be invoked via `getNode(my::traitName).method(args...)`, and a `TypeName` can be resolved via `di::ResolveTypes<Context, my::TraitName>::TypeName`. Please see the example [here](modules-example.md#sessionsixx).
 
-With Static-DI, one can use a special DSL (Domain Specific Language) to define traits (and [clusters](cluster-syntax.md)). The DSL is designed to provide and constrain the methods that can be called from the result of `getNode(my::traitName)`, and also to list any further type requirements of each implementation. The traits are to be defined in separate files next to your other source files with the extension `.ixx.dig` (module) or `.hxx.dig` (header).
+With Static-DI, one can use a special DSL (Domain Specific Language) called "dig", to define traits (and [clusters](cluster-syntax.md)). Dig is designed to provide and constrain the methods that can be called from the result of `getNode(my::traitName)`, and also to list any further type requirements of each implementation. The traits are to be defined in separate files next to your other source files with the extension `.ixx.dig` (module) or `.hxx.dig` (header).
 
 The provided CMake functions `target_generate_di_modules()` and `target_generate_di_headers()` automatically generate `.ixx` or `.hxx` files from the `.ixx.dig` and `.hxx.dig` files, found recursively in the source directory, and adds them to the target. In the case of a generated `.hxx` file, each resulting include path is identical to the include path of the respective `.hxx.dig` file.
 
@@ -10,7 +10,7 @@ The provided CMake functions `target_generate_di_modules()` and `target_generate
 
 ### Header includes and module imports
 
-Header includes and module imports should be listed at the top of the file, [see here](dig-headers.md) for further information.
+Header includes and module imports should be listed at the top of the file, [see here](dig-files.md) for further information.
 
 ### Defining a trait
 
@@ -51,29 +51,31 @@ trait Complex
     complex(T t, U&& u, Int i, auto a, std::same_as<double> auto d) -> std::same_as<double>
 }
 
-// If requirements on the trait types need to be enforced
-trait Trait2 [Types: T]
+// If requirements on the trait types need to be enforced, use annotations.
+// NB: Without annotations, the type names are implementation-defined,
+// and so should not be used inside the trait.
+trait Trait2 [T = Types]
 {
     type Int
-    // equivalent to:
+    // does not need the annotation - equivalent to:
     // requires typename T::Int
 
-    // Can add extra constraint to Int (using name specified after `Types:`)
+    // Can add extra constraint to Int (using name specified in annotation)
     requires std::integral<typename T::Int>
 }
 
 // If requirements on the root types need to be enforced
-trait Trait3 [Root: R]
+trait Trait3 [R = Root]
 {
     root Int
-    // equivalent to:
+    // does not need the annotation - equivalent to:
     // requires typename R::Int
 
-    // Can add extra constraint to Int (using name specified after `Root:`)
+    // Can add extra constraint to Int (using name specified in annotation)
     requires std::integral<typename R::Int>
 }
 
-// It is not necessary to rename Types or Root
+// It is not necessary to give Types or Root alternative names in the annotation
 trait Trait4 [Types, Root]
 {
     requires std::integral<typename Types::Int>

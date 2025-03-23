@@ -121,8 +121,8 @@ function(target_generate_di_headers TARGET_NAME)
     di_import_properties()
 
     set(options)
-    set(oneValueArgs INCLUDE_DIR)
-    set(multiValueArgs GLOB FILES)
+    set(oneValueArgs INCLUDE_DIR ID)
+    set(multiValueArgs GLOB FILES EMBED)
     cmake_parse_arguments(arg "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     set(INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/${arg_INCLUDE_DIR}")
@@ -132,22 +132,23 @@ function(target_generate_di_headers TARGET_NAME)
             list(APPEND GLOB_EXPRESSIONS "${INCLUDE_DIR}/${SUB_DIR}/*.hxx.dig")
         endforeach()
         file(GLOB_RECURSE INPUT_FILES RELATIVE ${INCLUDE_DIR} CONFIGURE_DEPENDS ${GLOB_EXPRESSIONS})
-    elseif(NOT DEFINED arg_FILES OR "GLOB" IN_LIST arg_KEYWORDS_MISSING_VALUES)
+    elseif((NOT DEFINED arg_FILES AND NOT DEFINED arg_EMBED) OR "GLOB" IN_LIST arg_KEYWORDS_MISSING_VALUES)
         file(GLOB_RECURSE INPUT_FILES RELATIVE ${INCLUDE_DIR} CONFIGURE_DEPENDS "${INCLUDE_DIR}/*.hxx.dig")
     endif()
 
-    list(APPEND INPUT_FILES ${arg_FILES})
-    list(SORT INPUT_FILES)
-    list(REMOVE_DUPLICATES INPUT_FILES)
-
-    foreach(INPUT_FILE ${INPUT_FILES})
+    macro(generate WORKING_DIR INPUT_FILE EMBED_PATH)
         get_filename_component(INPUT_FILE_NAME "${INPUT_FILE}" NAME)
-        get_filename_component(INPUT_FILE_WLE "${INPUT_FILE}" NAME_WLE)
+        get_filename_component(INPUT_FILE_LE "${INPUT_FILE}" LAST_EXT)
         get_filename_component(INPUT_CLONE_PATH "${DI_GENERATOR_CLONE_DIR}/${INPUT_FILE}" DIRECTORY)
-        get_filename_component(OUTPUT_INCLUDE_PATH "${DI_GENERATOR_INCLUDE_DIR}/${INPUT_FILE}" DIRECTORY)
+        if(INPUT_FILE_LE STREQUAL ".dig")
+            get_filename_component(OUTPUT_INCLUDE_PATH "${DI_GENERATOR_INCLUDE_DIR}/${INPUT_FILE}" DIRECTORY)
+            get_filename_component(INPUT_FILE_WLE "${INPUT_FILE}" NAME_WLE)
+            set(OUTPUT_FILE "${OUTPUT_INCLUDE_PATH}/${INPUT_FILE_WLE}")
+        else()
+            set(OUTPUT_FILE "${DI_GENERATOR_INCLUDE_DIR}/${EMBED_PATH}")
+            get_filename_component(OUTPUT_INCLUDE_PATH "${OUTPUT_FILE}" DIRECTORY)
+        endif()
         set(INPUT_CLONE "${INPUT_CLONE_PATH}/${INPUT_FILE_NAME}")
-        set(OUTPUT_FILE "${OUTPUT_INCLUDE_PATH}/${INPUT_FILE_WLE}")
-
         list(APPEND INPUT_CLONES "${INPUT_CLONE}")
 
         add_custom_command(
@@ -155,27 +156,44 @@ function(target_generate_di_headers TARGET_NAME)
             BYPRODUCTS ${OUTPUT_FILE}
             DEPENDS
                 di_generator_python
-                "${INCLUDE_DIR}/${INPUT_FILE}"
+                "${WORKING_DIR}/${INPUT_FILE}"
                 "${DI_GENERATOR_DIR}/generate.py"
                 "${DI_GENERATOR_DIR}/dig_header.lark"
                 "${DI_GENERATOR_DIR}/dig.lark"
                 "${DI_GENERATOR_DIR}/template.hxx.jinja"
                 "${DI_GENERATOR_DIR}/template.jinja"
-            COMMAND ${CMAKE_COMMAND} -E copy "${INCLUDE_DIR}/${INPUT_FILE}" "${INPUT_CLONE}"
+            COMMAND ${CMAKE_COMMAND} -E copy "${INPUT_FILE}" "${INPUT_CLONE}"
             COMMAND ${CMAKE_COMMAND} -E make_directory "${OUTPUT_INCLUDE_PATH}"
-            COMMAND ${DI_GENERATOR_PYTHON} ${DI_GENERATOR_DIR}/generate.py "${INPUT_FILE}" "${OUTPUT_FILE}"
-            WORKING_DIRECTORY "${INCLUDE_DIR}"
+            COMMAND ${DI_GENERATOR_PYTHON} ${DI_GENERATOR_DIR}/generate.py -i ${INPUT_FILE} -o ${OUTPUT_FILE}
+            WORKING_DIRECTORY "${WORKING_DIR}"
             COMMENT "${TARGET_NAME}_hxx_dig: ${INPUT_FILE}"
         )
+    endmacro(generate)
+
+    if(arg_ID)
+        set(CUSTOM_TARGET "${TARGET_NAME}_${arg_ID}_hxx_dig")
+    else()
+        set(CUSTOM_TARGET "${TARGET_NAME}_hxx_dig")
+    endif()
+
+    add_dependencies(${TARGET_NAME} ${CUSTOM_TARGET})
+
+    target_include_directories(${TARGET_NAME} PUBLIC ${DI_GENERATOR_INCLUDE_DIR})
+
+    list(APPEND INPUT_FILES ${arg_FILES})
+    list(SORT INPUT_FILES)
+    list(REMOVE_DUPLICATES INPUT_FILES)
+
+    foreach(INPUT_FILE ${INPUT_FILES})
+        generate("${INCLUDE_DIR}" "${INPUT_FILE}" "")
     endforeach()
 
-    add_custom_target(
-        "${TARGET_NAME}_hxx_dig"
-        DEPENDS ${INPUT_CLONES}
-    )
+    while(arg_EMBED)
+        list(POP_FRONT arg_EMBED INPUT_FILE EMBED_PATH)
+        generate("${CMAKE_CURRENT_SOURCE_DIR}" "${INPUT_FILE}" "${EMBED_PATH}")
+    endwhile()
 
-    add_dependencies(${TARGET_NAME} "${TARGET_NAME}_hxx_dig")
-    target_include_directories(${TARGET_NAME} PUBLIC ${DI_GENERATOR_INCLUDE_DIR})
+    add_custom_target("${CUSTOM_TARGET}" DEPENDS ${INPUT_CLONES})
 
 endfunction(target_generate_di_headers)
 
@@ -184,8 +202,8 @@ function(target_generate_di_modules TARGET_NAME)
     di_import_properties()
 
     set(options)
-    set(oneValueArgs MODULE_DIR)
-    set(multiValueArgs GLOB FILES)
+    set(oneValueArgs MODULE_DIR ID)
+    set(multiValueArgs GLOB FILES EMBED)
     cmake_parse_arguments(arg "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     set(MODULE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/${arg_MODULE_DIR}")
@@ -195,22 +213,27 @@ function(target_generate_di_modules TARGET_NAME)
             list(APPEND GLOB_EXPRESSIONS "${MODULE_DIR}/${SUB_DIR}/*.ixx.dig")
         endforeach()
         file(GLOB_RECURSE INPUT_FILES RELATIVE ${MODULE_DIR} CONFIGURE_DEPENDS ${GLOB_EXPRESSIONS})
-    elseif(NOT DEFINED arg_FILES OR "GLOB" IN_LIST arg_KEYWORDS_MISSING_VALUES)
+    elseif((NOT DEFINED arg_FILES AND NOT DEFINED arg_EMBED) OR "GLOB" IN_LIST arg_KEYWORDS_MISSING_VALUES)
         file(GLOB_RECURSE INPUT_FILES RELATIVE ${MODULE_DIR} CONFIGURE_DEPENDS "${MODULE_DIR}/*.ixx.dig")
     endif()
 
     list(APPEND INPUT_FILES ${arg_FILES})
+    list(APPEND INPUT_FILES ${arg_EMBED})
     list(SORT INPUT_FILES)
     list(REMOVE_DUPLICATES INPUT_FILES)
 
     foreach(INPUT_FILE ${INPUT_FILES})
         get_filename_component(INPUT_FILE_NAME "${INPUT_FILE}" NAME)
-        get_filename_component(INPUT_FILE_WLE "${INPUT_FILE}" NAME_WLE)
+        get_filename_component(INPUT_FILE_LE "${INPUT_FILE}" LAST_EXT)
         get_filename_component(INPUT_CLONE_PATH "${DI_GENERATOR_CLONE_DIR}/${INPUT_FILE}" DIRECTORY)
         get_filename_component(OUTPUT_MODULE_PATH "${DI_GENERATOR_MODULES_DIR}/${INPUT_FILE}" DIRECTORY)
         set(INPUT_CLONE "${INPUT_CLONE_PATH}/${INPUT_FILE_NAME}")
-        set(OUTPUT_FILE "${OUTPUT_MODULE_PATH}/${INPUT_FILE_WLE}")
-
+        if(INPUT_FILE_LE STREQUAL ".dig")
+            get_filename_component(INPUT_FILE_WLE "${INPUT_FILE}" NAME_WLE)
+            set(OUTPUT_FILE "${OUTPUT_MODULE_PATH}/${INPUT_FILE_WLE}")
+        else()
+            set(OUTPUT_FILE "${OUTPUT_MODULE_PATH}/${INPUT_FILE_NAME}.embed.ixx")
+        endif()
         list(APPEND INPUT_CLONES "${INPUT_CLONE}")
         list(APPEND OUTPUT_FILES "${OUTPUT_FILE}")
 
@@ -227,18 +250,21 @@ function(target_generate_di_modules TARGET_NAME)
                 "${DI_GENERATOR_DIR}/template.ixx.jinja"
             COMMAND ${CMAKE_COMMAND} -E copy "${INPUT_FILE}" "${INPUT_CLONE}"
             COMMAND ${CMAKE_COMMAND} -E make_directory "${OUTPUT_MODULE_PATH}"
-            COMMAND ${DI_GENERATOR_PYTHON} ${DI_GENERATOR_DIR}/generate.py "${INPUT_FILE}" "${OUTPUT_FILE}"
+            COMMAND ${DI_GENERATOR_PYTHON} ${DI_GENERATOR_DIR}/generate.py -m -i "${INPUT_FILE}" -o "${OUTPUT_FILE}"
             WORKING_DIRECTORY "${MODULE_DIR}"
             COMMENT "${TARGET_NAME}_ixx_dig: ${INPUT_FILE}"
         )
     endforeach()
 
-    add_custom_target(
-        "${TARGET_NAME}_ixx_dig"
-        DEPENDS ${INPUT_CLONES}
-    )
+    if(arg_ID)
+        set(CUSTOM_TARGET "${TARGET_NAME}_${arg_ID}_ixx_dig")
+    else()
+        set(CUSTOM_TARGET "${TARGET_NAME}_ixx_dig")
+    endif()
 
-    add_dependencies(${TARGET_NAME} "${TARGET_NAME}_ixx_dig")
+    add_custom_target(${CUSTOM_TARGET} DEPENDS ${INPUT_CLONES})
+
+    add_dependencies(${TARGET_NAME} ${CUSTOM_TARGET})
 
     target_sources(${TARGET_NAME} PUBLIC
         FILE_SET di_modules TYPE CXX_MODULES

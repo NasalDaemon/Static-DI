@@ -18,7 +18,7 @@ while [[ "$#" -gt 0 ]]; do
     shift
 done
 
-# sudo apt install cmake ninja-build python3 pipx
+# sudo apt install cmake ninja-build mold python3 pipx
 # pipx install conan
 BUILD_TYPE=$BUILD_TYPE \
     conan install . --output-folder=build --build=missing --profile=conanprofile.txt

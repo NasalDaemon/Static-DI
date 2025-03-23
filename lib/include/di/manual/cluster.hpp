@@ -6,6 +6,7 @@
 #include "di/link.hpp"
 #include "di/macros.hpp"
 #include "di/node_fwd.hpp"
+#include "di/resolve.hpp"
 #include "di/repeater.hpp"
 
 

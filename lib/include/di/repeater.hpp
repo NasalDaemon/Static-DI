@@ -5,6 +5,7 @@
 #include "di/environment.hpp"
 #include "di/node.hpp"
 #include "di/macros.hpp"
+#include "di/resolve.hpp"
 #include "di/trait.hpp"
 #include "di/traits.hpp"
 

@@ -5,19 +5,24 @@ INCLUDE_GLOBAL_FILE: "#include <" /[^\r\n>]+/ ">"
 
 namespace: "namespace" NAMESPACE "{" (cluster | trait)+ "}"
 
-cluster: [template_params] "cluster" FQNAME "{" node+ connection_block+ "}"
+cluster: [template_params] "cluster" FQNAME [cluster_annotations] "{" node+ connection_block+ "}"
+
+cluster_annotations: "[" cluster_annotation ["," cluster_annotation] "]"
+cluster_annotation: [NAME "="] CLUSTER_ANNOTATION_NAME
+CLUSTER_ANNOTATION_NAME.1: "Context" | "Root" | "Info"
 
 trait: "trait" FQNAME [trait_annotations] "{" trait_body+ "}" -> trait_def
      | "trait" FQNAME "=" FQNAME ("+" FQNAME)*                -> trait_alias
 
 trait_annotations: "[" trait_annotation ["," trait_annotation] "]"
-trait_annotation: TRAIT_ANNOTATION_NAME [":" NAME]
-TRAIT_ANNOTATION_NAME: "Types" | "Root"
+trait_annotation: [NAME "="] TRAIT_ANNOTATION_NAME
+TRAIT_ANNOTATION_NAME.1: "Types" | "Root" | "Info"
 
 trait_body: trait_type | trait_root | trait_requires | trait_method
 
 trait_type: "type" NAME
 trait_root: "root" NAME
+trait_info: "info" NAME
 
 trait_requires: trait_requires_inline
               | trait_requires_block

@@ -1,5 +1,5 @@
 # Static-DI
-Dependency injection without runtime dispatch or heap allocations. Standalone C++23 library which may be imported as a C++20 module.
+Dependency injection framework without the need for runtime dispatch, virtual calls, or heap allocations. Standalone C++23 library which may be imported as a C++20 module. Designed to be used in resource constrained environments such as embedded systems, or where high performance is absolutely paramount and cannot be compromised.
 
 ## Compiler Support
 - [x] Clang 20+
@@ -21,10 +21,16 @@ You can link the modularized library (so you can `import di;`), with
 ```CMake
 target_link_library(your_modules_lib PUBLIC di::module)
 ```
-To generate .ixx files from .ixx.dig files and add them to the target:
+To generate module files from the Static-DI DSL (aka dig), use `target_generate_di_modules`.
 ```CMake
-target_generate_di_modules(your_modules_lib [MODULE_DIR dir=${CMAKE_CURRENT_SOURCE_DIR}] [GLOB dir...] [FILES file...])
+target_generate_di_modules(your_modules_lib
+    [MODULE_DIR rel/path=""]
+    [GLOB rel/path...]  # explicitly list dirs to search for .ixx.dig files
+    [FILES rel/path...] # explicitly list .ixx.dig files
+    [EMBED rel/path...] # explicitly list files with embedded dig
+)
 ```
+It generates .ixx modules from .ixx.dig files, and .ixx modules from any files listed in EMBED. All generated modules are added to the target.
 </details>
 <details>
 <summary>Headers</summary>
@@ -34,10 +40,17 @@ You can link the header library (so you can `#include <di/di.hpp>`), with
 ```CMake
 target_link_library(your_headers_lib PUBLIC di::di)
 ```
-To generate .hxx files from .hxx.dig files and add them to the target with the same include path:
+To generate header files from the Static-DI DSL (aka dig), use `target_generate_di_headers`.
 ```CMake
-target_generate_di_headers(your_headers_lib [INCLUDE_DIR dir=${CMAKE_CURRENT_SOURCE_DIR}] [GLOB dir...] [FILES file...])
+target_generate_di_headers(your_headers_lib
+    [INCLUDE_DIR rel/path=""]
+    [GLOB rel/path...]  # explicitly list dirs to search for .hxx.dig files
+    [FILES rel/path...] # explicitly list .hxx.dig files
+    # explicitly list files with embedded dig
+    [EMBED rel/input/path full/include/header.hxx]...
+)
 ```
+It generates .hxx headers from .hxx.dig files, and header files from any files listed in EMBED. All files generated from .hxx.dig are added to the target with the same include path as the input .hxx.dig files. All generated headers from embed files can be included with `#include "full/include/header.hxx"`
 <details>
 <summary>Generating .cpp files for parallel compilation of nodes and faster incremental builds</summary>
 
@@ -71,7 +84,8 @@ target_generate_di_src(your_headers_lib
 </details>
 
 ### Documentation and Examples
-- [Module-based example project](docs/modules-example.md)
+- [Example project using modules](docs/modules-example.md)
 - [Defining a node](docs/node-structure.md)
-- [Cluster syntax](docs/cluster-syntax.md)
-- [Trait syntax](docs/trait-syntax.md)
+- [DIG cluster syntax](docs/cluster-syntax.md)
+- [DIG trait syntax](docs/trait-syntax.md)
+- [Embedding DIG into source files](docs/dig-embed.md)

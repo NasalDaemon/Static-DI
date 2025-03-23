@@ -60,6 +60,7 @@ target_generate_di_modules(my_app)
 ```
 
 ## traits.ixx.dig
+`my::trait::AuthService`, `my::trait::TokenStore`, `my::trait::SessionManager`: traits for nodes to implement. See full trait syntax [documentation](trait-syntax.md).
 ```
 export module my.traits;
 
@@ -68,7 +69,7 @@ import my.task; // not shown in example
 
 namespace my::trait {
 
-trait AuthService [Types]
+trait AuthService
 {
     // Ensures Token type can be resolved by clients of this trait
     type Token
@@ -108,7 +109,7 @@ trait SessionManager [Types]
 ```
 
 ## cluster.ixx.dig
-`my::Cluster`: A cluster of interconnected nodes implementing the traits
+`my::Cluster`: A cluster of interconnected nodes implementing the traits. See full cluster syntax [documentation](cluster-syntax.md).
 ```
 export module my.cluster;
 
@@ -163,7 +164,7 @@ namespace my {
 }
 ```
 ## auth_service.ixx
-`my::AuthService` node implements the trait `my::trait::AuthService`
+`my::AuthService` node implements the trait `my::trait::AuthService`. See node [documentation](node-structure.md).
 ```cpp
 export module my.auth_service;
 
@@ -233,6 +234,7 @@ export struct AuthService : di::Node
         co_return success;
     }
 
+    // These are implemented in a separate file: auth_service.cpp (not shown)
     // Queries database asynchronously and returns `true` in calling thread if the pass is valid.
     Task<bool> dbValidPass(std::string_view user, std::string_view pass) const;
     Task<bool> dbChangePass(std::string_view user, std::string_view oldPass, std::string_view newPass) const;
@@ -253,7 +255,7 @@ export struct AuthService : di::Node
 }
 ```
 ## sessions.ixx
-`my::Sessions` node implements the traits `my::trait::TokenStore` and `my::trait::SessionManager`
+`my::Sessions` node implements the traits `my::trait::TokenStore` and `my::trait::SessionManager`. See node [documentation](node-structure.md).
 ```cpp
 export module my.sessions;
 
@@ -266,7 +268,7 @@ namespace my {
 
 export struct Sessions
 {
-    // If implementing a node with data type dependencies, a nested
+    // If implementing a node with data type dependencies in its state, a nested
     // Node<Context> template class is needed to query the types in the graph
     template<class Context>
     struct Node : di::Node

@@ -10,7 +10,7 @@ trait AliceRead [Types]
     requires typename Types::AliceType
 }
 
-trait AliceWrite [Types, Root: R]
+trait AliceWrite [Types, R = Root]
 {
     set(int value)
 
