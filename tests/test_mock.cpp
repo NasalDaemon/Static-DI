@@ -18,6 +18,7 @@ trait di::test::trait::MockTest
 {
     takesNothing() const
     takesInt(int i)
+    returnsRef() -> int&
 }
 
 di-embed-end */
@@ -26,6 +27,8 @@ using namespace di::test;
 
 struct MockTestNode : di::Node
 {
+    using Traits = di::Traits<MockTestNode>;
+
     int testNothing(this auto& self)
     {
         return self.getNode(trait::mockTest).takesNothing();
@@ -34,13 +37,16 @@ struct MockTestNode : di::Node
     {
         return self.getNode(trait::mockTest).takesInt(i);
     }
-
-    using Traits = di::Traits<MockTestNode>;
+    int& testRef(this auto& self)
+    {
+        return self.getNode(trait::mockTest).returnsRef();
+    }
 };
 
 TEST_CASE("di::test::Mock")
 {
     di::test::Graph<MockTestNode> g;
+    int i = 101;
 
     CHECK(0 == g.mocks->methodCallCount(trait::MockTest::takesNothing{}));
     CHECK(0 == g.mocks->methodCallCount(trait::MockTest::takesInt{}));
@@ -55,17 +61,30 @@ TEST_CASE("di::test::Mock")
         [](trait::MockTest::takesInt, int i)
         {
             return 99 - i;
+        },
+        [&](trait::MockTest::returnsRef) -> int&
+        {
+            return i;
         });
     CHECK(99 == g.node->testNothing());
     CHECK(91 == g.node->testInt(8));
 
+    int& ref = g.node->testRef();
+    CHECK(101 == i);
+    CHECK(101 == ref);
+    i = 88;
+    CHECK(88 == i);
+    CHECK(88 == ref);
+
     CHECK(1 == g.mocks->methodCallCount(trait::MockTest::takesNothing{}));
     CHECK(1 == g.mocks->methodCallCount(trait::MockTest::takesInt{}));
+    CHECK(1 == g.mocks->methodCallCount(trait::MockTest::returnsRef{}));
 
     g.mocks->reset();
 
     CHECK(0 == g.mocks->methodCallCount(trait::MockTest::takesNothing{}));
     CHECK(0 == g.mocks->methodCallCount(trait::MockTest::takesInt{}));
+    CHECK(0 == g.mocks->methodCallCount(trait::MockTest::returnsRef{}));
 
     // Default behaviour is to return default value
 

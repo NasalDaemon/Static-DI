@@ -16,36 +16,97 @@
 #include <typeindex>
 #include <typeinfo>
 #include <type_traits>
+#include <variant>
 #include <vector>
 #endif
 
 namespace di::test {
 
+namespace detail {
+
+    struct MockReturn
+    {
+        template<class T>
+        operator T&()
+        {
+            if (std::any* any = std::get_if<std::any>(&value))
+            {
+                if (T* p = std::any_cast<T>(any))
+                    return *p;
+                throw std::bad_any_cast();
+            }
+            else if (Ref* ref = std::get_if<Ref>(&value))
+            {
+                if (ref->type != std::type_index{typeid(T&)} or not ref->lref)
+                    throw std::bad_any_cast();
+                return *static_cast<T*>(ref->ptr);
+            }
+            else if (returnDefault)
+            {
+                return value.emplace<std::any>().emplace<T>();
+            }
+            throw std::bad_any_cast();
+        }
+
+        template<class T>
+        operator T&&()
+        {
+            if (std::any* any = std::get_if<std::any>(&value))
+            {
+                if (T* p = std::any_cast<T>(any))
+                    return std::move(*p);
+                throw std::bad_any_cast();
+            }
+            else if (Ref* ref = std::get_if<Ref>(&value))
+            {
+                if (ref->type != std::type_index{typeid(T&&)} or ref->lref)
+                    throw std::bad_any_cast();
+                return std::move(*static_cast<T*>(ref->ptr));
+            }
+            else if (returnDefault)
+            {
+                return std::move(value.emplace<std::any>().emplace<T>());
+            }
+            throw std::bad_any_cast();
+        }
+
+        template<class T, class Arg>
+        void emplace(Arg&& arg)
+        {
+            if constexpr (std::is_reference_v<T>)
+                value.emplace<Ref>(std::addressof(arg), typeid(T), std::is_lvalue_reference_v<T>);
+            else
+                value.emplace<std::any>(std::in_place_type<T>, std::forward<Arg>(arg));
+        }
+
+        void reset() { value.emplace<std::monostate>(); }
+
+        void setReturnDefault() { returnDefault = true; }
+
+    private:
+        bool returnDefault = false;
+
+        struct Ref
+        {
+            void* ptr = nullptr;
+            std::type_index type;
+            bool lref = false;
+        };
+        std::variant<std::monostate, std::any, Ref> value;
+    };
+
+    using MockDef = std::function<void(MockReturn& result, void** args)>;
+    struct MockDefs
+    {
+        MockDef con, mut;
+    };
+
+} // namespace detail
+
 DI_MODULE_EXPORT
 struct Mock
 {
     using ArgTypes = std::vector<std::type_index>;
-
-    struct Return
-    {
-        template<class T>
-        operator T()
-        {
-            if (not value.has_value() and returnDefault)
-                return T();
-            if (auto* p = std::any_cast<T>(&value))
-                return static_cast<T>(*p);
-            throw std::bad_any_cast();
-        }
-        std::any value;
-        bool returnDefault = false;
-    };
-
-    using Def = std::function<void(Return& result, void** args)>;
-    struct Defs
-    {
-        Def con, mut;
-    };
 
     enum DefaultBehaviour
     {
@@ -86,7 +147,7 @@ struct Mock
         }
 
         template<class Self, class Tag, class... Args>
-        Return apply(this Self& self, Tag, Args&&... args)
+        detail::MockReturn apply(this Self& self, Tag, Args&&... args)
         {
             ArgTypes argTypes{
                 std::type_index{typeid(Tag)},
@@ -95,7 +156,7 @@ struct Mock
             self.methodCountMap[std::type_index{typeid(Tag)}]++;
             self.definitionCountMap[argTypes]++;
 
-            Def* impl = nullptr;
+            detail::MockDef* impl = nullptr;
             if (auto const it = self.definitions.find(argTypes); it != self.definitions.end())
             {
                 if constexpr (std::is_const_v<Self>)
@@ -112,7 +173,7 @@ struct Mock
                 }
             }
 
-            Return result;
+            detail::MockReturn result;
             if (impl != nullptr)
             {
                 if constexpr (sizeof...(args) > 0)
@@ -130,13 +191,13 @@ struct Mock
                 switch (self.defaultBehaviour)
                 {
                 case ReturnDefault:
-                    result.returnDefault = true;
+                    result.setReturnDefault();
                     break;
                 case ThrowIfMissing:
                     {
                     std::string error = "Mock implementation not defined for apply(";
-                    error += detail::typeName<Tag>();
-                    ((error += ", ", error += detail::typeName<Args>()), ...);
+                    error += di::detail::typeName<Tag>();
+                    ((error += ", ", error += di::detail::typeName<Args>()), ...);
                     if constexpr (std::is_const_v<Self>)
                         error += ") const";
                     else
@@ -179,23 +240,27 @@ struct Mock
                 std::type_index{typeid(std::remove_cvref_t<Tag>)},
                 std::type_index{typeid(Args)}...};
             auto& defs = definitions[argTypes];
-            auto& def = isConst ? defs.con : defs.mut;
-            def =
-                [f = std::forward<F>(f)](Return& result, void** args)
+            (isConst ? defs.con : defs.mut) =
+                [f = std::forward<F>(f)](this auto&, detail::MockReturn& result, void** args)
                 {
-                    auto invoke = [&]<std::size_t... I>(std::index_sequence<I...>)
+                    [&]<std::size_t... I>(std::index_sequence<I...>) -> decltype(auto)
                     {
-                        return std::invoke(f, Tag{}, (Args&&)(*(std::remove_cvref_t<Args>*)(args[I]))...);
-                    };
-                    if constexpr (std::is_void_v<R>)
-                        invoke(std::index_sequence_for<Args...>{});
-                    else
-                        result.value.template emplace<R>(invoke(std::index_sequence_for<Args...>{}));
+                        if constexpr (std::is_void_v<R>)
+                        {
+                            result.reset();
+                            std::invoke(f, Tag{}, static_cast<Args&&>(*static_cast<std::remove_cvref_t<Args>*>(args[I]))...);
+                        }
+                        else
+                        {
+                            result.emplace<R>(
+                                std::invoke(f, Tag{}, static_cast<Args&&>(*static_cast<std::remove_cvref_t<Args>*>(args[I]))...));
+                        }
+                    }(std::index_sequence_for<Args...>{});
                 };
         }
 
         DefaultBehaviour defaultBehaviour = DefaultBehaviour::ReturnDefault;
-        mutable std::map<ArgTypes, Defs> definitions;
+        mutable std::map<ArgTypes, detail::MockDefs> definitions;
         mutable std::map<ArgTypes, std::size_t> definitionCountMap;
         mutable std::map<std::type_index, std::size_t> methodCountMap;
     };
