@@ -28,6 +28,6 @@ cmake .. --preset conan-default \
     -DCMAKE_COLOR_DIAGNOSTICS=ON \
     -DCMAKE_CXX_MODULE_STD=$STD_MODULE
 cmake --build . --config $BUILD_TYPE
-ctest --build-config $BUILD_TYPE
+ctest --build-config $BUILD_TYPE --output-on-failure
 popd
 popd

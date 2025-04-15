@@ -65,6 +65,10 @@ export namespace di {
     // map_info.hpp
     using di::IsInfoMapper;
     using di::MapInfo;
+    // mock.hpp
+    namespace test {
+        using test::Mock;
+    }
     // node_fwd.hpp
     using di::Node;
     using di::IsNode;

@@ -16,6 +16,7 @@ add_executable(di_test_module
     test_abc_module.cpp
     test_charlie.cpp
     test_embedded_modules.cpp
+    test_mock.cpp
     test_union.cpp
     repeater/main.cpp
     thread/main.cpp
@@ -34,6 +35,7 @@ target_generate_di_modules(di_test_module
         thread
     EMBED
         test_embedded_modules.cpp
+        test_mock.cpp
 )
 
 target_sources(di_test_module

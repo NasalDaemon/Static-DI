@@ -2,7 +2,7 @@ start: [includes] export_module import_module* (namespace | cluster | trait)+
 
 includes: "module;" include*
 
-export_module: ["export"] "module" MODULE_NAME ";"
+export_module: "export" "module" MODULE_NAME ";"
 
 import_module: MODULE_IMPORT MODULE_NAME ";"
 

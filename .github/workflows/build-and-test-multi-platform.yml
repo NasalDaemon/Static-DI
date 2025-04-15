@@ -57,7 +57,7 @@ jobs:
         wget https://apt.llvm.org/llvm.sh
         chmod +x llvm.sh
         sudo ./llvm.sh ${CLANG_VER}
-        sudo apt install clang-tools-${CLANG_VER} libc++-${CLANG_VER}-dev mold
+        sudo apt install clang-tools-${CLANG_VER} libc++-${CLANG_VER}-dev
         sudo update-alternatives --install /usr/bin/cc cc /usr/bin/clang-${CLANG_VER} 100
         sudo update-alternatives --install /usr/bin/c++ c++ /usr/bin/clang++-${CLANG_VER} 100
         sudo update-alternatives --set cc /usr/bin/clang-${CLANG_VER}

@@ -6,7 +6,7 @@ module di.tests.embedded;
 
 #if 0
 // di-embed-begin
-module di.tests.embedded;
+export module di.tests.embedded;
 
 trait di::tests::trait::Embedded
 {

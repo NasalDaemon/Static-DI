@@ -13,7 +13,7 @@ module my.test.clusters;
 
 #if 0 // ensures that the snippet is not compiled as C++
 // di-embed-begin
-module my.test.clusters;
+export module my.test.clusters;
 
 cluster my::test::Cluster1
 {
@@ -44,7 +44,7 @@ TEST_CASE("second")
 The interleaved dig can be spread out over multiple sections, all wrapped with the same keywords `di-embed-begin` and `di-embed-end`. The example above results in the following intermediate dig by stiching together the sections:
 
 ```cpp
-module my.test.clusters;
+export module my.test.clusters;
 
 cluster my::test::Cluster1
 {

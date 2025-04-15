@@ -8,6 +8,7 @@
 #include "di/link.hpp"
 #include "di/macros.hpp"
 #include "di/map_info.hpp"
+#include "di/mock.hpp"
 #include "di/trait.hpp"
 
 namespace di::test {
@@ -123,11 +124,11 @@ namespace detail {
 } // namespace detail
 
 DI_MODULE_EXPORT
-template<IsNodeHandle Node, IsNodeHandle Mocks>
+template<IsNodeHandle Node, IsNodeHandle Mocks = Mock>
 using Cluster = MapInfo<detail::Cluster<Node, Mocks>, detail::TestMapInfo>;
 
 DI_MODULE_EXPORT
-template<IsNodeHandle Node, IsNodeHandle Mocks, class Root = void>
+template<IsNodeHandle Node, IsNodeHandle Mocks = Mock, class Root = void>
 using Graph = di::Graph<Cluster<Node, Mocks>, Root>;
 
 } // namespace di::test
