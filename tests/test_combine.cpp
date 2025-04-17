@@ -1,0 +1,110 @@
+#include <doctest/doctest.h>
+#include "di/macros.hpp"
+
+#if !DI_STD_MODULE
+#include <typeinfo>
+#include <vector>
+#endif
+
+import di;
+DI_IMPORT_STD;
+
+namespace di::tests::combine {
+
+namespace trait {
+
+    struct A : di::UnconstrainedTrait
+    {
+        #define A_DI_METHODS(TAG) \
+            TAG(a) \
+            TAG(c)
+        DI_METHODS(A)
+    } inline constexpr a{};
+
+    struct B : di::UnconstrainedTrait
+    {
+        #define B_DI_METHODS(TAG) \
+            TAG(b) \
+            TAG(c)
+        DI_METHODS(B)
+    } inline constexpr b{};
+
+    struct C : di::UnconstrainedTrait
+    {
+        #define C_DI_METHODS(TAG) \
+            TAG(c)
+        DI_METHODS(C)
+    } inline constexpr c{};
+
+} // namespace trait
+
+struct A : di::Node
+{
+    using Traits = di::Traits<A, trait::A>;
+
+    int apply(trait::A::a) { return val; }
+
+    int apply(this auto& self, trait::A::c)
+    {
+        return self.getNode(trait::c).c();
+    }
+
+    int val = 42;
+};
+
+struct B : di::Node
+{
+    using Traits = di::Traits<B, trait::B>;
+
+    int apply(trait::B::b) { return val; }
+
+    int apply(this auto& self, trait::B::c)
+    {
+        return self.getNode(trait::c).c();
+    }
+
+    int val = 314;
+};
+
+struct C : di::Node
+{
+    using Traits = di::Traits<C, trait::C>;
+
+    int apply(trait::C::c) { return val; }
+
+    int val = 99;
+};
+
+TEST_CASE("di::Combine test doubles")
+{
+    test::Graph<C, Combine<A, B>> g;
+
+    CHECK(42 == g.node.getNode(trait::a).a());
+    CHECK(314 == g.node.getNode(trait::b).b());
+
+    CHECK(99 == g.node.getNode(trait::a).c());
+    CHECK(99 == g.node.getNode(trait::b).c());
+}
+
+TEST_CASE("di::Combine with closed Mock")
+{
+    test::Graph<C, Combine<A, test::Mock<trait::B>>> g;
+
+    g.mocks.get<test::Mock<trait::B>>()->define(
+        [](trait::B::b)
+        {
+            return 22;
+        },
+        [&](trait::B::c)
+        {
+            return g.node.asTrait(trait::c).c();
+        });
+
+    CHECK(42 == g.node.getNode(trait::a).a());
+    CHECK(22 == int(g.node.getNode(trait::b).b()));
+
+    CHECK(99 == g.node.getNode(trait::a).c());
+    CHECK(99 == int(g.node.getNode(trait::b).c()));
+}
+
+} // namespace di::tests::combine

@@ -33,6 +33,13 @@ struct Trait
 };
 
 DI_MODULE_EXPORT
+struct UnconstrainedTrait : Trait
+{
+    template<class...>
+    using Implements = void;
+};
+
+DI_MODULE_EXPORT
 template<class T>
 concept IsTrait = requires (T trait) {
     requires std::is_base_of_v<Trait, T>;

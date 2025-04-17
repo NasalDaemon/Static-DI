@@ -39,7 +39,10 @@
 #define DI_VANISH_DI_ISH
 
 // used in traits.hpp
-#define DI_METHODS(traitName, METHOD_LIST) \
+#define DI_METHODS(traitName) \
+    DI_METHODS_EX(traitName, traitName ## _DI_METHODS)
+
+#define DI_METHODS_EX(traitName, METHOD_LIST) \
     METHOD_LIST(DI_METHOD_TAG) \
     friend constexpr traitName traitOf(::di::IsMethodOf<traitName> auto) { return {}; } \
     struct Meta \
@@ -63,7 +66,7 @@
 
 #define DI_AS_FUNCTOR_METHOD(method) \
     template<::di::IsTraitView Self> \
-    constexpr decltype(auto) method(this Self&& self, di::AsFunctor asFunctor) \
+    constexpr decltype(auto) method(this Self&& self, ::di::AsFunctor asFunctor) \
     { \
         return self.apply(method ## _c, asFunctor); \
     }

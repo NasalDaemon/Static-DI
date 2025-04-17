@@ -1,20 +1,20 @@
-module;
 #include <doctest/doctest.h>
 #include "di/macros.hpp"
+
 #if !DI_STD_MODULE
 #include <typeinfo>
 #include <vector>
 #endif
-module di.test.mock;
 
+import di.tests.mock;
 import di;
 DI_IMPORT_STD;
 
 /* di-embed-begin
 
-export module di.test.mock;
+export module di.tests.mock;
 
-trait di::test::trait::MockTest
+trait di::tests::trait::MockTest
 {
     takesNothing() const
     takesInt(int i)
@@ -23,7 +23,7 @@ trait di::test::trait::MockTest
 
 di-embed-end */
 
-using namespace di::test;
+using namespace di::tests;
 
 struct MockTestNode : di::Node
 {
@@ -97,10 +97,10 @@ TEST_CASE("di::test::Mock")
     g.mocks->setThrowIfMissing();
 
 #if DI_COMPILER_GCC
-    CHECK_THROWS_WITH(g.node->testNothing(), "Mock implementation not defined for apply(di::test::trait::MockTest@di.test.mock::takesNothing) const");
-    CHECK_THROWS_WITH(g.node->testInt(8), "Mock implementation not defined for apply(di::test::trait::MockTest@di.test.mock::takesInt, int)");
+    CHECK_THROWS_WITH(g.node->testNothing(), "Mock implementation not defined for apply(di::tests::trait::MockTest@di.tests.mock::takesNothing) const");
+    CHECK_THROWS_WITH(g.node->testInt(8), "Mock implementation not defined for apply(di::tests::trait::MockTest@di.tests.mock::takesInt, int)");
 #else
-    CHECK_THROWS_WITH(g.node->testNothing(), "Mock implementation not defined for apply(di::test::trait::MockTest::takesNothing) const");
-    CHECK_THROWS_WITH(g.node->testInt(8), "Mock implementation not defined for apply(di::test::trait::MockTest::takesInt, int)");
+    CHECK_THROWS_WITH(g.node->testNothing(), "Mock implementation not defined for apply(di::tests::trait::MockTest::takesNothing) const");
+    CHECK_THROWS_WITH(g.node->testInt(8), "Mock implementation not defined for apply(di::tests::trait::MockTest::takesInt, int)");
 #endif
 }

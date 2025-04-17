@@ -124,11 +124,11 @@ namespace detail {
 } // namespace detail
 
 DI_MODULE_EXPORT
-template<IsNodeHandle Node, IsNodeHandle Mocks = Mock>
+template<IsNodeHandle Node, IsNodeHandle Mocks = Mock<>>
 using Cluster = MapInfo<detail::Cluster<Node, Mocks>, detail::TestMapInfo>;
 
 DI_MODULE_EXPORT
-template<IsNodeHandle Node, IsNodeHandle Mocks = Mock, class Root = void>
+template<IsNodeHandle Node, IsNodeHandle Mocks = Mock<>, class Root = void>
 using Graph = di::Graph<Cluster<Node, Mocks>, Root>;
 
 } // namespace di::test

@@ -10,16 +10,16 @@
 import di;
 DI_IMPORT_STD;
 
-namespace test {
+namespace di::tests {
 
 namespace trait {
 
     struct Name : di::Trait
     {
-        #define NAME_METHODS(TAG) \
+        #define Name_DI_METHODS(TAG) \
             TAG(get) \
 
-        DI_METHODS(Name, NAME_METHODS)
+        DI_METHODS(Name)
 
         template<class Self, class T, class Types>
         requires requires (T const c)
@@ -79,7 +79,7 @@ struct Union : di::Cluster
     {
         DI_LINK(trait::Name, Mouse)
     };
-    struct Mouse : di::InlineContext<Union, test::Mouse>
+    struct Mouse : di::InlineContext<Union, tests::Mouse>
     {
         DI_LINK(trait::Name, Onion)
     };
@@ -131,6 +131,6 @@ TEST_CASE("di::Union")
     CHECK(dog.onion.asTrait(trait::Name{}).visit([]<class T>(T) { return requires { typename T::Types::DogType; }; }));
 }
 
-} // test
+} // di::tests
 
-DI_INSTANTIATE(di::InlineGraph<test::Union>, onion->get<1>())
+DI_INSTANTIATE(di::InlineGraph<di::tests::Union>, onion->get<1>())

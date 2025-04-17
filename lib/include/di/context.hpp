@@ -124,6 +124,18 @@ struct Context : detail::ContextBase
     using NodeTmpl = ToNodeWrapper<NodeHandle>::template Node<detail::CompressContext<Self>>;
 };
 
+DI_MODULE_EXPORT
+template<class Context, class Trait>
+concept ContextHasTrait = IsContext<Context> and IsTrait<Trait> and HasTrait<ContextToNode<Context>, Trait>;
+
+DI_MODULE_EXPORT
+template<IsTrait Trait>
+struct ContextHasTraitPred
+{
+    template<IsContext Context>
+    static constexpr bool value = ContextHasTrait<Context, Trait>;
+};
+
 } // namespace di
 
 

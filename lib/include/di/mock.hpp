@@ -101,23 +101,28 @@ namespace detail {
         MockDef con, mut;
     };
 
-} // namespace detail
-
-DI_MODULE_EXPORT
-struct Mock
-{
-    using ArgTypes = std::vector<std::type_index>;
-
-    enum DefaultBehaviour
+    enum MockDefaultBehaviour
     {
         ReturnDefault,
         ThrowIfMissing,
     };
 
+} // namespace detail
+
+DI_MODULE_EXPORT
+template<IsTrait... MockedTraits>
+struct Mock
+{
+    using ArgTypes = std::vector<std::type_index>;
+
     template<class Context>
     struct Node : di::Node
     {
-        using Traits = di::TraitsOpen<Node>;
+        using Traits = std::conditional_t<
+            sizeof...(MockedTraits) == 0,
+            di::TraitsOpen<Node>,
+            di::Traits<Node, MockedTraits...>
+        >;
 
         Node() = default;
 
@@ -126,8 +131,8 @@ struct Mock
             *this = {};
         }
 
-        void setReturnDefault() { defaultBehaviour = ReturnDefault; }
-        void setThrowIfMissing() { defaultBehaviour = ThrowIfMissing; }
+        void setReturnDefault() { defaultBehaviour = detail::MockDefaultBehaviour::ReturnDefault; }
+        void setThrowIfMissing() { defaultBehaviour = detail::MockDefaultBehaviour::ThrowIfMissing; }
 
         template<class Tag>
         std::size_t methodCallCount(Tag) const
@@ -190,10 +195,10 @@ struct Mock
             {
                 switch (self.defaultBehaviour)
                 {
-                case ReturnDefault:
+                case detail::MockDefaultBehaviour::ReturnDefault:
                     result.setReturnDefault();
                     break;
-                case ThrowIfMissing:
+                case detail::MockDefaultBehaviour::ThrowIfMissing:
                     {
                     std::string error = "Mock implementation not defined for apply(";
                     error += di::detail::typeName<Tag>();
@@ -259,7 +264,7 @@ struct Mock
                 };
         }
 
-        DefaultBehaviour defaultBehaviour = DefaultBehaviour::ReturnDefault;
+        detail::MockDefaultBehaviour defaultBehaviour = detail::MockDefaultBehaviour::ReturnDefault;
         mutable std::map<ArgTypes, detail::MockDefs> definitions;
         mutable std::map<ArgTypes, std::size_t> definitionCountMap;
         mutable std::map<std::type_index, std::size_t> methodCountMap;

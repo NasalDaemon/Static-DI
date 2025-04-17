@@ -6,10 +6,10 @@ namespace abc::trait {
 
 struct AliceRead : di::Trait
 {
-    #define ALICE_READ_METHODS(TAG) \
+    #define AliceRead_DI_METHODS(TAG) \
         TAG(get) \
 
-    DI_METHODS(AliceRead, ALICE_READ_METHODS)
+    DI_METHODS(AliceRead)
 
     template<class Self, class T, class Types>
     requires requires (T const c)
@@ -19,12 +19,13 @@ struct AliceRead : di::Trait
     }
     using Implements = void;
 } inline constexpr aliceRead{};
+
 struct AliceWrite : di::Trait
 {
-    #define ALICE_WRITE_METHODS(TAG) \
+    #define AliceWrite_DI_METHODS(TAG) \
         TAG(set) \
 
-    DI_METHODS(AliceWrite, ALICE_WRITE_METHODS)
+    DI_METHODS(AliceWrite)
 
     template<class Self, class T, class Types>
     requires requires (T t, int i)
@@ -35,16 +36,13 @@ struct AliceWrite : di::Trait
     using Implements = void;
 } inline constexpr aliceWrite{};
 
-using Alice = di::JoinedTrait<AliceRead, AliceWrite>;
-inline constexpr Alice alice{};
-
 struct Bob : di::Trait
 {
-    #define BOB_METHODS(TAG) \
+    #define Bob_DI_METHODS(TAG) \
         TAG(get) \
         TAG(set) \
 
-    DI_METHODS(Bob, BOB_METHODS)
+    DI_METHODS(Bob)
 
     template<class Self, class T, class Types>
     requires requires (T const c)
@@ -57,10 +55,10 @@ struct Bob : di::Trait
 
 struct Charlie : di::Trait
 {
-    #define CHARLIE_METHODS(TAG) \
+    #define Charlie_DI_METHODS(TAG) \
         TAG(get) \
 
-    DI_METHODS(Charlie, CHARLIE_METHODS)
+    DI_METHODS(Charlie)
 
     template<class Self, class T, class Types>
     requires requires (T const c)
@@ -72,9 +70,16 @@ struct Charlie : di::Trait
     using Implements = void;
 } inline constexpr charlie{};
 
+using Alice = di::JoinedTrait<AliceRead, AliceWrite>;
 using Charlie2 = di::AltTrait<Charlie>;
 using Charlie3 = di::AltTrait<Charlie>;
+inline constexpr Alice alice{};
 inline constexpr Charlie2 charlie2{};
 inline constexpr Charlie3 charlie3{};
 
 }
+
+#undef AliceRead_DI_METHODS
+#undef AliceWrite_DI_METHODS
+#undef Bob_DI_METHODS
+#undef Charlie_DI_METHODS
