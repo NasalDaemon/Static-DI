@@ -1,6 +1,6 @@
 # Node class structure
 
-Nodes are C++ classes that implement one or more traits, and can be used by other nodes in the cluster that depend on it.
+A Node is a C++ class that can implement its own traits and/or depend on traits implemented by other nodes.
 
 ## Nodes provide to other nodes:
 1. List of implemented traits
@@ -10,13 +10,11 @@ Nodes are C++ classes that implement one or more traits, and can be used by othe
 ## Nodes are provided:
 1. Access to implementations of its own traits, using the function `asTrait(trait::OtherTrait)`.
 2. Access to other nodes by trait, using a `getNode(trait::Trait)` call, as long as the dependency is specified in the cluster definiton
-3. Access to the types exported by other nodes by trait, using `di::ResolveTypes<Context, trait::Trait>`
+3. Access to the types exported by other nodes by trait, using `di::ResolveTypes<Context, trait::Trait>`, as long as the dependency is specified in the cluster definiton
 
 ## Defining a node class
 There are two ways to define a node, each with different pros and cons:
 1. More concise: inline node with contextless state
-      <details>
-      <summary>:eyes: Code: concise inline node</summary>
 
       ```cpp
       struct PiCache : di::Node
@@ -34,15 +32,12 @@ There are two ways to define a node, each with different pros and cons:
          double piValue = NAN;
       };
       ```
-      </details>
 
       - Best suited to a node that has few or no dependencies of its own:
          - Types **cannot** be resolved in the state from the node's injected context
          - Explicit object parameter is required in method implementations that have trait dependencies on other nodes
          - Methods with dependencies become template functions that must be defined directly in the header or module interface
 2. More flexible: nested template node with contextful state
-      <details>
-      <summary>:eyes: Code: flexible nested node</summary>
 
       ```cpp
       struct PiCache
@@ -67,7 +62,6 @@ There are two ways to define a node, each with different pros and cons:
          };
       };
       ```
-      </details>
 
       - Types **can** be resolved in the state from the node's injected `Context`, which is the single template parameter of the node's state
       - Explicit object parameters are not necessary to resolve dependencies
@@ -157,7 +151,7 @@ Static-DI provides a template to define this mapping in the form `di::Types<{Nod
 Most nodes will have a flat structure, with `Traits` in the shorthand form `di::Traits<Node, trait::Trait1, trait::Trait2>`, i.e. `di::Traits<{State}, {Trait}...>`. Using `{Impl} = {DefaultImpl} = {State}` and `{Types} = {DefaultTypes} = {State}::Types` for methods and types of all traits is usually sufficient unless the node is particularly complex.
 
 <details>
-<summary>:eyes: Code: di::Traits example</summary>
+<summary>:eyes: Code: Exhaustive di::Traits example</summary>
 
 ```
 cluster Dinner

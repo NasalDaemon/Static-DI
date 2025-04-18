@@ -150,7 +150,7 @@ namespace detail {
 }
 
 DI_MODULE_EXPORT
-template<class Trait, class Key>
+template<IsTrait Trait, key::IsKey Key>
 constexpr IsTraitViewOf<Trait, Key> auto makeTraitView(auto& source, auto target, Trait, Key key)
 {
     return TraitView(key::Trait<Key, Trait>{}, target.ptr->finalize(source, key), target.types());

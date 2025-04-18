@@ -3,14 +3,28 @@
 
 #include "di/macros.hpp"
 
+#if DI_CPP_VER > 202302L and __cpp_pack_indexing >= 202311L
+#   define DI_TYPE_AT_VER 1
+#elif DI_COMPILER_GNU
+#   define DI_TYPE_AT_VER 2
+#endif
+
 #if !DI_STD_MODULE
-#include <type_traits>
-#include <utility>
+#include <cstdint>
+#   if !DI_TYPE_AT_VER
+#   include <type_traits>
+#   include <utility>
+#   endif
 #endif
 
 namespace di::detail {
 
-#if defined(DI_COMPILER_CLANG) or defined(DI_COMPILER_GCC)
+#if DI_TYPE_AT_VER == 1
+
+template<std::size_t I, class... Ts>
+using TypeAt = Ts...[I];
+
+#elif DI_TYPE_AT_VER == 2
 
 template<std::size_t I, class... Ts>
 requires (I < sizeof...(Ts))

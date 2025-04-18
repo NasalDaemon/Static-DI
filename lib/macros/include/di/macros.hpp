@@ -9,12 +9,20 @@
 
 #if defined(__clang__)
 #   define DI_COMPILER_CLANG 1
+#   define DI_COMPILER_GNU 1
 #elif defined(__GNUC__) || defined(__GNUG__)
 #   define DI_COMPILER_GCC 1
+#   define DI_COMPILER_GNU 1
 #elif defined(_MSC_VER)
 #   define DI_COMPILER_MSVC 1
 #else
 #   error Unsupported compiler
+#endif
+
+#if DI_COMPILER_MSVC
+#   define DI_CPP_VER _MSVC_LANG
+#else
+#   define DI_CPP_VER __cplusplus
 #endif
 
 #if defined(__INTELLISENSE__) or defined(DI_CLANGD)

@@ -74,6 +74,8 @@ export namespace di {
     namespace test {
         using test::Mock;
     }
+    // narrow.hpp
+    using di::Narrow;
     // node_fwd.hpp
     using di::Node;
     using di::IsNode;

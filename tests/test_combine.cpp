@@ -78,6 +78,7 @@ struct C : di::Node
 TEST_CASE("di::Combine test doubles")
 {
     test::Graph<C, Combine<A, B>> g;
+    static_assert(sizeof(g) == 3 * sizeof(int));
 
     CHECK(42 == g.node.getNode(trait::a).a());
     CHECK(314 == g.node.getNode(trait::b).b());
@@ -88,9 +89,32 @@ TEST_CASE("di::Combine test doubles")
 
 TEST_CASE("di::Combine with closed Mock")
 {
-    test::Graph<C, Combine<A, test::Mock<trait::B>>> g;
+    using Mock = test::Mock<trait::B>;
+    test::Graph<C, Combine<A, Mock>> g;
 
-    g.mocks.get<test::Mock<trait::B>>()->define(
+    g.mocks.get<Mock>()->define(
+        [](trait::B::b)
+        {
+            return 22;
+        },
+        [&](trait::B::c)
+        {
+            return g.node.asTrait(trait::c).c();
+        });
+
+    CHECK(42 == g.node.getNode(trait::a).a());
+    CHECK(22 == int(g.node.getNode(trait::b).b()));
+
+    CHECK(99 == g.node.getNode(trait::a).c());
+    CHECK(99 == int(g.node.getNode(trait::b).c()));
+}
+
+TEST_CASE("di::Combine with narrowed Mock")
+{
+    using Mock = Narrow<test::Mock<>, trait::B>;
+    test::Graph<C, Combine<A, Mock>> g;
+
+    g.mocks.get<Mock>()->define(
         [](trait::B::b)
         {
             return 22;

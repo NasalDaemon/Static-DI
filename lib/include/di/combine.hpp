@@ -2,6 +2,7 @@
 #define INCLUDE_DI_COMBINE_HPP
 
 #include "di/detail/select.hpp"
+#include "di/detail/type_at.hpp"
 #include "di/cluster.hpp"
 #include "di/context.hpp"
 #include "di/link.hpp"
@@ -20,14 +21,16 @@ namespace detail {
     {
         struct Context : di::Context<CombineNode, Node>
         {
+            using ParentContext = ContextParameterOf<CombineNode>;
+
             template<class T>
-            static auto resolveLink(T) -> ResolvedLink<typename Context::ParentContext, T>;
+            requires detail::HasLink<ParentContext, T>
+            static auto resolveLink(T) -> ResolvedLink<ParentContext, T>;
         };
 
-        using State = ContextToNodeState<Context>;
-        [[no_unique_address]] State node{};
+        [[no_unique_address]] ContextToNodeState<Context> node{};
 
-        friend consteval State CombineNode::* getNodePointer(di::AdlTag<Context>)
+        friend consteval decltype(node) CombineNode::* getNodePointer(di::AdlTag<Context>)
         {
             return &CombinePart::node;
         }
@@ -56,6 +59,13 @@ struct Combine
         auto& get(this auto& self)
         {
             return detail::upCast<detail::CombinePart<Node, N>>(self).node;
+        }
+
+        template<std::size_t I>
+        requires (I < sizeof...(Nodes))
+        auto& get(this auto& self)
+        {
+            return detail::upCast<detail::TypeAt<I, detail::CombinePart<Node, Nodes>...>>(self).node;
         }
 
         constexpr void visit(this auto& self, auto const& visitor)
