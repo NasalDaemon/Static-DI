@@ -33,6 +33,7 @@ The nodes also have two dependencies on data types:
 - [my/auth_service.ixx](#auth_serviceixx): `my::AuthService` node implements the trait `my::trait::AuthService`
 - [my/sessions.ixx](#sessionsixx): `my::Sessions` node implements the traits `my::trait::TokenStore` and `my::trait::SessionManager`
 - [my/main.cpp](#maincpp): Constructs and uses the full graph of nodes which satisfies all requirements of the nodes within `my::Cluster`
+- [Unit tests](#unittests): Unit test `my::trait::SessionManager` trait of `my::Sessions` using a `AuthServiceSim` test double, and also the `di::test::Mock` mocking node
 ## CMakeLists.txt
 ```CMake
 add_executable(my_app main.cpp)
@@ -142,6 +143,7 @@ export module my.token;
 namespace my {
     export struct Token
     {
+        Token(std::string_view tokenSecret, std::string_view user, std::chrono::seconds expiry);
         bool expired() const;
     private:
         // ... some data fields ...
@@ -211,11 +213,11 @@ export struct AuthService : di::Node
             using PassHash = di::ContextOf<Self>::Root::PassHash;
             // Since the type and memory offset of `Sessions` with respect to `AuthService` is known
             // statically via the context of `Self`, this entire call can/will be inlined by the compiler:
-            self.getNode(trait::tokenStore).store(user, PassHash(pass), self.makeToken(user));
+            self.getNode(trait::tokenStore).store(user, PassHash(pass), Token(self.tokenSecret, user, self.expiry));
             // In this example project, this is effectively equivalent to:
-            // <my::Cluster>.sessions.asTrait(trait::tokenStore).store(user, PassHash(...), makeToken(...));
+            // <my::Cluster>.sessions.asTrait(trait::tokenStore).store(user, PassHash(...), Token(...));
             // which directly calls
-            // <my::Cluster>.sessions.apply(trait::TokenStore::store{}, user, PassHash(...), makeToken(...));
+            // <my::Cluster>.sessions.apply(trait::TokenStore::store{}, user, PassHash(...), Token(...));
         }
         co_return success;
     }
@@ -238,7 +240,6 @@ export struct AuthService : di::Node
     // Queries database asynchronously and returns `true` in calling thread if the pass is valid.
     Task<bool> dbValidPass(std::string_view user, std::string_view pass) const;
     Task<bool> dbChangePass(std::string_view user, std::string_view oldPass, std::string_view newPass) const;
-    Token makeToken(std::string_view user);
 
     AuthService(std::string tokenSecret, std::chrono::seconds expiry)
         : tokenSecret(std::move(tokenSecret))
@@ -295,11 +296,11 @@ export struct Sessions
 
         void apply(trait::TokenStore::store, std::string_view user, PassHash passHash, Token token)
         {
-            auto const [it, inserted] = userDetailsMap.try_emplace(user, std::move(token), std::move(passHash));
+            auto const [it, inserted] = userDetailsMap.try_emplace(user, std::move(passHash), std::move(token));
             if (not inserted)
             {
-                it->token = std::move(token);
                 it->passHash = std::move(passHash);
+                it->token = std::move(token);
             }
         }
 
@@ -346,13 +347,8 @@ export struct Sessions
 
         struct UserDetails
         {
-            UserDetails(Token token, PassHash passHash)
-                : token(std::move(token))
-                , passHash(std::move(passHash))
-            {}
-
-            Token token;
             PassHash passHash; // avoid storing passwords in plaintext
+            Token token;
 
             bool validWithPass(std::string_view pass) const
             {
@@ -435,5 +431,154 @@ int main()
         // can get token with new password
         assert(sessionManager.getToken("user1", "newUser1Pass").value().has_value());
     }
+}
+```
+
+## <a name="unittests"></a>Unit testing trait::SessionManager trait of my::Sessions
+```cpp
+#include <doctest/doctest.h>
+
+import my.sessions;
+import my.traits;
+import di;
+import std;
+
+namespace my::tests::session_manager {
+
+struct MockRoot
+{
+    struct PassHash
+    {
+        std::string pass;
+        friend constexpr bool sameHash(PassHash const& self, std::string_view pass)
+        {
+            return self.pass == pass;
+        }
+    };
+};
+
+struct MockTypes
+{
+    struct Token
+    {
+        std::size_t id;
+        std::size_t expiry;
+        std::size_t const* time;
+
+        bool expired() const { return *time < expiry; }
+        auto operator<=>(Token const&) const = default;
+    };
+};
+
+inline constexpr std::string_view theUser = "user";
+inline constexpr std::string_view thePass = "pass";
+inline constexpr std::string_view wrongPass = "wrongPass";
+
+static void testSessionManager(
+    di::IsTraitViewOf<trait::SessionManager> auto sessionManager,
+    std::invocable<std::size_t> auto increaseTime)
+{
+    using Token = MockTypes::Token;
+
+    CHECK(not sessionManager.hasToken(theUser));
+
+    // Wrong password fails to get a token
+    std::optional<Token> token = sessionManager.getToken(theUser, wrongPass).value();
+    CHECK(not token.has_value())
+    // Correct password gets a token
+    token = sessionManager.getToken(theUser, thePass).value();
+    CHECK(token.has_value());
+
+    // Check token expiry behaviour
+    increaseTime(1);
+    CHECK(not token->expired());
+    CHECK(sessionManager.hasToken(theUser));
+    // When token in the store has not expired, a new token is not issued
+    auto token2 = sessionManager.getToken(theUser, thePass).value();
+    CHECK(token == token2);
+
+    increaseTime(1);
+    CHECK(token->expired());
+    CHECK(token2->expired());
+    CHECK(not sessionManager.hasToken(theUser));
+    // New token is issued when old one has expired
+    token2 = sessionManager.getToken(theUser, thePass).value();
+    CHECK(token2.has_value());
+    CHECK(not token2->expired());
+    CHECK(token2 != token);
+}
+
+struct AuthServiceSim : di::Node
+{
+    using Traits = di::Traits<AuthServiceSim, my::trait::AuthService>;
+
+    using Types = MockTypes;
+
+    // NOTE: In a test context, is it not required for all of trait::AuthService to be implemented,
+    // only those methods which are invoked from the node being tested
+    my::Task<bool> apply(this auto& self, trait::AuthService::logIn, std::string_view user, std::string_view pass)
+    {
+        if (user == theUser and pass == thePass)
+        {
+            // Each generated token has unique id
+            Token token{.id = tokenId++, .expiry = time + 2, .time = &time};
+            PassHash passHash{pass};
+            self.getNode(trait::tokenStore).store(theUser, passHash, token);
+            co_return true;
+        }
+        co_return false;
+    };
+
+    void passTime(std::size_t increase) { time += increase; }
+
+private:
+    std::size_t time = 0;
+    std::size_t tokenId = 0;
+};
+
+TEST_SUITE("my::Sessions as trait::SessionManager")
+{
+    TEST_CASE("Using AuthServiceSim")
+    {
+        di::test::Graph<my::Sessions, AuthServiceSim, MockRoot> graph;
+        // With di::test::Graph, any and all getNode calls in my::Sessions resolve to AuthServiceSim
+
+        auto sessionManager = graph.node.asTrait(trait::sessionManager);
+        auto const incrementTime = [&](std::size_t inc) { graph.mocks->passTime(inc); };
+        testSessionManager(sessionManager, incrementTime);
+    }
+
+    TEST_CASE("Using di::test::Mock")
+    {
+        using Mocks = di::test::Mock<MockTypes>;
+        di::test::Graph<my::Sessions, Mocks, MockRoot> graph;
+        // With di::test::Graph, any and all getNode calls in my::Sessions resolve to Mocks
+
+        std::size_t time = 0;
+        std::size_t tokenId = 0;
+
+        // Mock all trait dependencies that are used by my::Sessions
+        // NOTE: Not all of trait::AuthService needs to be defined in the mock,
+        // since AuthService::changePass is not called from my::Sessions
+        graph.mocks->define(
+            [&](trait::AuthService::logIn, std::string_view user, std::string_view pass) -> my::Task<bool>
+            {
+                if (user == theUser and pass == thePass)
+                {
+                    // Each generated token has unique id
+                    Token token{.id = tokenId++, .expiry = time + 2, .time = &time};
+                    PassHash passHash{pass};
+                    graph.node.asTrait(trait::tokenStore).store(theUser, passHash, token);
+                    co_return true;
+                }
+                co_return false;
+            });
+
+        auto sessionManager = graph.node.asTrait(trait::sessionManager);
+        auto const incrementTime = [&](std::size_t inc) { time += inc; };
+        testSessionManager(sessionManager, incrementTime);
+    }
+}
+
 }
 ```

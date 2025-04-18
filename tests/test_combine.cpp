@@ -87,34 +87,11 @@ TEST_CASE("di::Combine test doubles")
     CHECK(99 == g.node.getNode(trait::b).c());
 }
 
-TEST_CASE("di::Combine with closed Mock")
+TEST_CASE_TEMPLATE("di::Combine with Mock", Mock, test::Mock<EmptyTypes, trait::B>, Narrow<test::Mock<>, trait::B>)
 {
-    using Mock = test::Mock<trait::B>;
     test::Graph<C, Combine<A, Mock>> g;
 
-    g.mocks.get<Mock>()->define(
-        [](trait::B::b)
-        {
-            return 22;
-        },
-        [&](trait::B::c)
-        {
-            return g.node.asTrait(trait::c).c();
-        });
-
-    CHECK(42 == g.node.getNode(trait::a).a());
-    CHECK(22 == int(g.node.getNode(trait::b).b()));
-
-    CHECK(99 == g.node.getNode(trait::a).c());
-    CHECK(99 == int(g.node.getNode(trait::b).c()));
-}
-
-TEST_CASE("di::Combine with narrowed Mock")
-{
-    using Mock = Narrow<test::Mock<>, trait::B>;
-    test::Graph<C, Combine<A, Mock>> g;
-
-    g.mocks.get<Mock>()->define(
+    g.mocks.template get<Mock>()->define(
         [](trait::B::b)
         {
             return 22;

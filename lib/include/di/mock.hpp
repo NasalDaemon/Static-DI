@@ -2,6 +2,7 @@
 #define INCLUDE_DI_MOCK_HPP
 
 #include "di/detail/type_name.hpp"
+#include "di/empty_types.hpp"
 #include "di/macros.hpp"
 #include "di/node.hpp"
 #include "di/trait.hpp"
@@ -110,7 +111,7 @@ namespace detail {
 } // namespace detail
 
 DI_MODULE_EXPORT
-template<IsTrait... MockedTraits>
+template<class DefaultTypes = EmptyTypes, class... MockedTraits>
 struct Mock
 {
     using ArgTypes = std::vector<std::type_index>;
@@ -125,6 +126,8 @@ struct Mock
         >;
 
         Node() = default;
+
+        using Types = DefaultTypes;
 
         void reset()
         {
