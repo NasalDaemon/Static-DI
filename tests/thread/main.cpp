@@ -15,7 +15,7 @@ TEST_CASE("TestThread")
 {
     di::Graph<Cluster> g{.a{1}, .b{2}, .c{3}};
 
-    CHECK(1 == di::withThread<0>(g.a)->i);
+    CHECK(1 == di::withThread<0>(g.a)->i); 
 
     CHECK(1 == g.a.asTrait(trait::a, postTaskKey).getA());
 

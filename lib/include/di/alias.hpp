@@ -31,7 +31,6 @@ private:
     Impl* impl;
 };
 
-DI_MODULE_EXPORT
 template<class T, class Key>
 struct Alias<T, Key> final
 {

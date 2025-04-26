@@ -14,7 +14,7 @@ compiler.version={{ compiler_version }}
 
 # Clang, GCC
 {% else %}
-compiler.version={{ 19 if compiler_version > 19 else compiler_version }}
+compiler.version={{ 19 if compiler_version == 20 else 14 if compiler_version == 15 else compiler_version }}
 compiler.libcxx={{ "libstdc++11" if compiler == "gcc" else "libc++" }}
 [conf]
 tools.cmake.cmaketoolchain:generator=Ninja Multi-Config

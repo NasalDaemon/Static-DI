@@ -125,7 +125,7 @@ struct JoinedTrait : Traits...
 };
 
 DI_MODULE_EXPORT
-template<IsTrait Trait, class Id = decltype([]() -> void {})>
+template<IsTrait Trait, class Id>
 struct AltTrait : Trait
 {
     static AltTrait expects();

@@ -33,7 +33,7 @@ The nodes also have two dependencies on data types:
 - [my/auth_service.ixx](#auth_serviceixx): `my::AuthService` node implements the trait `my::trait::AuthService`
 - [my/sessions.ixx](#sessionsixx): `my::Sessions` node implements the traits `my::trait::TokenStore` and `my::trait::SessionManager`
 - [my/main.cpp](#maincpp): Constructs and uses the full graph of nodes which satisfies all requirements of the nodes within `my::Cluster`
-- [Unit tests](#unittests): Unit test `my::trait::SessionManager` trait of `my::Sessions` using a `AuthServiceSim` test double, and also the `di::test::Mock` mocking node
+- [Unit tests](#unittests): Unit test `my::trait::SessionManager` trait of `my::Sessions` using a `AuthServiceTestDouble` test double, and also the `di::test::Mock` mocking node
 ## CMakeLists.txt
 ```CMake
 add_executable(my_app main.cpp)
@@ -508,9 +508,10 @@ static void testSessionManager(
     CHECK(token2 != token);
 }
 
-struct AuthServiceSim : di::Node
+// Test doubles are reusable across tests in the whole project
+struct AuthServiceTestDouble : di::Node
 {
-    using Traits = di::Traits<AuthServiceSim, my::trait::AuthService>;
+    using Traits = di::Traits<AuthServiceTestDouble, my::trait::AuthService>;
 
     using Types = MockTypes;
 
@@ -518,31 +519,38 @@ struct AuthServiceSim : di::Node
     // only those methods which are invoked from the node being tested
     my::Task<bool> apply(this auto& self, trait::AuthService::logIn, std::string_view user, std::string_view pass)
     {
-        if (user == theUser and pass == thePass)
+        if (userPass[user] == pass)
         {
             // Each generated token has unique id
             Token token{.id = tokenId++, .expiry = time + 2, .time = &time};
             PassHash passHash{pass};
-            self.getNode(trait::tokenStore).store(theUser, passHash, token);
+            self.getNode(trait::tokenStore).store(user, passHash, token);
             co_return true;
         }
         co_return false;
     };
+
+    void addUser(std::string const& user, std::string const& pass)
+    {
+        userPasses.insert_or_assign(user, pass);
+    }
 
     void passTime(std::size_t increase) { time += increase; }
 
 private:
     std::size_t time = 0;
     std::size_t tokenId = 0;
+    std::map<std::string, std::string> userPasses;
 };
 
 TEST_SUITE("my::Sessions as trait::SessionManager")
 {
-    TEST_CASE("Using AuthServiceSim")
+    TEST_CASE("Using AuthServiceTestDouble")
     {
-        di::test::Graph<my::Sessions, AuthServiceSim, MockRoot> graph;
-        // With di::test::Graph, any and all getNode calls in my::Sessions resolve to AuthServiceSim
+        di::test::Graph<my::Sessions, AuthServiceTestDouble, MockRoot> graph;
+        // With di::test::Graph, any and all getNode calls in my::Sessions resolve to AuthServiceTestDouble
 
+        graph.mocks->addUser(theUser, thePass);
         auto sessionManager = graph.node.asTrait(trait::sessionManager);
         auto const incrementTime = [&](std::size_t inc) { graph.mocks->passTime(inc); };
         testSessionManager(sessionManager, incrementTime);

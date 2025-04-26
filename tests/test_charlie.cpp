@@ -20,34 +20,12 @@ struct ICharlieMocks : di::INode
     using Traits = di::TraitsOpen<ICharlieMocks>;
 
     virtual int apply(trait::Alice::get) const = 0;
-
-    struct Remotes : di::IRemotes
-    {
-        struct Types
-        {
-            using CharlieType = int;
-        };
-        using Traits = di::TraitsOpen<Remotes>;
-
-        virtual int apply(trait::Charlie::get) const = 0;
-    };
-
-    template<class VirtualNode>
-    struct RemotesImpl final : Remotes
-    {
-        explicit RemotesImpl(di::Alias<VirtualNode> node) : node(node) {}
-        di::Alias<VirtualNode> node;
-
-        int apply(trait::Charlie::get) const override
-        {
-            return node->getNode(trait::charlie).get();
-        }
-    };
 };
 
 using VCharlieTest = di::test::Graph<Charlie, di::Virtual<ICharlieMocks*>>;
 
-struct SCharlieMocks {
+struct SCharlieMocks
+{
     template<class Context>
     struct Node : di::Node
     {
@@ -64,16 +42,40 @@ struct SCharlieMocks {
 
 using SCharlieTest = di::test::Graph<Charlie, SCharlieMocks>;
 
+struct CharlieMocks final : ICharlieMocks
+{
+    int apply(trait::Alice::get) const override
+    {
+        return getNode(trait::charlie).get();
+    }
+
+    struct Remotes : di::IRemotes
+    {
+        struct Types
+        {
+            using CharlieType = int;
+        };
+        using Traits = di::TraitsOpen<Remotes>;
+
+        virtual int apply(trait::Charlie::get) const = 0;
+    };
+
+    template<class Node>
+    struct RemotesImpl final : Remotes
+    {
+        explicit RemotesImpl(di::Alias<Node> node) : node(node) {}
+        di::Alias<Node> node;
+
+        int apply(trait::Charlie::get) const override
+        {
+            return node->getNode(trait::charlie).get();
+        }
+    };
+};
+
 TEST_CASE("di::test::Graph")
 {
-    struct Mock final : ICharlieMocks
-    {
-        int apply(trait::Alice::get) const override
-        {
-            return getNode(trait::charlie).get();
-        }
-    } mock;
-
+    CharlieMocks mock;
     VCharlieTest virt{.mocks{&mock}};
     CHECK(109 == virt.asTrait(trait::aliceRead).get());
 

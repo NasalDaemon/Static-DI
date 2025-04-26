@@ -41,25 +41,24 @@ reconstuctor = Reconstructor(digParser)
 
 with open(inputFile, 'r') as file:
     text = file.read()
-    embeddedText = ""
     if isEmbedded:
+        sections = []
         begin = 'di-embed-begin'
         end = 'di-embed-end'
         while True:
             beginPos = text.find(begin)
-            if beginPos == -1 and embeddedText:
+            if beginPos == -1:
+                assert sections, f"'{begin}' not found in {inputFile}"
                 break
-            else:
-                assert beginPos != -1, f"'{begin}' not found in {inputFile}"
-
             beginPos += len(begin)
             endPos = text.find(end, beginPos)
             assert endPos != -1, f"matching '{end}' not found in {inputFile}"
 
-            embeddedText += text[beginPos:endPos] + "\n"
+            sections.append(text[beginPos:endPos])
             text = text[endPos + len(end):]
+        text = "\n".join(sections)
 
-    parsed = digParser.parse(embeddedText or text)
+    parsed = digParser.parse(text)
 
 def imported(larkRule: str):
     return f'dig__{larkRule}'
@@ -208,6 +207,15 @@ class Cluster:
                 name = child.children[0].value
                 assert name not in nodes, (name, nodes)
                 impl = reconstuctor.reconstruct(child.children[1])
+                if len(child.children) > 2:
+                    for wrapper in child.children[2:]:
+                        cls = wrapper.children[0].value
+                        if len(wrapper.children) > 1:
+                            args = [impl]
+                            args.extend((reconstuctor.reconstruct(arg) for arg in wrapper.children[1].children[1:-1:2]))
+                            impl = f"{cls}<{", ".join(args)}>"
+                        else:
+                            impl = f"{cls}<{impl}>"
                 nodes[name] = Node(name, impl)
             elif child.data == imported('connection_block'):
                 for child in child.children:

@@ -9,6 +9,7 @@
 #include "di/empty_types.hpp"
 
 #if !DI_STD_MODULE
+#include <concepts>
 #include <memory>
 #include <type_traits>
 #include <utility>
@@ -76,22 +77,25 @@ struct Virtual
     template<class Context>
     struct Node : di::Node
     {
-        explicit constexpr Node(InterfacePtr p) : impl(std::move(p))
-        {
-            impl->injectRemotes(*this);
-        }
+        template<class T>
+        requires std::constructible_from<InterfacePtr, T&&>
+        explicit constexpr Node(T&& p)
+            : impl((p->injectRemotes(*this), std::forward<T>(p)))
+        {}
 
         Node(Node const&) = delete;
-        Node(Node&& other) : impl(std::move(other.impl))
+        constexpr Node(Node&& other) : impl(std::move(other.impl))
         {
             impl->injectRemotes(*this);
         }
 
         // Allow interface implementation to be changed dynamically
-        constexpr void setImplementation(InterfacePtr p)
+        template<class T>
+        requires std::assignable_from<InterfacePtr&, T&&>
+        constexpr void setImplementation(T&& p)
         {
-            impl = std::move(p);
-            impl->injectRemotes(*this);
+            p->injectRemotes(*this);
+            impl = std::forward<T>(p);
         }
 
         using Interface = std::remove_cvref_t<decltype(*std::declval<InterfacePtr&>())>;

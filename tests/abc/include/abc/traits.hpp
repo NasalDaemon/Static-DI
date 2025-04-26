@@ -71,8 +71,8 @@ struct Charlie : di::Trait
 } inline constexpr charlie{};
 
 using Alice = di::JoinedTrait<AliceRead, AliceWrite>;
-using Charlie2 = di::AltTrait<Charlie>;
-using Charlie3 = di::AltTrait<Charlie>;
+using Charlie2 = di::AltTrait<Charlie, struct Charlie_Tag2>;
+using Charlie3 = di::AltTrait<Charlie, struct Charlie_Tag3>;
 inline constexpr Alice alice{};
 inline constexpr Charlie2 charlie2{};
 inline constexpr Charlie3 charlie3{};

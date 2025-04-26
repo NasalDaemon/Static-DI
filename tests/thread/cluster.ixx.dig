@@ -7,9 +7,9 @@ namespace di::tests::thread {
 
 cluster Cluster
 {
-    a = di::OnThread<TestNode<trait::A>, 0>
-    b = di::OnThread<TestNode<trait::B>, 1>
-    c = di::OnThread<TestNode<trait::C>, 2>
+    a = TestNode<trait::A> : di::OnThread<0>
+    b = TestNode<trait::B> : di::OnThread<1>
+    c = TestNode<trait::C> : di::OnThread<2>
 
     [trait::A] a <-- b, c
     [trait::B] b <-- a, c

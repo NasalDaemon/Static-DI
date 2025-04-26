@@ -48,9 +48,10 @@ template_param: TPARAM_TYPE    NAME -> tparam_type_pack
 
 TPARAM_TYPE: (TYPENAME | "class") ["..."]
 
-node: NAME "=" node_type
+node: NAME "=" node_type (":" node_type_wrapper)*
 
-node_type: [TYPENAME] NAMESPACE [cpp_templ_args]
+node_type: [TYPENAME] node_type_wrapper
+node_type_wrapper: NAMESPACE [cpp_templ_args]
 
 connection_block: connection_context* connection_trait connection+
 
