@@ -7,7 +7,9 @@
 import di;
 import abc.graph;
 import abc.ellie;
-DI_IMPORT_STD;
+#if DI_STD_MODULE
+import std;
+#endif
 
 using namespace abc;
 

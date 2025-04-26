@@ -6,7 +6,9 @@
 
 import di;
 import di.tests.repeater.cluster;
-DI_IMPORT_STD;
+#if DI_STD_MODULE
+import std;
+#endif
 
 using namespace di::tests::repeater;
 

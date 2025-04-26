@@ -4,7 +4,9 @@ module;
 #endif
 module abc.ellie;
 
-DI_IMPORT_STD;
+#if DI_STD_MODULE
+import std;
+#endif
 
 void abc::Ellie::onGraphConstructed() { std::puts("Constructed Ellie"); }
 

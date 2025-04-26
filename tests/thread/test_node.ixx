@@ -7,7 +7,9 @@ export module di.tests.thread.test_node;
 import di.tests.thread.poster;
 import di.tests.thread.traits;
 import di;
-DI_IMPORT_STD;
+#if DI_STD_MODULE
+import std;
+#endif
 
 export namespace di::tests::thread {
 

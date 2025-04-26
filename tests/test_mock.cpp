@@ -8,7 +8,9 @@
 
 import di.tests.mock;
 import di;
-DI_IMPORT_STD;
+#if DI_STD_MODULE
+import std;
+#endif
 
 /* di-embed-begin
 

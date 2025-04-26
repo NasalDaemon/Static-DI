@@ -7,14 +7,20 @@
 #   define DI_MODULE_EXPORT
 #endif
 
+#define DI_MAKE_VER(major, minor, patch) \
+    (1000 * 1000 * major + 1000 * minor + patch)
+
 #if defined(__clang__)
 #   define DI_COMPILER_CLANG 1
 #   define DI_COMPILER_GNU 1
+#   define DI_COMPILER_VER DI_MAKE_VER(__clang_major__, __clang_minor__, __clang_patchlevel__)
 #elif defined(__GNUC__) || defined(__GNUG__)
 #   define DI_COMPILER_GCC 1
 #   define DI_COMPILER_GNU 1
+#   define DI_COMPILER_VER DI_MAKE_VER(__GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__)
 #elif defined(_MSC_VER)
 #   define DI_COMPILER_MSVC 1
+#   define DI_COMPILER_VER _MSC_VER
 #else
 #   error Unsupported compiler
 #endif

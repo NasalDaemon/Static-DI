@@ -5,7 +5,9 @@ module;
 export module di.tests.thread.poster;
 
 import di;
-DI_IMPORT_STD;
+#if DI_STD_MODULE
+import std;
+#endif
 
 namespace di::tests::thread {
     struct Poster

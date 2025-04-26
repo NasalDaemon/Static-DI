@@ -6,7 +6,9 @@ export module abc.bob;
 
 import abc.traits;
 import di;
-DI_IMPORT_STD;
+#if DI_STD_MODULE
+import std;
+#endif
 
 export namespace abc {
 

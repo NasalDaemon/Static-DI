@@ -19,5 +19,7 @@ export module {{ repr.exportModule }};
 {{ import }} {{ module }};
 {% endfor %}
 import di;
-DI_IMPORT_STD;
+#if DI_STD_MODULE
+import std;
+#endif
 {% extends "template.jinja" %}

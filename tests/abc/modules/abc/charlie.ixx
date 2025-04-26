@@ -7,7 +7,9 @@ export module abc.charlie;
 
 import abc.traits;
 import di;
-DI_IMPORT_STD;
+#if DI_STD_MODULE
+import std;
+#endif
 
 export namespace abc {
 

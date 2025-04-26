@@ -4,7 +4,9 @@ module;
 #endif
 module abc.alice;
 
-DI_IMPORT_STD;
+#if DI_STD_MODULE
+import std;
+#endif
 
 void abc::Alice::NodeBase::onGraphConstructed()
 {
