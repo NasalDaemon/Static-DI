@@ -22,16 +22,23 @@ jobs:
           - name: gcc
             version: 14
             os: ubuntu-latest
+          - name: gcc
+            version: 15
+            os: ubuntu-latest
+          - name: gcc
+            version: 15
+            std_module: std-module
+            os: ubuntu-latest
           - name: clang
             version: 20
             os: ubuntu-latest
           - name: clang
             version: 20
-            std_module: 'std-module'
+            std_module: std-module
             os: ubuntu-latest
           - name: cl
-            header_only: 'header-only'
-            allow_build_failure: 'allow-failure'
+            header_only: header-only
+            allow_build_failure: allow-failure
             os: windows-latest
 
     steps:

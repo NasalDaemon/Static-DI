@@ -32,6 +32,8 @@ struct Alice
         struct Types
         {
             using AliceType = int;
+            using BobType = di::ResolveTypes<Context, trait::Bob>::BobType;
+            using CharlieType = di::ResolveTypes<Context, trait::Bob>::CharlieType;
         };
 
         using Traits = di::Traits<Node
@@ -42,20 +44,14 @@ struct Alice
         >;
 
         using AliceType = Types::AliceType;
-        using BobType = di::ResolveTypes<Context, trait::Bob>::BobType;
-        using CharlieType = di::ResolveTypes<Context, trait::Bob>::CharlieType;
+        using BobType = Types::BobType;
 
         using NodeBase::apply;
 
-        int apply(trait::Bob::get) const
-        {
-            return getNode(trait::bob).get();
-        }
+        int apply(trait::Bob::get) const;
+        void apply(trait::Bob::set, int);
 
-        int apply(trait::Charlie::get method) const
-        {
-            return getNode(traitOf(method)).get();
-        }
+        int apply(trait::Charlie::get method) const;
 
     private:
         static_assert(std::is_same_v<decltype(NodeBase::alice), BobType>);

@@ -25,11 +25,11 @@ add_executable(di_tests_mock
     test_mock.cpp
 )
 
-set_property(TARGET di_tests_headers di_tests_module ${mock_mod}
+set_property(TARGET di_tests_headers di_tests_module
     PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
 
-# mocks don't work well with GCC+LTO
-if(NOT CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+# mocks don't work well with GCC-14+LTO
+if(NOT CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "15.1.0")
     set_property(TARGET di_tests_mock
         PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
 endif()
@@ -56,6 +56,13 @@ target_sources(di_tests_module
         repeater/test_node.ixx
         thread/poster.ixx
         thread/test_node.ixx
+)
+
+target_generate_di_src(di_tests_module
+    GRAPH_MODULE abc.graph
+    GRAPH_TYPE   di::Graph<abc::AliceBob>
+    NODES
+        alice    abc.alice
 )
 
 target_link_libraries(di_tests_headers PUBLIC

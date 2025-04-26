@@ -13,8 +13,8 @@ cluster AliceBob
 {
     alice = Alice//<p.operator()<int>(0)>
     bob = Bob
-    ellie = Ellie
     charlie = CharlieCluster
+    ellie = Ellie
 
     using a = trait::Alice, b = trait::Bob, c = trait::Charlie,
           e = trait::Ellie, e2 = trait::Ellie2, e3 = trait::Ellie3

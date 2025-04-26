@@ -39,6 +39,7 @@ target_generate_di_modules(di_tests_abc_module_lib)
 target_sources(di_tests_abc_module_lib
     PUBLIC FILE_SET CXX_MODULES FILES
         modules/abc/alice.ixx
+        modules/abc/alice.impl.ixx
         modules/abc/bob.ixx
         modules/abc/charlie.ixx
         modules/abc/ellie.ixx

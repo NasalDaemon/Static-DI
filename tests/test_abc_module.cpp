@@ -25,6 +25,10 @@ TEST_CASE("abc module")
     static_assert(aliceWrite.isTrait(trait::aliceWrite));
     static_assert(aliceWrite.isTrait(trait::aliceRead));
 
+    CHECK(11 == g.alice.asTrait(trait::alice).get());
+    CHECK(64 == g.alice.asTrait(trait::bob).get());
+    CHECK(99 == g.alice.asTrait(trait::charlie).get());
+
     auto charlie1plus2 = g.charlie.asTrait(trait::charlie).get() + g.charlie.charlie.asTrait(trait::charlie2).get();
     CHECK(0 == charlie1plus2);
 

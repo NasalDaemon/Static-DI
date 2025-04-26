@@ -32,38 +32,28 @@ namespace di::detail {
 
 #else
 
-template<class T>
-inline constexpr auto _d1Cc_ = []
-{
-    struct Context : T
-    {
-        static T _di_uncompressedType_();
-        static Context _di_compressedType_();
-    };
-    return std::type_identity<Context>{};
-};
+#define DI_COMPRESSOR_UGLY(id) _d1C##id##_
 
-template<class T>
-inline constexpr auto _d1Ci_ = []
-{
-    struct Impl : T
-    {
-        static T _di_uncompressedType_();
-        static Impl _di_compressedType_();
-    };
-    return std::type_identity<Impl>{};
-};
+#define DI_DEFINE_COMPRESSOR(id, Name) \
+    constexpr auto DI_COMPRESSOR_UGLY(id)() \
+    { \
+        return []<class T>() \
+        { \
+            struct Name : T \
+            { \
+                static T _di_uncompressedType_(); \
+                static Name _di_compressedType_(); \
+            }; \
+            return std::type_identity<Name>{}; \
+        }; \
+    }
 
-template<class T>
-inline constexpr auto _d1Ct_ = []
-{
-    struct Types : T
-    {
-        static T _di_uncompressedType_();
-        static Types _di_compressedType_();
-    };
-    return std::type_identity<Types>{};
-};
+#define DI_CALL_COMPRESSOR(id, T) \
+    ::DI_COMPRESSOR_UGLY(id)().template operator()<std::remove_cvref_t<T>>()
+
+DI_DEFINE_COMPRESSOR(c, Context)
+DI_DEFINE_COMPRESSOR(i, Impl)
+DI_DEFINE_COMPRESSOR(t, Types)
 
 namespace di::detail {
 
@@ -83,15 +73,15 @@ namespace di::detail {
 
     template<class T>
     requires (not IsCompressed<T>)
-    using CompressContext = decltype(_d1Cc_<std::remove_cvref_t<T>>())::type;
+    using CompressContext = decltype(DI_CALL_COMPRESSOR(c, T))::type;
 
     template<class T>
     requires (not IsCompressed<T>)
-    using CompressImpl = decltype(_d1Ci_<std::remove_cvref_t<T>>())::type;
+    using CompressImpl = decltype(DI_CALL_COMPRESSOR(i, T))::type;
 
     template<class T>
     requires (not IsCompressed<T>)
-    using CompressTypes = decltype(_d1Ct_<std::remove_cvref_t<T>>())::type;
+    using CompressTypes = decltype(DI_CALL_COMPRESSOR(t, T))::type;
 
     template<class T>
     requires (not IsCompressed<T>)
