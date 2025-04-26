@@ -25,13 +25,15 @@ add_executable(di_tests_mock
     test_mock.cpp
 )
 
-set_property(TARGET di_tests_headers di_tests_module
-    PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
-
-# mocks don't work well with GCC-14+LTO
-if(NOT CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "15.1.0")
-    set_property(TARGET di_tests_mock
+if(DI_ENABLE_LTO)
+    set_property(TARGET di_tests_headers di_tests_module
         PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+
+    # mocks don't work well with GCC-14+LTO
+    if(NOT CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "15.1.0")
+        set_property(TARGET di_tests_mock
+            PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+    endif()
 endif()
 
 target_generate_di_headers(di_tests_headers

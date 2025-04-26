@@ -4,8 +4,10 @@ add_library(di::tests::abc::lib ALIAS di_tests_abc_lib)
 add_library(di_tests_abc_module_lib)
 add_library(di::tests::abc::module ALIAS di_tests_abc_module_lib)
 
-set_property(TARGET di_tests_abc_lib di_tests_abc_module_lib
-    PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+if(DI_ENABLE_LTO)
+    set_property(TARGET di_tests_abc_lib di_tests_abc_module_lib
+        PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+endif()
 
 target_link_libraries(di_tests_abc_lib PUBLIC di::di)
 target_link_libraries(di_tests_abc_module_lib PUBLIC di::module)

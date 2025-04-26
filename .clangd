@@ -1,4 +1,5 @@
 CompileFlags:
+  CompilationDatabase: build/
   Add: [
     -DDI_CLANGD=1
   ]
