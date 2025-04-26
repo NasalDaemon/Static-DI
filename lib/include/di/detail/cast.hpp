@@ -1,7 +1,7 @@
 #ifndef INCLUDE_DI_DETAIL_CAST_HPP
 #define INCLUDE_DI_DETAIL_CAST_HPP
 
-#if !DI_STD_MODULE
+#if !DI_IMPORT_STD
 #include <bit>
 #include <memory>
 #include <type_traits>

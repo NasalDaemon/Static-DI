@@ -1,10 +1,10 @@
 module;
-#if !DI_STD_MODULE
+#if !DI_IMPORT_STD
 #include <cstdio>
 #endif
 module abc.alice;
 
-#if DI_STD_MODULE
+#if DI_IMPORT_STD
 import std;
 #endif
 

@@ -11,7 +11,7 @@
 #include "di/trait.hpp"
 #include "di/trait_view.hpp"
 
-#if !DI_STD_MODULE
+#if !DI_IMPORT_STD
 #include <type_traits>
 #endif
 

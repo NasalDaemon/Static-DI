@@ -1,11 +1,11 @@
 module;
-#if !DI_STD_MODULE
+#if !DI_IMPORT_STD
 #include <cstddef>
 #endif
 export module di.tests.thread.poster;
 
 import di;
-#if DI_STD_MODULE
+#if DI_IMPORT_STD
 import std;
 #endif
 

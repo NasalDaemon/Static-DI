@@ -12,7 +12,7 @@
 #include "di/node_fwd.hpp"
 #include "di/trait.hpp"
 
-#if !DI_STD_MODULE
+#if !DI_IMPORT_STD
 #include <cstddef>
 #include <utility>
 #endif

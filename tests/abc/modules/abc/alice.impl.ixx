@@ -1,12 +1,8 @@
-module;
-#if !DI_STD_MODULE
-#include <cstdio>
-#endif
 module abc.alice:impl;
 
 import abc.alice;
 import abc.traits;
-#if DI_STD_MODULE
+#if DI_IMPORT_STD
 import std;
 #endif
 

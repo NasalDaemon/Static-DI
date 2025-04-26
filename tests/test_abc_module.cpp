@@ -1,13 +1,13 @@
 #include <doctest/doctest.h>
 
-#if !DI_STD_MODULE
+#if !DI_IMPORT_STD
 #include <type_traits>
 #endif
 
 import di;
 import abc.graph;
 import abc.ellie;
-#if DI_STD_MODULE
+#if DI_IMPORT_STD
 import std;
 #endif
 

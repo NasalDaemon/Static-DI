@@ -1,5 +1,5 @@
 module;
-#if !DI_STD_MODULE
+#if !DI_IMPORT_STD
 #include <type_traits>
 #endif
 export module di.tests.thread.test_node;
@@ -7,7 +7,7 @@ export module di.tests.thread.test_node;
 import di.tests.thread.poster;
 import di.tests.thread.traits;
 import di;
-#if DI_STD_MODULE
+#if DI_IMPORT_STD
 import std;
 #endif
 

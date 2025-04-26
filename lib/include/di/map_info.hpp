@@ -8,7 +8,7 @@
 #include "di/macros.hpp"
 #include "di/node_fwd.hpp"
 
-#if !DI_STD_MODULE
+#if !DI_IMPORT_STD
 #include <type_traits>
 #endif
 

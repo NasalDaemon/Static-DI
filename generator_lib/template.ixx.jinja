@@ -7,7 +7,7 @@ module;
 {% endfor %}
 #include "di/macros.hpp"
 {% if repr.hasTrait %}
-#if !DI_STD_MODULE
+#if !DI_IMPORT_STD
 #include <concepts>
 #include <type_traits>
 #endif
@@ -19,7 +19,7 @@ export module {{ repr.exportModule }};
 {{ import }} {{ module }};
 {% endfor %}
 import di;
-#if DI_STD_MODULE
+#if DI_IMPORT_STD
 import std;
 #endif
 {% extends "template.jinja" %}

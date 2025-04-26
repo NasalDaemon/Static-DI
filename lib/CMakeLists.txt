@@ -22,5 +22,5 @@ if(DI_DECOMPRESS_TYPES)
 endif()
 
 if(CMAKE_CXX_MODULE_STD)
-    target_compile_definitions(di_module_lib PUBLIC DI_STD_MODULE=1)
+    target_compile_definitions(di_module_lib PUBLIC DI_IMPORT_STD=1)
 endif()

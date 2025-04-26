@@ -6,7 +6,7 @@
 #include "di/node_fwd.hpp"
 #include "di/context_fwd.hpp"
 
-#if !DI_STD_MODULE
+#if !DI_IMPORT_STD
 #include <memory>
 #include <type_traits>
 #endif

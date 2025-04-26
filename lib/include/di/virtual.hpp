@@ -8,7 +8,7 @@
 #include "di/traits.hpp"
 #include "di/empty_types.hpp"
 
-#if !DI_STD_MODULE
+#if !DI_IMPORT_STD
 #include <concepts>
 #include <memory>
 #include <type_traits>

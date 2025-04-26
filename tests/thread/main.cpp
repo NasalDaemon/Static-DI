@@ -1,13 +1,13 @@
 #include <doctest/doctest.h>
 
-#if !DI_STD_MODULE
+#if !DI_IMPORT_STD
 #include <cstdio>
 #endif
 
 import di.tests.thread.cluster;
 import di.tests.thread.poster;
 import di;
-#if DI_STD_MODULE
+#if DI_IMPORT_STD
 import std;
 #endif
 

@@ -1,12 +1,12 @@
 module;
-#if !DI_STD_MODULE
+#if !DI_IMPORT_STD
 #include <type_traits>
 #endif
 export module abc.ellie;
 
 import abc.traits;
 import di;
-#if DI_STD_MODULE
+#if DI_IMPORT_STD
 import std;
 #endif
 

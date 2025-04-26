@@ -5,7 +5,7 @@
 #include "di/macros.hpp"
 #include "di/trait.hpp"
 
-#if !DI_STD_MODULE
+#if !DI_IMPORT_STD
 #include <concepts>
 #endif
 

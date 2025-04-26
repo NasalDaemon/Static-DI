@@ -3,7 +3,7 @@
 
 #include "di/macros.hpp"
 
-#if !DI_STD_MODULE
+#if !DI_IMPORT_STD
 #include <algorithm>
 #include <cstddef>
 #include <functional>

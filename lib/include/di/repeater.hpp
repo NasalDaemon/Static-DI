@@ -9,7 +9,7 @@
 #include "di/trait.hpp"
 #include "di/traits.hpp"
 
-#if !DI_STD_MODULE
+#if !DI_IMPORT_STD
 #include <cstddef>
 #endif
 

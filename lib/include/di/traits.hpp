@@ -5,7 +5,7 @@
 #include "di/macros.hpp"
 #include "di/traits_fwd.hpp"
 
-#if !DI_STD_MODULE
+#if !DI_IMPORT_STD
 #include <type_traits>
 #endif
 

@@ -1,12 +1,12 @@
 #include <doctest/doctest.h>
 
-#if !DI_STD_MODULE
+#if !DI_IMPORT_STD
 #include <cstdio>
 #endif
 
 import di;
 import di.tests.repeater.cluster;
-#if DI_STD_MODULE
+#if DI_IMPORT_STD
 import std;
 #endif
 

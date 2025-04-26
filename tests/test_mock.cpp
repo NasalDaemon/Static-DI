@@ -1,14 +1,14 @@
 #include <doctest/doctest.h>
 #include "di/macros.hpp"
 
-#if !DI_STD_MODULE
+#if !DI_IMPORT_STD
 #include <typeinfo>
 #include <vector>
 #endif
 
 import di.tests.mock;
 import di;
-#if DI_STD_MODULE
+#if DI_IMPORT_STD
 import std;
 #endif
 

@@ -1,12 +1,12 @@
 module;
 
-#if !DI_STD_MODULE
+#if !DI_IMPORT_STD
 #include "di/di.hpp"
 #endif
 
 export module di;
 
-#if DI_STD_MODULE
+#if DI_IMPORT_STD
 import std;
 #define DI_MODULE_EXPORT export
 #include "di/di.hpp"

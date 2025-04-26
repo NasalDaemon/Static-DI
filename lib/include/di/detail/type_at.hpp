@@ -9,7 +9,7 @@
 #   define DI_TYPE_AT_VER 2
 #endif
 
-#if !DI_STD_MODULE
+#if !DI_IMPORT_STD
 #include <cstdint>
 #   if !DI_TYPE_AT_VER
 #   include <type_traits>

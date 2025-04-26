@@ -12,7 +12,7 @@
 #include "di/traits.hpp"
 #include "di/trait_view.hpp"
 
-#if !DI_STD_MODULE
+#if !DI_IMPORT_STD
 #include <cstddef>
 #include <memory>
 #include <new>
