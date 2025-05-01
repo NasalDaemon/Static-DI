@@ -110,10 +110,10 @@ namespace detail {
             DI_NODE(Node, node)
             DI_NODE(Mocks, mocks)
 
-            void visit(auto const& visitor)
+            constexpr void visit(this auto& self, auto&& visitor)
             {
-                node.visit(visitor);
-                mocks.visit(visitor);
+                self.node.visit(DI_FWD(visitor));
+                self.mocks.visit(DI_FWD(visitor));
             }
         };
 

@@ -23,6 +23,7 @@ namespace di {
 
 struct Node
 {
+    static constexpr bool isUnary() { return true; }
     using Types = EmptyTypes;
     using Environment = di::Environment<>;
 

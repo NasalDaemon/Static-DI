@@ -31,6 +31,7 @@ namespace detail {
 DI_MODULE_EXPORT
 struct Cluster
 {
+    static constexpr bool isUnary() { return false; }
     using Environment = di::Environment<>;
 
     template<class Self>
@@ -87,6 +88,7 @@ struct Cluster
     requires detail::HasLink<Self, Trait>
     constexpr auto asTrait(this Self& cluster, detail::AsRef asRef, Trait)
     {
+        Self::template ensureDepth<ContextParameterOf<Self>>();
         using Target = detail::ResolveLink<Self, Trait>;
         auto& node = cluster.*getNodePointer(AdlTag<typename Target::Context>{});
         return node.asTrait(asRef, typename Target::Trait{});
@@ -101,6 +103,20 @@ struct Cluster
                 getNodePointer(adlTag);
             };
         return std::bool_constant<value>{};
+    }
+
+    template<class Context>
+    static consteval void ensureDepth() {}
+};
+
+DI_MODULE_EXPORT
+template<std::size_t MaxDepth>
+struct Domain : Cluster
+{
+    template<class Context>
+    static consteval void ensureDepth()
+    {
+        static_assert(Context::Depth <= MaxDepth);
     }
 };
 

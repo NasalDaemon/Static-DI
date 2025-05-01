@@ -21,6 +21,7 @@ export namespace di {
     // cluster.hpp
     using di::Cluster;
     using di::IsCluster;
+    using di::Domain;
     // combine.hpp
     using di::Combine;
     // context_fwd.hpp
@@ -37,6 +38,12 @@ export namespace di {
     // context.hpp
     using di::ContextHasTrait;
     using di::ContextHasTraitPred;
+    // count.hpp
+    using di::nodeCount;
+    using di::IsUnary;
+    using di::EnsureAny;
+    using di::EnsureUnary;
+    using di::EnsureNonUnary;
     // detached.hpp
     using di::DetachedInterface;
     using di::IsDetachedInterface;

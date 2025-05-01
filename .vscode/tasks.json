@@ -1,0 +1,72 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "shell",
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"label": "CMake build",
+			"options": {
+				"cwd": "${workspaceFolder}/build",
+				"env": {
+					"BUILD_TYPE": "${input:BuildType}",
+				},
+			},
+			"presentation": {
+				"clear": true,
+				"showReuseMessage": false
+			},
+			"command": "time cmake --build . --config $BUILD_TYPE && ctest --build-config $BUILD_TYPE --output-on-failure",
+		},
+		{
+			"type": "shell",
+			"group": "build",
+			"label": "CMake clean",
+			"options": {
+				"cwd": "${workspaceFolder}/build",
+			},
+			"command": "cmake --build . --target clean",
+		},
+		{
+			"type": "shell",
+			"group": "build",
+			"label": "CMake clean reconfigure",
+			"command": "rm -rf build && conan install . --output-folder=build --build=missing --profile=conanprofile.txt && pushd build && cmake .. --preset conan-default -DDI_BUILD_TESTS=ON -DCMAKE_COLOR_DIAGNOSTICS=ON -DCMAKE_CXX_MODULE_STD=${input:ImportStd} -DDI_DECOMPRESS_TYPES=$DECOMPRESS_TYPES -DDI_ENABLE_LTO=$ENABLE_LTO -DCMAKE_CXX_FLAGS_DEBUG=\"$DEBUG_FLAGS\" && popd",
+			"options": {
+				"env": {
+					"BUILD_TYPE": "${input:BuildType}",
+					"DECOMPRESS_TYPES": "FALSE",
+					"DEBUG_FLAGS": "-g -O0",
+					"ENABLE_LTO": "TRUE",
+				},
+			}
+		},
+		{
+			"type": "shell",
+			"group": "build",
+			"label": "CMake clean reconfigure and build",
+			"dependsOn": ["CMake clean reconfigure", "CMake build"],
+			"dependsOrder": "sequence"
+		}
+	],
+	"inputs": [
+		{
+			"id": "BuildType",
+			"type": "pickString",
+			"options": [
+				"Debug",
+				"RelWithDebInfo",
+				"Release",
+			],
+			"description": "Build config to use"
+		},
+		{
+			"id": "ImportStd",
+			"type": "pickString",
+			"options": ["ON", "OFF"],
+			"description": "Whether to use 'import std'"
+		}
+	],
+}

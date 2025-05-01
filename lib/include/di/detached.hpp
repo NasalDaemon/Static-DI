@@ -41,6 +41,7 @@ struct DetachedImpl : Interface, private Node
     using typename Node::Traits;
     using typename Node::Types;
     using typename Node::Environment;
+    using Node::isUnary;
     using Node::finalize;
     using Node::visit;
     using Node::getNode;

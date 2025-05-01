@@ -62,6 +62,7 @@ namespace detail {
         // Expose utility functions from the underlying node
         using typename Node::Traits;
         using typename Node::Environment;
+        using Node::isUnary;
         using Node::getNode;
         using Node::canGetNode;
         using Node::asTrait;
@@ -104,6 +105,8 @@ struct NullContext : detail::ContextBase
         template<class Environment>
         static consteval void assertAccessible() {}
     };
+
+    static constexpr std::size_t Depth = 0;
 };
 
 template<class Root_>
@@ -119,6 +122,8 @@ struct Context : detail::ContextBase
     using ParentContext = ContextParameterOf<Parent>;
     using Root = ParentContext::Root;
     using Info = ParentContext::Info;
+
+    static constexpr std::size_t Depth = 1 + ParentContext::Depth;
 
     template<std::derived_from<Context> Self>
     using NodeTmpl = ToNodeWrapper<NodeHandle>::template Node<detail::CompressContext<Self>>;

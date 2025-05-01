@@ -45,6 +45,11 @@ struct Combine
     template<class Context>
     struct Node : Cluster, detail::CombinePart<Node<Context>, Nodes>...
     {
+        static constexpr bool isUnary()
+        {
+            return (sizeof...(Nodes) == 1) and (... and (decltype(detail::CombinePart<Node<Context>, Nodes>::node)::isUnary()));
+        }
+
         template<IsTrait Trait>
         static auto resolveLink(Trait)
             -> ResolvedLink<
@@ -68,9 +73,9 @@ struct Combine
             return detail::upCast<detail::TypeAt<I, detail::CombinePart<Node, Nodes>...>>(self).node;
         }
 
-        constexpr void visit(this auto& self, auto const& visitor)
+        constexpr void visit(this auto& self, auto&& visitor)
         {
-            (self.template get<Nodes>().visit(visitor), ...);
+            (self.template get<Nodes>().visit(DI_FWD(visitor)), ...);
         }
     };
 };

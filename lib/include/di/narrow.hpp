@@ -17,6 +17,8 @@ struct Narrow
     template<class Context>
     struct Node : Cluster
     {
+        static constexpr bool isUnary() { return decltype(node)::isUnary(); }
+
         struct Inner : di::Context<Node, NodeHandle>
         {
             template<class T>
@@ -38,9 +40,9 @@ struct Narrow
                 return std::addressof(self.node);
         }
 
-        constexpr void visit(this auto& self, auto const& f)
+        constexpr void visit(this auto& self, auto&& visitor)
         {
-            self.node.visit(f);
+            self.node.visit(DI_FWD(visitor));
         }
     };
 };

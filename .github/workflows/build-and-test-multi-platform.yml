@@ -22,13 +22,14 @@ jobs:
           - name: gcc
             version: 14
             os: ubuntu-latest
-          - name: gcc
-            version: 15
-            os: ubuntu-latest
-          - name: gcc
-            version: 15
-            std_module: std-module
-            os: ubuntu-latest
+          # Add back when gcc-15 can be used on ubuntu-latest
+          # - name: gcc
+          #   version: 15
+          #   os: ubuntu-latest
+          # - name: gcc
+          #   version: 15
+          #   std_module: std-module
+          #   os: ubuntu-latest
           - name: clang
             version: 20
             os: ubuntu-latest

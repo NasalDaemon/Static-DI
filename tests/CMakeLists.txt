@@ -16,6 +16,7 @@ add_executable(di_tests_module
     test_abc_module.cpp
     test_charlie.cpp
     test_embedded_modules.cpp
+    test_node_count.cpp
     test_union.cpp
     repeater/main.cpp
     thread/main.cpp
@@ -46,6 +47,7 @@ target_generate_di_modules(di_tests_module
         thread
     EMBED
         test_embedded_modules.cpp
+        test_node_count.cpp
 )
 
 target_generate_di_modules(di_tests_mock

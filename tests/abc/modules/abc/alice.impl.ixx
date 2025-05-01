@@ -2,9 +2,6 @@ module abc.alice:impl;
 
 import abc.alice;
 import abc.traits;
-#if DI_IMPORT_STD
-import std;
-#endif
 
 #define ALICE \
     template<class Context> \

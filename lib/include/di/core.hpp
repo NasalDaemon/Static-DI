@@ -2,8 +2,9 @@
 #define INCLUDE_DI_CORE_HPP
 
 #include "di/alias.hpp"
-#include "di/context.hpp"
 #include "di/cluster.hpp"
+#include "di/context.hpp"
+#include "di/count.hpp"
 #include "di/detached.hpp"
 #include "di/environment.hpp"
 #include "di/graph.hpp"

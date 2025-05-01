@@ -8,7 +8,7 @@
 #endif
 
 #define DI_MAKE_VER(major, minor, patch) \
-    (1000 * 1000 * major + 1000 * minor + patch)
+    ((1000 * 1000 * (major)) + (1000 * (minor)) + (patch))
 
 #if defined(__clang__)
 #   define DI_COMPILER_CLANG 1
@@ -101,8 +101,12 @@
     template<::di::MatchesTrait<DI_DEPAREN(traitName)> T> \
     static ::di::ResolvedLink<DI_DEPAREN(targetContext), DI_DEPAREN(targetTrait)> resolveLink(T);
 
-#define DI_NODE(Context, nodeName) \
-    [[no_unique_address]] ::di::ContextToNodeState<Context> nodeName{}; \
+#define DI_NODE(Context, nodeName)          DI_NODE_ENSURE(Context, nodeName, Any)
+#define DI_NODE_UNARY(Context, nodeName)    DI_NODE_ENSURE(Context, nodeName, Unary)
+#define DI_NODE_CLUSTER(Context, nodeName)  DI_NODE_ENSURE(Context, nodeName, NonUnary)
+
+#define DI_NODE_ENSURE(Context, nodeName, ENSURE) \
+    [[no_unique_address]] ::di::Ensure ## ENSURE<::di::ContextToNodeState<Context>> nodeName{}; \
     friend consteval auto getNodePointer(di::AdlTag<Context>) { return &Context::Parent::nodeName; }
 
 // used in node.cpp

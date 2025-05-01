@@ -1,8 +1,6 @@
 #ifndef DI_DETAIL_COMPRESS_HPP
 #define DI_DETAIL_COMPRESS_HPP
 
-#include "di/detail/cast.hpp"
-
 #if DI_DECOMPRESS_TYPES
 
 namespace di::detail {
@@ -32,10 +30,12 @@ namespace di::detail {
 
 #else
 
-#define DI_COMPRESSOR_UGLY(id) _d1C##id##_
+#include "di/detail/cast.hpp"
+
+#define DI_COMPRESSOR_ID(id) _d1C##id##_
 
 #define DI_DEFINE_COMPRESSOR(id, Name) \
-    constexpr auto DI_COMPRESSOR_UGLY(id)() \
+    consteval auto DI_COMPRESSOR_ID(id)() \
     { \
         return []<class T>() \
         { \
@@ -48,12 +48,14 @@ namespace di::detail {
         }; \
     }
 
-#define DI_CALL_COMPRESSOR(id, T) \
-    ::DI_COMPRESSOR_UGLY(id)().template operator()<std::remove_cvref_t<T>>()
-
 DI_DEFINE_COMPRESSOR(c, Context)
 DI_DEFINE_COMPRESSOR(i, Impl)
 DI_DEFINE_COMPRESSOR(t, Types)
+
+#undef DI_DEFINE_COMPRESSOR
+
+#define DI_COMPRESSOR(id, T) \
+    ::DI_COMPRESSOR_ID(id)().template operator()<std::remove_cvref_t<T>>()
 
 namespace di::detail {
 
@@ -73,15 +75,15 @@ namespace di::detail {
 
     template<class T>
     requires (not IsCompressed<T>)
-    using CompressContext = decltype(DI_CALL_COMPRESSOR(c, T))::type;
+    using CompressContext = decltype(DI_COMPRESSOR(c, T))::type;
 
     template<class T>
     requires (not IsCompressed<T>)
-    using CompressImpl = decltype(DI_CALL_COMPRESSOR(i, T))::type;
+    using CompressImpl = decltype(DI_COMPRESSOR(i, T))::type;
 
     template<class T>
     requires (not IsCompressed<T>)
-    using CompressTypes = decltype(DI_CALL_COMPRESSOR(t, T))::type;
+    using CompressTypes = decltype(DI_COMPRESSOR(t, T))::type;
 
     template<class T>
     requires (not IsCompressed<T>)
@@ -91,6 +93,9 @@ namespace di::detail {
     }
 
 } // namespace di::detail
+
+#undef DI_COMPRESSOR_ID
+#undef DI_COMPRESSOR
 
 #endif
 

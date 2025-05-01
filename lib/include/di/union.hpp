@@ -38,6 +38,7 @@ struct Union
             using ParentContext = Context;
             using Info = Context::Info;
             using Root = Context::Root;
+            static constexpr std::size_t Depth = Context::Depth;
 
             template<IsTrait Trait>
             static constexpr auto getNode(auto& option, Trait trait)
@@ -52,6 +53,8 @@ struct Union
     public:
         template<std::size_t I>
         using NodeAt = ToNodeWrapper<detail::TypeAt<I, Options...>>::template Node<InnerContext>;
+
+        static constexpr bool isUnary() { return (... and Options::template Node<InnerContext>::isUnary()); }
 
         template<std::size_t I, class Trait>
         struct TypesAtT : NodeTypes<NodeAt<I>, Trait>

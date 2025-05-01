@@ -3,6 +3,7 @@
 
 #include "di/detail/concepts.hpp"
 
+#include "di/count.hpp"
 #include "di/key.hpp"
 #include "di/macros.hpp"
 #include "di/node_fwd.hpp"
@@ -23,6 +24,7 @@ template<class T>
 concept IsContext = std::is_base_of_v<detail::ContextBase, T> and std::is_empty_v<T> and requires {
     typename T::Root;
     typename T::Info;
+    T::Depth;
 };
 
 namespace detail {
@@ -73,7 +75,7 @@ struct RootContext;
 
 DI_MODULE_EXPORT
 template<class T>
-concept IsRootContext = IsContext<T> and not requires { typename T::Parent; };
+concept IsRootContext = IsContext<T> and T::Depth == 0 and not requires { typename T::Parent; };
 
 DI_MODULE_EXPORT
 template<class Parent_, IsNodeHandle NodeHandle>
