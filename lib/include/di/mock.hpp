@@ -28,7 +28,18 @@ namespace detail {
     struct MockReturn
     {
         template<class T>
-        operator T&()
+        operator T&() const &&
+        {
+            if (Ref const* ref = std::get_if<Ref>(&value))
+            {
+                if (ref->type == std::type_index{typeid(T&)} and ref->lref)
+                    return *static_cast<T*>(ref->ptr);
+            }
+            throw std::bad_any_cast();
+        }
+
+        template<class T>
+        operator T&() &
         {
             if (std::any* any = std::get_if<std::any>(&value))
             {
@@ -50,19 +61,17 @@ namespace detail {
         }
 
         template<class T>
-        operator T&&()
+        operator T&&() &&
         {
             if (std::any* any = std::get_if<std::any>(&value))
             {
                 if (T* p = std::any_cast<T>(any))
                     return std::move(*p);
-                throw std::bad_any_cast();
             }
             else if (Ref* ref = std::get_if<Ref>(&value))
             {
-                if (ref->type != std::type_index{typeid(T&&)} or ref->lref)
-                    throw std::bad_any_cast();
-                return std::move(*static_cast<T*>(ref->ptr));
+                if (ref->type == std::type_index{typeid(T&&)} and not ref->lref)
+                    return std::move(*static_cast<T*>(ref->ptr));
             }
             else if (returnDefault)
             {
@@ -249,9 +258,9 @@ struct Mock
                 std::type_index{typeid(Args)}...};
             auto& defs = definitions[argTypes];
             (isConst ? defs.con : defs.mut) =
-                [f = std::forward<F>(f)](this auto&, detail::MockReturn& result, void** args)
+                [f = std::forward<F>(f)](this auto&, detail::MockReturn& result, void** args) -> void
                 {
-                    [&]<std::size_t... I>(std::index_sequence<I...>) -> decltype(auto)
+                    [&]<std::size_t... I>(std::index_sequence<I...>) -> void
                     {
                         if constexpr (std::is_void_v<R>)
                         {

@@ -2,6 +2,7 @@
 #include "di/macros.hpp"
 
 #if !DI_IMPORT_STD
+#include <any>
 #include <typeinfo>
 #include <vector>
 #endif
@@ -105,4 +106,19 @@ TEST_CASE("di::test::Mock")
     CHECK_THROWS_WITH(g.node->testNothing(), "Mock implementation not defined for apply(di::tests::trait::MockTest::takesNothing) const");
     CHECK_THROWS_WITH(g.node->testInt(8), "Mock implementation not defined for apply(di::tests::trait::MockTest::takesInt, int)");
 #endif
+
+    g.mocks->define([](trait::MockTest::returnsRef) { return 0; });
+
+    // Returning dangling reference throws exception
+    CHECK_THROWS_AS(g.node->testRef(), std::bad_any_cast);
+
+    // Storing result allows conversion to reference
+    auto refResult = g.mocks->apply(trait::MockTest::returnsRef{});
+    int& ref1 = refResult;
+    int& ref2 = refResult;
+    CHECK(&ref1 == &ref2);
+    CHECK(ref1 == 0);
+    ref1 = 123;
+    CHECK(ref1 == 123);
+    CHECK(ref2 == 123);
 }

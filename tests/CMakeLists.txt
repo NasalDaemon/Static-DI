@@ -26,7 +26,7 @@ add_executable(di_tests_mock
     test_mock.cpp
 )
 
-if(DI_ENABLE_LTO)
+if(DI_TESTS_LTO)
     set_property(TARGET di_tests_headers di_tests_module
         PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
 

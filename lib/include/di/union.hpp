@@ -54,7 +54,7 @@ struct Union
         template<std::size_t I>
         using NodeAt = ToNodeWrapper<detail::TypeAt<I, Options...>>::template Node<InnerContext>;
 
-        static constexpr bool isUnary() { return (... and Options::template Node<InnerContext>::isUnary()); }
+        static constexpr bool isUnary() { return (... and ToNodeWrapper<Options>::template Node<InnerContext>::isUnary()); }
 
         template<std::size_t I, class Trait>
         struct TypesAtT : NodeTypes<NodeAt<I>, Trait>

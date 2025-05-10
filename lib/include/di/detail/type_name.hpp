@@ -35,7 +35,7 @@ consteval std::string_view typeName()
         constexpr auto wrappedName = wrappedTypeName<T>();
         constexpr auto typeNameLength = wrappedName.length() - wrappedTypeNamePrefixLength() - wrappedTypeNameSuffixLength();
         return wrappedName.substr(wrappedTypeNamePrefixLength(), typeNameLength);
-    };
+    }
 }
 
 consteval std::size_t wrappedTypeNamePrefixLength()

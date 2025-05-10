@@ -33,7 +33,7 @@
 			"type": "shell",
 			"group": "build",
 			"label": "CMake clean reconfigure",
-			"command": "rm -rf build && conan install . --output-folder=build --build=missing --profile=conanprofile.txt && pushd build && cmake .. --preset conan-default -DDI_BUILD_TESTS=ON -DCMAKE_COLOR_DIAGNOSTICS=ON -DCMAKE_CXX_MODULE_STD=${input:ImportStd} -DDI_DECOMPRESS_TYPES=$DECOMPRESS_TYPES -DDI_ENABLE_LTO=$ENABLE_LTO -DCMAKE_CXX_FLAGS_DEBUG=\"$DEBUG_FLAGS\" && popd",
+			"command": "rm -rf build && conan install . --output-folder=build --build=missing --profile=conanprofile.txt && pushd build && cmake .. --preset conan-default -DDI_BUILD_TESTS=ON -DCMAKE_COLOR_DIAGNOSTICS=ON -DCMAKE_CXX_MODULE_STD=${input:ImportStd} -DDI_DECOMPRESS_TYPES=$DECOMPRESS_TYPES -DDI_TESTS_LTO=$ENABLE_LTO -DCMAKE_CXX_FLAGS_DEBUG=\"$DEBUG_FLAGS\" && popd",
 			"options": {
 				"env": {
 					"BUILD_TYPE": "${input:BuildType}",
