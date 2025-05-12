@@ -1,16 +1,20 @@
-#ifndef INCLUDE_DI_VIRTUAL_HPP
-#define INCLUDE_DI_VIRTUAL_HPP
+#ifndef INCLUDE_DI_VIRTUAL2_HPP
+#define INCLUDE_DI_VIRTUAL2_HPP
 
 #include "di/detail/cast.hpp"
-#include "di/alias.hpp"
+#include "di/detail/compress.hpp"
+#include "di/detail/select.hpp"
+#include "di/context.hpp"
 #include "di/macros.hpp"
 #include "di/node.hpp"
 #include "di/traits.hpp"
-#include "di/empty_types.hpp"
+#include "di/traits_fwd.hpp"
 
 #if !DI_IMPORT_STD
-#include <concepts>
+#include <cstdint>
 #include <memory>
+#include <stdexcept>
+#include <tuple>
 #include <type_traits>
 #include <utility>
 #endif
@@ -21,203 +25,175 @@ DI_MODULE_EXPORT
 struct INode;
 
 DI_MODULE_EXPORT
-template<class InterfacePtr, class... TraitTs>
+template<class T>
+concept IsInterface = std::derived_from<T, INode> and requires {
+    typename T::Traits;
+};
+
+DI_MODULE_EXPORT
+template<IsInterface... Interfaces>
+struct Virtual;
+
+DI_MODULE_EXPORT
+struct INode : Node
+{
+    virtual ~INode() = default;
+
+    template<class Self, IsNodeWrapper T>
+    [[nodiscard]] constexpr auto exchangeImplementation(this Self& self, std::in_place_type_t<T> tag, auto&&... args)
+    {
+        return ContextOf<Self>::exchangeImplementation(std::addressof(self), tag, DI_FWD(args)...);
+    }
+
+    virtual void onGraphConstructed() {}
+
+private:
+    template<IsInterface... Interfaces>
+    friend struct Virtual;
+    virtual void hostRelocated(void*) = 0;
+};
+
+DI_MODULE_EXPORT
+template<IsInterface... Interfaces>
 struct Virtual
 {
+    static_assert(sizeof...(Interfaces) != 0);
+
     template<class Context>
     struct Node : di::Node
     {
-        template<class T>
-        requires std::convertible_to<T&&, InterfacePtr>
-        explicit constexpr Node(T&& p)
-            : impl((p->injectRemotes(*this), std::forward<T>(p)))
-        {}
-
-        Node(Node const&) = delete;
-        constexpr Node(Node&& other) : impl(std::exchange(other.impl, nullptr))
-        {
-            if (impl)
-                impl->injectRemotes(*this);
-        }
-
-        // Allow interface implementation to be changed dynamically
-        template<class T>
-        requires std::assignable_from<InterfacePtr&, T&&>
-        constexpr void setImplementation(T&& p)
-        {
-            p->injectRemotes(*this);
-            impl = std::forward<T>(p);
-        }
-
-        using Interface = std::remove_cvref_t<decltype(*std::declval<InterfacePtr&>())>;
-        static_assert(std::is_base_of_v<INode, Interface>);
-        using Types = Interface::Types;
-
-        template<class Self>
-        constexpr decltype(auto) apply(this Self& self, auto&&... args)
-        {
-            return std::forward_like<Self&>(*self.impl).apply(DI_FWD(args)...);
-        }
-
-        using Traits = std::conditional_t<sizeof...(TraitTs) == 0,
-            di::TraitsOpen<Node>,
-            di::Traits<Node, TraitTs...>
+    private:
+        template<class Trait>
+        using InterfaceOf = detail::SelectIf<
+            detail::NodeTraitsHasTraitPred<Trait>,
+            Interfaces...
         >;
 
-    private:
-        InterfacePtr impl = nullptr;
+        template<class Interface>
+        struct WithTrait;
+
+        template<class Trait>
+        requires (... || detail::TraitsHasTrait<typename Interfaces::Traits, Trait>)
+        struct Resolver
+        {
+            using TraitInterface = InterfaceOf<Trait>;
+            using Types = TraitInterface::Traits::template ResolveTypes<Trait>;
+            using Interface = WithTrait<TraitInterface>;
+        };
+
+        template<class ImplNode>
+        struct InnerContext : Context
+        {
+            template<class N, IsNodeWrapper T>
+            static constexpr auto exchangeImplementation(N* current, std::in_place_type_t<T> tag, auto&&... args)
+            {
+                Node* virtualHost = static_cast<Impl<ImplNode> const*>(current)->virtualHost;
+                return virtualHost->exchangeImplementation(current, tag, DI_FWD(args)...);
+            }
+
+            template<class N, IsTrait Trait>
+            requires detail::HasLink<Context, Trait>
+            constexpr auto getNode(N& impl, Trait trait)
+            {
+                Node* virtualHost = static_cast<Impl<ImplNode> const*>(std::addressof(impl))->virtualHost;
+                return Context{}.getNode(std::forward_like<N&>(*virtualHost), trait);
+            }
+        };
+
+        template<IsNodeWrapper T>
+        using ImplOf = T::template Node<detail::CompressContext<InnerContext<T>>>;
+
+        template<IsNodeWrapper ImplNode>
+        struct Impl final : ImplOf<ImplNode>
+        {
+            explicit Impl(Node* virtualHost, auto&&... args)
+                : Impl::Node{DI_FWD(args)...}
+                , virtualHost(virtualHost)
+            {}
+
+        private:
+            friend struct Node;
+            Node* virtualHost;
+            void hostRelocated(void* newLoc) { virtualHost = static_cast<Node*>(newLoc); };
+        };
+
+    public:
+        using Traits = di::TraitsTemplate<Node, Resolver>;
+
+        template<IsNodeWrapper T>
+        requires IsInterface<Impl<T>> && (... && std::derived_from<Impl<T>, Interfaces>)
+        constexpr explicit Node(std::in_place_type_t<T> tag, auto&&... args)
+        {
+            init(tag, DI_FWD(args)...);
+        }
+
+        template<IsNodeWrapper T>
+        requires IsInterface<Impl<T>> && (... && std::derived_from<Impl<T>, Interfaces>)
+        constexpr ImplOf<T>& setImplementation(std::in_place_type_t<T> tag, auto&&... args)
+        {
+            destroy();
+            return *init(tag, DI_FWD(args)...);
+        }
+
+        Node(Node const&) = delete;
+        constexpr Node(Node&& other)
+            : interfaces(other.interfaces)
+        {
+            get<0>(other.interfaces) = nullptr;
+            if (auto p = get<0>(interfaces))
+                p->hostRelocated(this);
+        }
+        constexpr ~Node()
+        {
+            destroy();
+        }
+
+        void onGraphConstructed()
+        {
+            get<0>(interfaces)->onGraphConstructed();
+        }
+
+    protected:
+        template<IsNodeWrapper T>
+        requires IsInterface<Impl<T>> && (... && std::derived_from<Impl<T>, Interfaces>)
+        constexpr Impl<T>* init(std::in_place_type_t<T>, auto&&... args)
+        {
+            auto p = new Impl<T>(this, DI_FWD(args)...);
+            interfaces = {static_cast<Interfaces*>(p)...};
+            return p;
+        }
+
+        constexpr void destroy()
+        {
+            delete std::exchange(get<0>(interfaces), nullptr);
+        }
+
+        template<class N, IsNodeWrapper T>
+        constexpr auto exchangeImplementation(N* current, std::in_place_type_t<T> tag, auto&&... args)
+        {
+            if (get<0>(interfaces) != current)
+                throw std::runtime_error("Pointers not matching");
+
+            auto next = init(tag, DI_FWD(args)...);
+            return std::pair<std::unique_ptr<N>, ImplOf<T>&>(current, *next);
+        }
+
+        std::tuple<Interfaces*...> interfaces;
     };
 };
 
-DI_MODULE_EXPORT
-struct IRemotes
+template<IsInterface... Interfaces>
+template<class Context>
+template<class Interface>
+struct Virtual<Interfaces...>::Node<Context>::WithTrait : Node
 {
-    using Types = EmptyTypes;
-    using Traits = TraitsOpen<IRemotes>;
-
-    virtual ~IRemotes() = default;
-
     template<class Self>
-    constexpr auto asTrait(this Self& self, auto trait, auto... keys)
+    constexpr decltype(auto) apply(this Self& self, auto&&... args)
     {
-        return TraitView(trait, Alias(self, keys...), std::type_identity<typename Self::Types>{});
+        return std::forward_like<Self&>(*get<Interface*>(self.interfaces)).apply(DI_FWD(args)...);
     }
-
-private:
-    friend struct INode;
-    virtual void remotesRelocated(INode*, void*) = 0;
 };
 
-DI_MODULE_EXPORT
-struct INode
-{
-    using Types = EmptyTypes;
-    using Traits = TraitsOpen<INode>;
+}
 
-    virtual ~INode() = default;
-
-    using Remotes = void;
-
-    template<class Self, class Virtual>
-    constexpr void injectRemotes(this Self& self, Virtual& virtualNode)
-    {
-        using Remotes = Self::Remotes;
-        if (self.remotes)
-        {
-            self.remotes->remotesRelocated(std::addressof(self), std::addressof(virtualNode));
-        }
-        else if constexpr (not std::is_void_v<Remotes>)
-        {
-            static_assert(std::derived_from<Remotes, IRemotes>);
-            using RemotesImpl = Self::template RemotesImpl<Virtual>;
-            static_assert(std::derived_from<RemotesImpl, Remotes>);
-            static_assert(std::is_final_v<RemotesImpl>);
-            self.remotes = std::make_unique<RemotesImpl>(Alias(virtualNode));
-        }
-    }
-
-protected:
-    template<class Self>
-    constexpr auto getNode(this Self& self, auto trait)
-    {
-        using Remotes = Self::Remotes;
-        static_assert(not std::is_void_v<Remotes>, "Remotes struct not defined in Interface");
-        auto& remotes = detail::downCast<Remotes>(*self.remotes);
-        return std::forward_like<Self&>(remotes).asTrait(trait);
-    }
-
-private:
-    std::unique_ptr<IRemotes> remotes;
-};
-
-DI_MODULE_EXPORT
-template<IsNode Node, std::derived_from<IRemotes> RemotesBase>
-struct IRemotesImpl : RemotesBase
-{
-    explicit constexpr IRemotesImpl(Alias<Node> node) : node(node) {}
-
-protected:
-    using Base = IRemotesImpl;
-
-    template<IsTrait Trait, class Key = ContextOf<Node>::Info::DefaultKey>
-    constexpr auto getNode(this auto& self, Trait trait, Key key = {})
-    {
-        return self.node->getNode(trait, key);
-    }
-
-private:
-    constexpr void remotesRelocated(INode*, void* n)
-    {
-        node = Alias(*static_cast<Node*>(n));
-    }
-    Alias<Node> node;
-};
-
-DI_MODULE_EXPORT
-template<IsNode Node, std::derived_from<INode> InterfaceBase_>
-struct INodeImpl : InterfaceBase_
-{
-    using InterfaceBase = InterfaceBase_;
-
-    explicit INodeImpl(Alias<Node> node) : node(node)
-    {}
-
-    struct Remotes final : IRemotes
-    {
-        // No need to keep alias in remotes, as INodeImpl already has the alias
-        explicit Remotes(Alias<Node>) {}
-
-        // Only functionality really needed by INodeImpl
-        constexpr void remotesRelocated(INode* nodeImpl, void* node)
-        {
-            dynamic_cast<INodeImpl*>(nodeImpl)->node = Alias(*static_cast<Node*>(node));
-        }
-    };
-    template<class>
-    using RemotesImpl = Remotes;
-
-protected:
-    using Base = INodeImpl;
-
-    template<IsTrait Trait, class Key = ContextOf<Node>::Info::DefaultKey>
-    auto getNode(this auto& self, Trait trait, Key key = {})
-    {
-        return self.node->getNode(trait, key);
-    }
-
-private:
-    Alias<Node> node;
-};
-
-DI_MODULE_EXPORT
-template<template<class> class INodeImpl, template<class...> class Pointer = std::unique_ptr>
-struct INodeFactory
-{
-    template<class Virtual>
-    constexpr void injectRemotes(Virtual& v)
-    {
-        using Impl = INodeImpl<Virtual>;
-        static_assert(std::derived_from<Impl, INode>);
-        static_assert(std::derived_from<typename Impl::InterfaceBase, INode>);
-        static_assert(std::is_final_v<Impl>);
-        auto impl = Pointer<Impl>(new Impl(Alias(v)));
-        impl->injectRemotes(v);
-        p = std::move(impl);
-    }
-
-    constexpr INodeFactory* operator->() { return this; }
-
-    template<std::derived_from<INode> T>
-    constexpr operator Pointer<T>() &&
-    {
-        return Pointer<T>(dynamic_cast<T*>(p.release()));
-    }
-
-private:
-    Pointer<INode> p;
-};
-
-} // namespace di
-
-
-#endif // INCLUDE_DI_VIRTUAL_HPP
+#endif // INCLUDE_DI_VIRTUAL2_HPP

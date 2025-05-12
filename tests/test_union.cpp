@@ -33,6 +33,8 @@ namespace trait {
 
 } // trait
 
+struct MouseType;
+
 struct Cat : di::Node
 {
     using Traits = di::Traits<Cat, trait::Name>;
@@ -54,7 +56,12 @@ struct Dog
             struct DogType;
         };
 
-        int apply(trait::Name::get) const { return getNode(trait::Name{}).get(); }
+        static_assert(std::is_same_v<MouseType, typename di::ResolveTypes<Context, trait::Name>::MouseType>);
+
+        int apply(trait::Name::get) const
+        {
+            return getNode(trait::Name{}).get();
+        }
     };
 };
 template<class Context>
@@ -63,7 +70,7 @@ struct Mouse : di::Node
     using Traits = di::Traits<Mouse, trait::Name>;
     struct Types
     {
-        struct MouseType;
+        using MouseType = tests::MouseType;
     };
 
     int apply(trait::Name::get) const { return 42; }

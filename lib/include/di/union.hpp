@@ -7,6 +7,7 @@
 
 #include "di/alias.hpp"
 #include "di/context_fwd.hpp"
+#include "di/link.hpp"
 #include "di/macros.hpp"
 #include "di/node.hpp"
 #include "di/traits.hpp"
@@ -32,15 +33,10 @@ struct Union
     {
         struct InnerContext_;
         using InnerContext = detail::CompressContext<InnerContext_>;
-        struct InnerContext_ : detail::ContextBase
+        struct InnerContext_ : Context
         {
-            using Parent = Node;
-            using ParentContext = Context;
-            using Info = Context::Info;
-            using Root = Context::Root;
-            static constexpr std::size_t Depth = Context::Depth;
-
             template<IsTrait Trait>
+            requires detail::HasLink<Context, Trait>
             static constexpr auto getNode(auto& option, Trait trait)
             {
                 using Option = std::remove_cvref_t<decltype(option)>;

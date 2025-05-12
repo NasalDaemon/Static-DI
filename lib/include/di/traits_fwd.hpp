@@ -44,8 +44,22 @@ namespace detail {
         using DefaultInterface = Interface_;
     };
 
-    template<class TraitTs, class Trait>
-    concept TraitsHasTrait = IsTrait<Trait> and requires (Trait trait) { { TraitTs::resolveTrait(trait) } -> IsResolvedTrait; };
+    template<class TraitsT, class Trait>
+    concept TraitsHasTrait = IsTrait<Trait> and requires (Trait trait) { { TraitsT::resolveTrait(trait) } -> IsResolvedTrait; };
+
+    template<class Trait>
+    struct TraitsHasTraitPred
+    {
+        template<class TraitsT>
+        static constexpr bool value = TraitsHasTrait<TraitsT, Trait>;
+    };
+
+    template<class Trait>
+    struct NodeTraitsHasTraitPred
+    {
+        template<class Node>
+        static constexpr bool value = TraitsHasTrait<typename Node::Traits, Trait>;
+    };
 
     template<class Node_, template<class> class GetContext_, class DefaultResolver, class... TraitTs>
     struct Traits;

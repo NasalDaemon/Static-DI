@@ -151,12 +151,9 @@ export namespace di {
     using di::Union;
     using di::withIndex;
     // virtual.hpp
-    using di::Virtual;
-    using di::IRemotes;
-    using di::IRemotesImpl;
     using di::INode;
-    using di::INodeImpl;
-    using di::INodeFactory;
+    using di::IsInterface;
+    using di::Virtual;
 }
 
 #endif
