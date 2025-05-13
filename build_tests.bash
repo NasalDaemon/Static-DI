@@ -24,8 +24,9 @@ BUILD_TYPE=$BUILD_TYPE \
     conan install . --output-folder=build --build=missing --profile=conanprofile.txt
 pushd build
 cmake .. --preset conan-default \
-    -DDI_BUILD_TESTS=ON \
-    -DCMAKE_COLOR_DIAGNOSTICS=ON \
+    -DDI_BUILD_TESTS=TRUE \
+    -DDI_COMPRESS_TYPES=TRUE \
+    -DCMAKE_COLOR_DIAGNOSTICS=TRUE \
     -DCMAKE_CXX_MODULE_STD=$STD_MODULE
 cmake --build . --config $BUILD_TYPE
 ctest --build-config $BUILD_TYPE --output-on-failure

@@ -59,6 +59,10 @@ export namespace di {
     using di::mergeEnv;
     using di::withEnv;
     using di::WithEnv;
+    // factory.hpp
+    using di::WithFactory;
+    using di::withFactory;
+    using di::Constructor;
     // graph.hpp
     using di::InlineGraph;
     using di::Graph;

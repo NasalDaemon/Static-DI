@@ -5,6 +5,7 @@
 #if !DI_IMPORT_STD
 #include <memory>
 #include <type_traits>
+#include <utility>
 #endif
 
 import di.tests.virtual_;
@@ -47,7 +48,7 @@ namespace di::tests::virtual_ {
 struct AppleType;
 struct BreadType;
 
-struct IApple : virtual di::INode
+struct IApple : di::INode
 {
     using Traits = di::Traits<IApple, trait::Apple>;
     struct Types
@@ -57,7 +58,7 @@ struct IApple : virtual di::INode
     virtual int apply(trait::Apple::seeds) const = 0;
     virtual void apply(trait::Apple::testExchange) = 0;
 };
-struct IBread : virtual di::INode
+struct IBread : di::INode
 {
     using Traits = di::Traits<IBread, trait::Bread>;
     struct Types
@@ -66,7 +67,7 @@ struct IBread : virtual di::INode
     };
     virtual int apply(trait::Bread::slices) const = 0;
 };
-struct IEgg : virtual di::INode
+struct IEgg : di::INode
 {
     using Traits = di::Traits<IEgg, trait::Egg>;
     virtual int apply(trait::Egg::yolks) const = 0;
@@ -81,24 +82,27 @@ struct AppleEgg
 
         static_assert(std::is_same_v<BreadType, typename di::ResolveTypes<Context, trait::Bread>::BreadType>);
 
-        int apply(trait::Apple::seeds) const
+        int apply(trait::Apple::seeds) const override
         {
             return seeds + getNode(trait::bread).slices();
         }
 
-        int apply(trait::Egg::yolks) const
+        int apply(trait::Egg::yolks) const override
         {
             return yolks;
         }
 
-        void apply(trait::Apple::testExchange)
+        void apply(trait::Apple::testExchange) override
         {
             CHECK(asTrait(trait::apple).seeds() == 34);
-            auto [current, next] = exchangeImplementation(std::in_place_type<AppleEgg>, 11);
+            auto [current, next] = exchangeImpl(std::in_place_type<AppleEgg>, 11);
             REQUIRE(current.get() == this);
             REQUIRE(std::addressof(next) != this);
             CHECK(next.asTrait(trait::apple).seeds() == 35);
         }
+
+        void onGraphConstructed() override
+        {}
 
         explicit Node(int seeds = 10, int yolks = 2)
             : seeds(seeds), yolks(yolks)
@@ -115,6 +119,11 @@ struct Bread
     struct Node : IBread
     {
         using Traits = di::Traits<Node, trait::Bread>;
+
+        // Prove that withFactory works with copy/move elision
+        Node() = default;
+        Node(Node const&) = delete;
+        Node(Node&&) = delete;
 
         static_assert(std::is_same_v<AppleType, typename di::ResolveTypes<Context, trait::Apple>::AppleType>);
 
@@ -139,7 +148,7 @@ TEST_CASE("di::Virtual")
 
     G g{
         .node{std::in_place_type<AppleEgg>},
-        .mocks{std::in_place_type<Bread>}
+        .mocks{di::withFactory, []<class C>(C) -> C::type { return std::in_place_type<Bread>; }}
     };
     g.onConstructed();
 

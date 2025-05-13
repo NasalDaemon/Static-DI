@@ -16,9 +16,9 @@ target_sources(di_module_lib
         modules/di.ixx
 )
 
-if(DI_DECOMPRESS_TYPES)
-    target_compile_definitions(di_module_lib PUBLIC    DI_DECOMPRESS_TYPES=1)
-    target_compile_definitions(di_lib        INTERFACE DI_DECOMPRESS_TYPES=1)
+if(DI_COMPRESS_TYPES)
+    target_compile_definitions(di_module_lib PUBLIC    DI_COMPRESS_TYPES=1)
+    target_compile_definitions(di_lib        INTERFACE DI_COMPRESS_TYPES=1)
 endif()
 
 if(CMAKE_CXX_MODULE_STD)

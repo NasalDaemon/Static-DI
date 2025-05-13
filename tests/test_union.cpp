@@ -5,6 +5,7 @@
 #if !DI_IMPORT_STD
 #include <concepts>
 #include <cstdio>
+#include <utility>
 #endif
 
 import di;
@@ -111,8 +112,8 @@ static_assert(testWithIndex());
 
 TEST_CASE("di::Union")
 {
-    di::InlineGraph<Union> cat{.onion{0u}};
-    di::InlineGraph<Union> dog{.onion{1u}};
+    di::InlineGraph<Union> cat{.onion{std::in_place_index<0>}};
+    di::InlineGraph<Union> dog{.onion{di::withFactory, [](auto c) { return c(std::in_place_type<Dog>); }}};
 
     using DogTypes = decltype(dog.onion.asTrait(trait::Name{}))::Types;
     static_assert(DogTypes::TypesCount == 2);

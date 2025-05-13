@@ -1,10 +1,11 @@
-#ifndef INCLUDE_DI_VIRTUAL2_HPP
-#define INCLUDE_DI_VIRTUAL2_HPP
+#ifndef INCLUDE_DI_VIRTUAL_HPP
+#define INCLUDE_DI_VIRTUAL_HPP
 
 #include "di/detail/cast.hpp"
 #include "di/detail/compress.hpp"
 #include "di/detail/select.hpp"
 #include "di/context.hpp"
+#include "di/factory.hpp"
 #include "di/macros.hpp"
 #include "di/node.hpp"
 #include "di/traits.hpp"
@@ -26,7 +27,7 @@ struct INode;
 
 DI_MODULE_EXPORT
 template<class T>
-concept IsInterface = std::derived_from<T, INode> and requires {
+concept IsInterface = std::is_base_of_v<INode, T> and requires {
     typename T::Traits;
 };
 
@@ -34,24 +35,37 @@ DI_MODULE_EXPORT
 template<IsInterface... Interfaces>
 struct Virtual;
 
-DI_MODULE_EXPORT
-struct INode : Node
-{
-    virtual ~INode() = default;
+namespace detail {
+    struct IsVirtualContextTag{};
+    template<class Context>
+    concept IsVirtualContext = IsContext<Context> and requires {
+        { Context::isVirtualContext(detail::IsVirtualContextTag()) } -> std::same_as<Decompress<Context>>;
+    };
 
-    template<class Self, IsNodeWrapper T>
-    [[nodiscard]] constexpr auto exchangeImplementation(this Self& self, std::in_place_type_t<T> tag, auto&&... args)
+    struct INodeBase : Node
     {
-        return ContextOf<Self>::exchangeImplementation(std::addressof(self), tag, DI_FWD(args)...);
-    }
+        template<class Self, IsNodeWrapper T>
+        requires IsVirtualContext<ContextOf<Self>>
+        [[nodiscard]] constexpr auto exchangeImpl(this Self& self, std::in_place_type_t<T> tag, auto&&... args)
+        {
+            return ContextOf<Self>::exchangeImpl(std::addressof(self), tag, DI_FWD(args)...);
+        }
 
-    virtual void onGraphConstructed() {}
+        virtual ~INodeBase() = default;
 
-private:
-    template<IsInterface... Interfaces>
-    friend struct Virtual;
-    virtual void hostRelocated(void*) = 0;
-};
+        virtual void onGraphConstructed() {}
+
+    private:
+        template<IsInterface... Interfaces>
+        friend struct di::Virtual;
+        virtual void hostRelocated(void*) = 0;
+    };
+
+}
+
+DI_MODULE_EXPORT
+struct INode : virtual detail::INodeBase
+{};
 
 DI_MODULE_EXPORT
 template<IsInterface... Interfaces>
@@ -84,11 +98,13 @@ struct Virtual
         template<class ImplNode>
         struct InnerContext : Context
         {
+            static InnerContext isVirtualContext(detail::IsVirtualContextTag);
+
             template<class N, IsNodeWrapper T>
-            static constexpr auto exchangeImplementation(N* current, std::in_place_type_t<T> tag, auto&&... args)
+            static constexpr auto exchangeImpl(N* current, std::in_place_type_t<T> tag, auto&&... args)
             {
                 Node* virtualHost = static_cast<Impl<ImplNode> const*>(current)->virtualHost;
-                return virtualHost->exchangeImplementation(current, tag, DI_FWD(args)...);
+                return virtualHost->exchangeImpl(current, tag, DI_FWD(args)...);
             }
 
             template<class N, IsTrait Trait>
@@ -122,17 +138,33 @@ struct Virtual
 
         template<IsNodeWrapper T>
         requires IsInterface<Impl<T>> && (... && std::derived_from<Impl<T>, Interfaces>)
-        constexpr explicit Node(std::in_place_type_t<T> tag, auto&&... args)
+        constexpr Node(std::in_place_type_t<T>, auto&&... args)
         {
-            init(tag, DI_FWD(args)...);
+            init<T>(DI_FWD(args)...);
         }
+
+        template<std::invocable<Constructor<Node>> F>
+        requires std::same_as<Node, std::invoke_result_t<F, Constructor<Node>>>
+        constexpr explicit Node(WithFactory, F factory)
+            : Node(factory(Constructor<Node>()))
+        {}
 
         template<IsNodeWrapper T>
         requires IsInterface<Impl<T>> && (... && std::derived_from<Impl<T>, Interfaces>)
-        constexpr ImplOf<T>& setImplementation(std::in_place_type_t<T> tag, auto&&... args)
+        constexpr ImplOf<T>& emplace(auto&&... args)
         {
-            destroy();
-            return *init(tag, DI_FWD(args)...);
+            auto const backup = interfaces;
+            try
+            {
+                ImplOf<T>* next = init<T>(DI_FWD(args)...);
+                delete get<0>(backup);
+                return *next;
+            }
+            catch (...)
+            {
+                interfaces = backup;
+                throw;
+            }
         }
 
         Node(Node const&) = delete;
@@ -140,12 +172,12 @@ struct Virtual
             : interfaces(other.interfaces)
         {
             get<0>(other.interfaces) = nullptr;
-            if (auto p = get<0>(interfaces))
+            if (auto* p = get<0>(interfaces))
                 p->hostRelocated(this);
         }
         constexpr ~Node()
         {
-            destroy();
+            delete get<0>(interfaces);
         }
 
         void onGraphConstructed()
@@ -156,25 +188,20 @@ struct Virtual
     protected:
         template<IsNodeWrapper T>
         requires IsInterface<Impl<T>> && (... && std::derived_from<Impl<T>, Interfaces>)
-        constexpr Impl<T>* init(std::in_place_type_t<T>, auto&&... args)
+        constexpr Impl<T>* init(auto&&... args)
         {
             auto p = new Impl<T>(this, DI_FWD(args)...);
             interfaces = {static_cast<Interfaces*>(p)...};
             return p;
         }
 
-        constexpr void destroy()
-        {
-            delete std::exchange(get<0>(interfaces), nullptr);
-        }
-
         template<class N, IsNodeWrapper T>
-        constexpr auto exchangeImplementation(N* current, std::in_place_type_t<T> tag, auto&&... args)
+        constexpr auto exchangeImpl(N* current, std::in_place_type_t<T>, auto&&... args)
         {
             if (get<0>(interfaces) != current)
                 throw std::runtime_error("Pointers not matching");
 
-            auto next = init(tag, DI_FWD(args)...);
+            auto next = init<T>(DI_FWD(args)...);
             return std::pair<std::unique_ptr<N>, ImplOf<T>&>(current, *next);
         }
 
@@ -196,4 +223,4 @@ struct Virtual<Interfaces...>::Node<Context>::WithTrait : Node
 
 }
 
-#endif // INCLUDE_DI_VIRTUAL2_HPP
+#endif // INCLUDE_DI_VIRTUAL_HPP

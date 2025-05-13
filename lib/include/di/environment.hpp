@@ -1,6 +1,7 @@
 #ifndef INCLUDE_DI_ENVIRONMENT_HPP
 #define INCLUDE_DI_ENVIRONMENT_HPP
 
+#include "di/detail/cast.hpp"
 #include "di/macros.hpp"
 
 #if !DI_IMPORT_STD

@@ -7,6 +7,7 @@
 
 #include "di/alias.hpp"
 #include "di/context_fwd.hpp"
+#include "di/factory.hpp"
 #include "di/link.hpp"
 #include "di/macros.hpp"
 #include "di/node.hpp"
@@ -18,6 +19,7 @@
 #include <memory>
 #include <new>
 #include <type_traits>
+#include <utility>
 #endif
 
 namespace di {
@@ -46,11 +48,14 @@ struct Union
             }
         };
 
+        template<class Option>
+        using ToNode = ToNodeWrapper<Option>::template Node<InnerContext>;
+
     public:
         template<std::size_t I>
-        using NodeAt = ToNodeWrapper<detail::TypeAt<I, Options...>>::template Node<InnerContext>;
+        using NodeAt = ToNode<detail::TypeAt<I, Options...>>;
 
-        static constexpr bool isUnary() { return (... and ToNodeWrapper<Options>::template Node<InnerContext>::isUnary()); }
+        static constexpr bool isUnary() { return (... and ToNode<Options>::isUnary()); }
 
         template<std::size_t I, class Trait>
         struct TypesAtT : NodeTypes<NodeAt<I>, Trait>
@@ -69,17 +74,44 @@ struct Union
 
         using Traits = di::TraitsTemplate<Node, TraitsTemplate>;
 
-        constexpr explicit Node(std::size_t index)
-            : index(index)
+        template<std::invocable<Constructor<Node>> F>
+        requires std::same_as<Node, std::invoke_result_t<F, Constructor<Node>>>
+        constexpr explicit Node(WithFactory, F factory)
+            : Node(factory(Constructor<Node>()))
+        {}
+
+        template<std::size_t I>
+        requires (I < sizeof...(Options))
+        constexpr Node(std::in_place_index_t<I>, auto&&... args)
+            : index(I)
         {
-            withIndex(index, [this](auto i) -> void { new (bytes) NodeAt<i>(); });
+            new (bytes) NodeAt<I>{DI_FWD(args)...};
         }
 
-        constexpr void reset(std::size_t newIndex)
+        template<std::size_t I>
+        requires (I < sizeof...(Options))
+        constexpr NodeAt<I>& emplace(auto&&... args)
         {
             destroy();
-            index = newIndex;
-            withIndex(index, [this](auto i) -> void { new (bytes) NodeAt<i>(); });
+            index = I;
+            return *new (bytes) NodeAt<I>{DI_FWD(args)...};
+        }
+
+        template<class Option>
+        requires (... || std::same_as<Option, Options>)
+        constexpr Node(std::in_place_type_t<Option>, auto&&... args)
+            : index(findIndex<Option>())
+        {
+            new (bytes) ToNode<Option>{DI_FWD(args)...};
+        }
+
+        template<class Option>
+        requires (... || std::same_as<Option, Options>)
+        constexpr ToNode<Option>& emplace(auto&&... args)
+        {
+            destroy();
+            index = findIndex<Option>();
+            return *new (bytes) ToNode<Option>{DI_FWD(args)...};
         }
 
         constexpr decltype(auto) visit(this auto& self, auto&& visitor)
@@ -115,8 +147,18 @@ struct Union
             visit([]<class T>(T& impl) -> void { impl.~T(); });
         }
 
-        static constexpr std::size_t Align = std::max({alignof(typename ToNodeWrapper<Options>::template Node<InnerContext>)...});
-        static constexpr std::size_t Size = std::max({sizeof(typename ToNodeWrapper<Options>::template Node<InnerContext>)...});
+        template<class Option>
+        static consteval std::size_t findIndex()
+        {
+            std::size_t i = 0, c = 0;
+            (((i |= std::is_same_v<Option, Options>, (c += i))), ...);
+            if (c == 0)
+                throw "Not a valid Option";
+            return sizeof...(Options) - c;
+        }
+
+        static constexpr std::size_t Align = std::max({alignof(ToNode<Options>)...});
+        static constexpr std::size_t Size = std::max({sizeof(ToNode<Options>)...});
 
         std::size_t index;
         alignas(Align) std::byte bytes[Size];

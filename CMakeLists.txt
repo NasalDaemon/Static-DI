@@ -15,7 +15,7 @@ project(Static-DI VERSION 1.0 LANGUAGES CXX)
 
 option(DI_BUILD_TESTS "Build tests for Static-DI" FALSE)
 option(DI_TESTS_LTO "Enable LTO when building tests" TRUE)
-option(DI_DECOMPRESS_TYPES "Don't try to compress long type names" FALSE)
+option(DI_COMPRESS_TYPES "Compress recursive type names for Context, Impl, Type" FALSE)
 
 if(DI_BUILD_TESTS)
     enable_testing()

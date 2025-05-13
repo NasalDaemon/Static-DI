@@ -1,34 +1,7 @@
 #ifndef DI_DETAIL_COMPRESS_HPP
 #define DI_DETAIL_COMPRESS_HPP
 
-#if DI_DECOMPRESS_TYPES
-
-namespace di::detail {
-
-    template<class T>
-    concept IsCompressed = false;
-
-    template<class T>
-    using Decompress = std::remove_cvref_t<T>;
-
-    template<class T>
-    using CompressContext = std::remove_cvref_t<T>;
-
-    template<class T>
-    using CompressImpl = std::remove_cvref_t<T>;
-
-    template<class T>
-    using CompressTypes = std::remove_cvref_t<T>;
-
-    template<class T>
-    constexpr T& compressImpl(T& impl)
-    {
-        return impl;
-    }
-
-} // namespace di::detail
-
-#else
+#if DI_COMPRESS_TYPES
 
 #include "di/detail/cast.hpp"
 
@@ -96,6 +69,37 @@ namespace di::detail {
 
 #undef DI_COMPRESSOR_ID
 #undef DI_COMPRESSOR
+
+#else
+
+#if !DI_IMPORT_STD
+#include <type_traits>
+#endif
+
+namespace di::detail {
+
+    template<class T>
+    concept IsCompressed = false;
+
+    template<class T>
+    using Decompress = std::remove_cvref_t<T>;
+
+    template<class T>
+    using CompressContext = std::remove_cvref_t<T>;
+
+    template<class T>
+    using CompressImpl = std::remove_cvref_t<T>;
+
+    template<class T>
+    using CompressTypes = std::remove_cvref_t<T>;
+
+    template<class T>
+    constexpr T& compressImpl(T& impl)
+    {
+        return impl;
+    }
+
+} // namespace di::detail
 
 #endif
 
