@@ -1,5 +1,4 @@
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-option(DI_ENABLE_LTO "Enable LTO" TRUE)
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     string(APPEND CMAKE_CXX_FLAGS " -Werror -Wall -Wextra -Wpedantic")
@@ -11,7 +10,7 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
     )
     string(APPEND CMAKE_EXE_LINKER_FLAGS " -fuse-ld=mold")
 
-    if(DI_ENABLE_LTO)
+    if(DI_TESTS_LTO)
         if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS "15.1.0")
             # Unfortunately, GCC 14 LTO partitioning and modules do not mix well (symbols often missing at link time)
             string(APPEND CMAKE_CXX_FLAGS

@@ -21,7 +21,7 @@ struct Alias final
     using Impl = T;
     using Interface = T;
 
-    constexpr explicit Alias(Impl& impl, Key...) : impl(std::addressof(impl)) {}
+    explicit constexpr Alias(Impl& impl, Key...) : impl(std::addressof(impl)) {}
 
     template<class Self>
     constexpr auto& get(this Self&& self) { return std::forward_like<Self&>(*self.impl); }

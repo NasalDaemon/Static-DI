@@ -155,8 +155,11 @@ export namespace di {
     using di::Union;
     using di::withIndex;
     // virtual.hpp
-    using di::INode;
+    using di::IDestructible;
+    using di::KeepAlive;
     using di::IsInterface;
+    using di::IsVirtualContext;
+    using di::INode;
     using di::Virtual;
 }
 

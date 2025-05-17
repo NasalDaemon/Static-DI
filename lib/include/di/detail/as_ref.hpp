@@ -34,7 +34,7 @@ namespace detail {
     template<class Interface, class Types = EmptyTypes>
     struct TargetRef
     {
-        constexpr explicit TargetRef(Interface& ref, std::type_identity<Types>) : ptr(std::addressof(ref)) {}
+        explicit constexpr TargetRef(Interface& ref, std::type_identity<Types>) : ptr(std::addressof(ref)) {}
         Interface* ptr;
         static constexpr std::type_identity<CompressTypes<Types>> types() { return {}; };
         static constexpr std::type_identity<EmptyTypes> types() requires std::is_same_v<Types, EmptyTypes> { return {}; };

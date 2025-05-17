@@ -82,34 +82,49 @@ struct AppleEgg
 
         static_assert(std::is_same_v<BreadType, typename di::ResolveTypes<Context, trait::Bread>::BreadType>);
 
-        int apply(trait::Apple::seeds) const override
+        int apply(trait::Apple::seeds) const final
         {
             return seeds + getNode(trait::bread).slices();
         }
 
-        int apply(trait::Egg::yolks) const override
+        int apply(trait::Egg::yolks) const final
         {
             return yolks;
         }
 
-        void apply(trait::Apple::testExchange) override
+        void apply(trait::Apple::testExchange) final
         {
-            CHECK(asTrait(trait::apple).seeds() == 34);
-            auto [current, next] = exchangeImpl(std::in_place_type<AppleEgg>, 11);
-            REQUIRE(current.get() == this);
-            REQUIRE(std::addressof(next) != this);
-            CHECK(next.asTrait(trait::apple).seeds() == 35);
+            if constexpr (di::IsVirtualContext<Context>)
+            {
+                di::KeepAlive keepAlive;
+                {
+                    CHECK(asTrait(trait::apple).seeds() == 34);
+                    auto handle = exchangeImpl<AppleEgg>(11, 3);
+                    allowDestroy = false;
+                    REQUIRE(std::addressof(handle.getNext()) != this);
+                    CHECK(handle.getNext().asTrait(trait::apple).seeds() == 47);
+                    // Using current node still works, but "re-entry" to this context from apple
+                    // will go to the new node that was just emplaced into the graph instead
+                    CHECK(asTrait(trait::apple).seeds() == 46);
+                    keepAlive = handle;
+                }
+                CHECK(asTrait(trait::apple).seeds() == 46);
+                allowDestroy = true;
+            }
         }
-
-        void onGraphConstructed() override
-        {}
 
         explicit Node(int seeds = 10, int yolks = 2)
             : seeds(seeds), yolks(yolks)
         {}
 
+        ~Node()
+        {
+            REQUIRE(allowDestroy);
+        }
+
         int seeds;
         int yolks;
+        bool allowDestroy = true;
     };
 };
 
@@ -127,12 +142,12 @@ struct Bread
 
         static_assert(std::is_same_v<AppleType, typename di::ResolveTypes<Context, trait::Apple>::AppleType>);
 
-        int apply(trait::Bread::slices) const
+        int apply(trait::Bread::slices) const final
         {
             return getNode(trait::egg).yolks() * slices;
         }
 
-        void onGraphConstructed()
+        void onGraphConstructed() final
         {
             CHECK(slices == 314);
             slices = 12;
@@ -142,26 +157,77 @@ struct Bread
     };
 };
 
-TEST_CASE("di::Virtual")
+void test(auto& g)
 {
-    using G = di::test::Graph<di::Virtual<IApple, IEgg>, di::Virtual<IBread>>;
-
-    G g{
-        .node{std::in_place_type<AppleEgg>},
-        .mocks{di::withFactory, []<class C>(C) -> C::type { return std::in_place_type<Bread>; }}
-    };
     g.onConstructed();
 
     CHECK(g.asTrait(trait::apple).seeds() == 34);
     CHECK(g.asTrait(trait::egg).yolks() == 2);
     CHECK(g.mocks.asTrait(trait::bread).slices() == 24);
+}
 
+void testExchange(auto& g)
+{
     auto g2 = std::move(g);
     CHECK(g2.asTrait(trait::apple).seeds() == 34);
     CHECK(g2.asTrait(trait::egg).yolks() == 2);
     CHECK(g2.mocks.asTrait(trait::bread).slices() == 24);
 
     g2.asTrait(trait::apple).testExchange();
+}
+
+TEST_CASE("di::Virtual")
+{
+    using Virtual = di::test::Graph<di::Virtual<IApple, IEgg>, di::Virtual<IBread>>;
+
+    Virtual virt{
+        .node{std::in_place_type<AppleEgg>},
+        .mocks{di::withFactory, []<class C>(C) -> C::type { return std::in_place_type<Bread>; }}
+    };
+    test(virt);
+    testExchange(virt);
+
+    using Static = di::test::Graph<AppleEgg, Bread>;
+    Static stat;
+    test(stat);
+}
+
+struct VirtualOnly
+{
+    struct Leaf final : IEgg, IBread
+    {
+        int apply(trait::Egg::yolks) const
+        {
+            return yolks;
+        }
+        int apply(trait::Bread::slices) const
+        {
+            return slices;
+        }
+
+        explicit Leaf(int yolks = 999, int slices = 88)
+            : yolks(yolks), slices(slices)
+        {}
+
+        int yolks;
+        int slices;
+    };
+
+    template<class Context>
+    using Node = Leaf;
+};
+
+TEST_CASE("di::Virtual: Virtual-only node may be final without traits and simple leaf")
+{
+    di::test::Graph<di::Virtual<IBread, IEgg>> g{.node{std::in_place_type<VirtualOnly::Leaf>}};
+
+    CHECK(g.asTrait(trait::egg).yolks() == 999);
+    CHECK(g.asTrait(trait::bread).slices() == 88);
+
+    g.node->emplace<VirtualOnly>(11, 333);
+
+    CHECK(g.asTrait(trait::egg).yolks() == 11);
+    CHECK(g.asTrait(trait::bread).slices() == 333);
 }
 
 }

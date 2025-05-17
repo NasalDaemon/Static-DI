@@ -76,13 +76,13 @@ struct Union
 
         template<std::invocable<Constructor<Node>> F>
         requires std::same_as<Node, std::invoke_result_t<F, Constructor<Node>>>
-        constexpr explicit Node(WithFactory, F factory)
+        explicit constexpr Node(WithFactory, F factory)
             : Node(factory(Constructor<Node>()))
         {}
 
         template<std::size_t I>
         requires (I < sizeof...(Options))
-        constexpr Node(std::in_place_index_t<I>, auto&&... args)
+        explicit(false) constexpr Node(std::in_place_index_t<I>, auto&&... args)
             : index(I)
         {
             new (bytes) NodeAt<I>{DI_FWD(args)...};
@@ -99,7 +99,7 @@ struct Union
 
         template<class Option>
         requires (... || std::same_as<Option, Options>)
-        constexpr Node(std::in_place_type_t<Option>, auto&&... args)
+        explicit(false) constexpr Node(std::in_place_type_t<Option>, auto&&... args)
             : index(findIndex<Option>())
         {
             new (bytes) ToNode<Option>{DI_FWD(args)...};

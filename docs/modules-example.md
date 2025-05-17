@@ -569,7 +569,7 @@ TEST_SUITE("my::Sessions as trait::SessionManager")
         // NOTE: Not all of trait::AuthService needs to be defined in the mock,
         // since AuthService::changePass is not called from my::Sessions
         graph.mocks->define(
-            [&](trait::AuthService::logIn, std::string_view user, std::string_view pass) -> my::Task<bool>
+            [&](trait::AuthService::logIn, std::string user, std::string pass) -> my::Task<bool>
             {
                 if (user == theUser and pass == thePass)
                 {

@@ -62,7 +62,10 @@ namespace di::detail {
     requires (not IsCompressed<T>)
     constexpr auto& compressImpl(T& impl)
     {
-        return downCast<CompressImpl<T>>(impl);
+        if constexpr (not std::is_final_v<T>)
+            return downCast<CompressImpl<T>>(impl);
+        else
+            return impl;
     }
 
 } // namespace di::detail

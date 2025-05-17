@@ -37,7 +37,7 @@ DI_MODULE_EXPORT
 template<class Trait, IsMethodOf<Trait> Method, class AliasImpl>
 struct TraitMethodFunctor
 {
-    constexpr explicit TraitMethodFunctor(AliasImpl impl) : impl(impl) {}
+    explicit constexpr TraitMethodFunctor(AliasImpl impl) : impl(impl) {}
 
     constexpr decltype(auto) operator()(this auto&& self, auto&&... args)
     {
