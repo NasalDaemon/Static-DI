@@ -230,4 +230,64 @@ TEST_CASE("di::Virtual: Virtual-only node may be final without traits and simple
     CHECK(g.asTrait(trait::bread).slices() == 333);
 }
 
+struct StaticBread : di::Node
+{
+    using Traits = di::Traits<StaticBread, trait::Bread>;
+
+    int apply(this auto const& self, trait::Bread::slices)
+    {
+        return self.slices + self.getNode(trait::egg).yolks();
+    }
+
+    int slices = 42;
+};
+
+struct BreadFacade
+{
+    template<class Context>
+    struct Node final : IApple, IBread
+    {
+        using Traits = di::Traits<Node
+            , trait::Apple*(IApple::Types)
+            , trait::Bread*(IBread::Types)
+        >;
+
+        int apply(trait::Apple::seeds) const { return 0; }
+        void apply(trait::Apple::testExchange)
+        {
+            auto handle = exchangeImpl<di::Adapt<StaticBread, BreadFacade>>();
+            int expected = 99 + 42 + 1;
+            CHECK(asTrait(trait::bread).slices() == expected);
+            CHECK(handle.getNext().asTrait(trait::bread).slices() == expected);
+        }
+
+        int apply(trait::Bread::slices) const
+        {
+            return test + getNode(trait::bread).slices();
+        }
+
+        int test = 99;
+    };
+};
+
+struct EggDouble : di::Node
+{
+    using Traits = di::Traits<EggDouble, trait::Egg>;
+
+    int apply(trait::Egg::yolks) const { return yolks; }
+
+    int yolks = 1;
+};
+
+TEST_CASE("di::Virtual with di::Adapt")
+{
+    di::test::Graph<di::Virtual<IApple, IBread>, EggDouble> g{
+        .node{std::in_place_type<di::Adapt<StaticBread, BreadFacade>>}
+    };
+
+    int expected = 99 + 42 + 1;
+    CHECK(g.asTrait(trait::bread).slices() == expected);
+    g.asTrait(trait::apple).testExchange();
+}
+
 }

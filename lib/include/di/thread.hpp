@@ -123,9 +123,13 @@ namespace key {
         template<class T, std::size_t CurrentThreadId>
         struct Interface : T
         {
-            constexpr decltype(auto) visit(this auto& self, auto const& f)
+            constexpr decltype(auto) visit(this auto& self, auto&& visitor)
             {
-                return Poster<CurrentThreadId, requiredThreadId>::post([&]() -> decltype(auto) { return self.visit(f); });
+                return Poster<CurrentThreadId, requiredThreadId>::post(
+                    [&, visitor = DI_FWD(visitor)]() mutable -> decltype(auto)
+                    {
+                        return self.visit(std::move(visitor));
+                    });
             }
 
             constexpr decltype(auto) apply(this auto& self, auto&&... args)

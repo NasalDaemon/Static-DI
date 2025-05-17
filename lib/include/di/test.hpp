@@ -75,6 +75,8 @@ namespace detail {
 
             struct Node : di::Context<Impl, NodeT>
             {
+                static constexpr std::size_t Depth = Context::Depth;
+
                 // Resolve to parent by default
                 template<class Trait>
                 requires di::detail::HasLink<Context, Trait>
@@ -93,6 +95,8 @@ namespace detail {
 
             struct Mocks : di::Context<Impl, MocksT>
             {
+                static constexpr std::size_t Depth = Context::Depth;
+
                 // Resolve to parent by default
                 template<class Trait>
                 requires di::detail::HasLink<Context, Trait>
@@ -112,8 +116,8 @@ namespace detail {
 
             constexpr void visit(this auto& self, auto&& visitor)
             {
-                self.node.visit(DI_FWD(visitor));
-                self.mocks.visit(DI_FWD(visitor));
+                self.node.visit(visitor);
+                self.mocks.visit(visitor);
             }
         };
 

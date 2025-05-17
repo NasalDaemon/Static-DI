@@ -49,7 +49,8 @@ namespace detail {
         inline static auto& getCluster(auto& node)
         {
             constexpr auto memPtr = getNodePointer(AdlTag<Self>{});
-            auto& n = downCast<ContextToNodeState<Self>>(node);
+            using StateType = decltype(getMemberType(memPtr));
+            auto& n = downCast<StateType>(node);
             return n.*reverseMemberPointer(memPtr);
         }
     };
@@ -68,9 +69,9 @@ namespace detail {
         using Node::asTrait;
         using Node::hasTrait;
 
-        constexpr decltype(auto) visit(this auto& self, auto const& f)
+        constexpr decltype(auto) visit(this auto& self, auto&& f)
         {
-            return upCast<Node>(self).visit(f);
+            return upCast<Node>(self).visit(DI_FWD(f));
         }
 
         template<class Self>

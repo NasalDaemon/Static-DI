@@ -3,6 +3,7 @@
 
 #include "di/core.hpp"
 
+#include "di/adapt.hpp"
 #include "di/combine.hpp"
 #include "di/mock.hpp"
 #include "di/narrow.hpp"

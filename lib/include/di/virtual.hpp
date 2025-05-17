@@ -13,7 +13,7 @@
 #include "di/traits_fwd.hpp"
 
 #if !DI_IMPORT_STD
-#include <cstdint>
+#include <concepts>
 #include <memory>
 #include <stdexcept>
 #include <tuple>
@@ -45,10 +45,13 @@ namespace detail {
     struct INodeBase;
     struct IsVirtualContextTag{};
 
-    template<IsNodeWrapper T, template<class> class InnerContext>
-    auto toVirtualNodeImpl() -> T::template Node<CompressContext<InnerContext<T>>>;
-    template<IsNode T, template<class> class>
+    template<IsNodeWrapper T, class Context>
+    auto toVirtualNodeImpl() -> T::template Node<CompressContext<Context>>;
+    template<IsNode T, class>
     auto toVirtualNodeImpl() -> T;
+
+    template<IsNodeHandle T, class Context>
+    using ToVirtualNodeImpl = decltype(toVirtualNodeImpl<T, Context>());
 }
 
 DI_MODULE_EXPORT
@@ -70,8 +73,10 @@ struct detail::INodeBase : Node
     constexpr auto exchangeImpl(this Self& self, auto&&... args)
     {
         static_assert(not std::is_const_v<Self>);
-        return ContextOf<Self>::template exchangeImpl<T>(std::addressof(self), DI_FWD(args)...);
+        return ContextOf<Self>::template exchangeImpl<T>(self, DI_FWD(args)...);
     }
+
+    constexpr auto* asInterface(this auto& self) { return std::addressof(self); }
 
     virtual void onGraphConstructed() {}
 };
@@ -107,9 +112,9 @@ struct Virtual
 
             template<IsNodeHandle T, class Current>
             requires (not std::is_const_v<Current>)
-            static constexpr auto exchangeImpl(Current* current, auto&&... args)
+            static constexpr auto exchangeImpl(Current& current, auto&&... args)
             {
-                return Impl<ImplNode>::getVirtualHost(current)->template exchangeImpl<T>(current, DI_FWD(args)...);
+                return Impl<ImplNode>::getVirtualHost(std::addressof(current))->template exchangeImpl<T>(current, DI_FWD(args)...);
             }
 
             template<class N, IsTrait Trait>
@@ -122,7 +127,10 @@ struct Virtual
         };
 
         template<IsNodeHandle T>
-        using ImplOf = decltype(detail::toVirtualNodeImpl<T, InnerContext>());
+        using ImplOf = detail::ToVirtualNodeImpl<T, InnerContext<T>>;
+
+        template<IsNodeHandle T>
+        using ImplInterface = std::remove_pointer_t<decltype(std::declval<ImplOf<T>&>().asInterface())>;
 
         template<IsNodeHandle ImplNode>
         struct Impl final : ImplBase
@@ -166,7 +174,7 @@ struct Virtual
         using Traits = di::TraitsTemplate<Node, Resolver>;
 
         template<IsNodeHandle T>
-        requires (... && std::derived_from<ImplOf<T>, Interfaces>)
+        requires (... && std::derived_from<ImplInterface<T>, Interfaces>)
         explicit(false) constexpr Node(std::in_place_type_t<T>, auto&&... args)
         {
             [[maybe_unused]] auto ignored = init<T>(DI_FWD(args)...);
@@ -179,7 +187,7 @@ struct Virtual
         {}
 
         template<IsNodeHandle T>
-        requires (... && std::derived_from<ImplOf<T>, Interfaces>)
+        requires (... && std::derived_from<ImplInterface<T>, Interfaces>)
         constexpr ImplOf<T>& emplace(auto&&... args)
         {
             auto [next, prev] = init<T>(DI_FWD(args)...);
@@ -206,19 +214,20 @@ struct Virtual
         std::unique_ptr<ImplBase> implBase;
 
         template<IsNodeHandle T>
-        requires (... && std::derived_from<ImplOf<T>, Interfaces>)
+        requires (... && std::derived_from<ImplInterface<T>, Interfaces>)
         [[nodiscard]] constexpr auto init(auto&&... args)
         {
             Impl<T>* p = new Impl<T>(this, DI_FWD(args)...);
             // Updates pointers if new didn't throw
-            interfaces = {static_cast<Interfaces*>(std::addressof(p->impl))...};
+            auto* pimpl = p->impl.asInterface();
+            interfaces = {static_cast<Interfaces*>(pimpl)...};
             return std::pair(p, std::exchange(implBase, std::unique_ptr<ImplBase>(p)));
         }
 
         template<IsNodeHandle T>
-        constexpr auto exchangeImpl(auto* current, auto&&... args)
+        constexpr auto exchangeImpl(auto& current, auto&&... args)
         {
-            if (get<0>(interfaces) != current)
+            if (get<0>(interfaces) != current.asInterface())
                 throw std::runtime_error("Pointers not matching");
 
             auto [next, prev] = init<T>(DI_FWD(args)...);

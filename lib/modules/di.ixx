@@ -15,6 +15,8 @@ import std;
 export using ::operator new;
 
 export namespace di {
+    // adapt.hpp
+    using di::Adapt;
     // alias.hpp
     using di::Alias;
     using di::makeAlias;

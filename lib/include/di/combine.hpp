@@ -75,7 +75,7 @@ struct Combine
 
         constexpr void visit(this auto& self, auto&& visitor)
         {
-            (self.template get<Nodes>().visit(DI_FWD(visitor)), ...);
+            (self.template get<Nodes>().visit(visitor), ...);
         }
     };
 };

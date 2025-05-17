@@ -21,6 +21,8 @@ struct Narrow
 
         struct Inner : di::Context<Node, NodeHandle>
         {
+            static constexpr std::size_t Depth = Context::Depth;
+
             template<class T>
             requires detail::HasLink<Context, T>
             static auto resolveLink(T) -> ResolvedLink<Context, T>;
