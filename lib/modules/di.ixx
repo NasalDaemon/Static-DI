@@ -97,6 +97,8 @@ export namespace di {
     using di::ToNodeWrapper;
     using di::NodeTypes;
     using di::InlineNode;
+    // proxy.hpp
+    using di::Proxy;
     // repeater.hpp
     using di::Repeater;
     using di::RepeaterTrait;

@@ -58,6 +58,9 @@ Class Member::* reverseMemberPointer(Member Class::* memPtr)
     return std::bit_cast<Class Member::*>(-memPtrToInt(memPtr));
 }
 
+template<class Class, class Member>
+Member getMemberType(Member Class::*);
+
 } // namespace di::detail
 
 

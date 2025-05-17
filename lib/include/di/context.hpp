@@ -49,7 +49,8 @@ namespace detail {
         inline static auto& getCluster(auto& node)
         {
             constexpr auto memPtr = getNodePointer(AdlTag<Self>{});
-            auto& n = downCast<ContextToNodeState<Self>>(node);
+            using StateType = decltype(getMemberType(memPtr));
+            auto& n = downCast<StateType>(node);
             return n.*reverseMemberPointer(memPtr);
         }
     };
