@@ -45,6 +45,7 @@ export namespace di {
     using di::IsUnary;
     using di::EnsureAny;
     using di::EnsureUnary;
+    using di::EnsureUnaryStateless;
     using di::EnsureNonUnary;
     // detached.hpp
     using di::DetachedInterface;

@@ -104,6 +104,10 @@ class Repeater:
             name = "parent"
         assert name[0].islower(), name
         self.name = f'_{name}Repeater{id}'
+        self.isParent = False
+        self.isNexus = False
+        self.isUnary = True
+        self.hasState = False
         self.trait = trait
         self.connections: list['Connection'] = []
         self.context = f'{name[0].upper()}{name[1:]}Repeater{id}_'
@@ -131,18 +135,30 @@ class Connection:
         return self.trait != self.toTrait
 
 class Node:
-    def __init__(self, name: str, impl: str):
-        self.name: str = name
-        if name == '..':
-            self.context = "Context"
-        else:
-            assert name[0].islower(), name
-            self.context: str = f'{name[0].upper()}{name[1:]}_'
-        self.impl: str = impl
+    def __init__(self, name: str, impl: str, cluster: 'Cluster | Domain', isFirst: bool):
         self.repeaters: list[Repeater] = []
         self.connections: list[Connection] = []
+        self.name: str = name
+        self.impl: str = impl
+        self.cluster = cluster
+        self.isNexus: bool = isFirst and isinstance(cluster, Domain)
+        if name == '..':
+            self.isParent = True
+            self.context = "Context"
+        else:
+            self.isParent = False
+            self.isUnary = name.upper() != name
+            self.hasState = name[0].isupper()
+            self.context: str = name + '_'
+            if self.isNexus and not self.isUnary:
+                raise SyntaxError(f"Nexus node '{name}' must be a unary node")
 
-    def addConnection(self, connection: Connection):
+    def addConnection(self, isOverride: bool, toNode: 'Node', trait: str, *, toTrait: str | None = None):
+        assert self.cluster == toNode.cluster
+        if error := self.cluster.getConnectionError(self, toNode, isOverride):
+            raise SyntaxError(f"Cannot connect '{self.name}' to '{toNode.name}' in {self.cluster.clusterClass} '{self.cluster.name}': {error}")
+
+        connection = Connection(toNode.context, trait=trait, toTrait=toTrait)
         if existing := next((c for c in self.connections if c.trait == connection.trait), None):
             if existing.toRepeater is None:
                 repeater = Repeater(self.name, connection.trait, len(self.repeaters))
@@ -164,11 +180,22 @@ class Cluster:
         self.contextName: str = "Context"
         self.rootName: str | None = None
         self.infoName: str | None = None
-        self.parentNode = Node("..", self.name)
+        self.parentNode = Node("..", self.name, cluster=self, isFirst=False)
         self.userNodes: list[Node] = []
         self.repeaters: list[Repeater] = []
         self.nodes: list[Node | Repeater] = []
         self.aliases: list[tuple[str, str]] = []
+
+    @property
+    def clusterType(self) -> str:
+        return "di::Cluster"
+
+    @property
+    def clusterClass(self) -> str:
+        return "cluster"
+
+    def nodeMacro(self, node) -> str:
+        return "DI_NODE"
 
     def nodeName(self):
         if self.templates:
@@ -185,6 +212,22 @@ class Cluster:
                 self.templates.append((type, c.children[1].value))
             else:
                 raise SyntaxError(f'Unknown cluster template: {c.data}')
+
+    def getConnectionError(self, lnode: Node, rnode: Node, isOverride: bool) -> None:
+        return None
+
+    def arrowSign(self, arrow: Tree) -> str:
+        return next((c.value for c in arrow.children if isinstance(c, Token)), None)
+
+    def validateArrow(self, arrow: Tree):
+        sign = self.arrowSign(arrow)
+        chevrons = max(sign.count('<'), sign.count('>'))
+        if chevrons > 1:
+            raise SyntaxError("Only one chevron is allowed per arrow in clusters.")
+        return False
+
+    def finalize(self):
+        return
 
     def walk(self, children):
         aliases: dict[str, str] = {}
@@ -205,18 +248,19 @@ class Cluster:
                         raise SyntaxError(f"Unknown cluster annotation: {ann.children[0].value}")
             elif child.data == imported('node'):
                 name = child.children[0].value
-                assert name not in nodes, (name, nodes)
+                assert name not in nodes, (name, nodes.keys())
                 impl = reconstuctor.reconstruct(child.children[1])
                 if len(child.children) > 2:
                     for wrapper in child.children[2:]:
                         cls = wrapper.children[0].value
                         if len(wrapper.children) > 1:
                             args = [impl]
-                            args.extend((reconstuctor.reconstruct(arg) for arg in wrapper.children[1].children[1:-1:2]))
+                            args.extend(reconstuctor.reconstruct(arg) for arg in wrapper.children[1].children[1:-1:2])
                             impl = f"{cls}<{", ".join(args)}>"
                         else:
                             impl = f"{cls}<{impl}>"
-                nodes[name] = Node(name, impl)
+                isFirst = len(nodes) == 1
+                nodes[name] = Node(name, impl, cluster=self, isFirst=isFirst)
             elif child.data == imported('connection_block'):
                 for child in child.children:
                     if child.data == imported('connection_context'):
@@ -233,54 +277,55 @@ class Cluster:
                         if len(child.children) == 1:
                             rightTrait = leftTrait
                         else:
-                            rightTrait = reconstuctor.reconstruct(child.children[1])
+                            rightTrait = reconstuctor.reconstruct(child.children[-1])
                     elif child.data == imported('connection'):
                         for i in range(0, len(child.children) - 1, 2):
                             lnames, arrow, rnames = (child.children[i], child.children[i+1], child.children[i+2])
+                            isOverride = self.validateArrow(arrow)
                             lnodes = [nodes[name.value] for name in lnames.children]
                             rnodes = [nodes[name.value] for name in rnames.children]
 
                             lrnodes = ((lnode, rnode) for rnode in rnodes for lnode in lnodes)
                             if arrow.data == imported('left_arrow'):
                                 for lnode, rnode in lrnodes:
-                                    rnode.addConnection(Connection(context=lnode.context, trait=leftTrait))
+                                    rnode.addConnection(isOverride, lnode, leftTrait)
                             elif arrow.data == imported('right_arrow'):
                                 for lnode, rnode in lrnodes:
-                                    lnode.addConnection(Connection(context=rnode.context, trait=rightTrait))
+                                    lnode.addConnection(isOverride, rnode, rightTrait)
                             elif arrow.data == imported('bi_arrow'):
                                 for lnode, rnode in lrnodes:
-                                    rnode.addConnection(Connection(context=lnode.context, trait=leftTrait))
-                                    lnode.addConnection(Connection(context=rnode.context, trait=rightTrait))
+                                    rnode.addConnection(isOverride, lnode, leftTrait)
+                                    lnode.addConnection(isOverride, rnode, rightTrait)
                             elif arrow.data == imported('left_arrow_from'):
-                                fromTrait = reconstuctor.reconstruct(arrow.children[0].children[0])
+                                fromTrait = reconstuctor.reconstruct(arrow.children[-1].children[0])
                                 toTrait = leftTrait
                                 for lnode, rnode in lrnodes:
-                                    rnode.addConnection(Connection(context=lnode.context, trait=fromTrait, toTrait=toTrait))
+                                    rnode.addConnection(isOverride, lnode, fromTrait, toTrait=toTrait)
                             elif arrow.data == imported('right_arrow_from'):
                                 fromTrait = reconstuctor.reconstruct(arrow.children[0].children[0])
                                 toTrait = rightTrait
                                 for lnode, rnode in lrnodes:
-                                    lnode.addConnection(Connection(context=rnode.context, trait=fromTrait, toTrait=toTrait))
+                                    lnode.addConnection(isOverride, rnode, fromTrait, toTrait=toTrait)
                             elif arrow.data == imported('left_arrow_to'):
                                 fromTrait = leftTrait
                                 toTrait = reconstuctor.reconstruct(arrow.children[0].children[0])
                                 for lnode, rnode in lrnodes:
-                                    rnode.addConnection(Connection(context=lnode.context, trait=fromTrait, toTrait=toTrait))
+                                    rnode.addConnection(isOverride, lnode, fromTrait, toTrait=toTrait)
                             elif arrow.data == imported('right_arrow_to'):
                                 fromTrait = rightTrait
-                                toTrait = reconstuctor.reconstruct(arrow.children[0].children[0])
+                                toTrait = reconstuctor.reconstruct(arrow.children[-1].children[0])
                                 for lnode, rnode in lrnodes:
-                                    lnode.addConnection(Connection(context=rnode.context, trait=fromTrait, toTrait=toTrait))
+                                    lnode.addConnection(isOverride, rnode, fromTrait, toTrait=toTrait)
                             elif arrow.data == imported('left_arrow_both'):
                                 toTrait = reconstuctor.reconstruct(arrow.children[0].children[0])
-                                fromTrait = reconstuctor.reconstruct(arrow.children[1].children[0])
+                                fromTrait = reconstuctor.reconstruct(arrow.children[-1].children[0])
                                 for lnode, rnode in lrnodes:
-                                    rnode.addConnection(Connection(context=lnode.context, trait=fromTrait, toTrait=toTrait))
+                                    rnode.addConnection(isOverride, lnode, fromTrait, toTrait=toTrait)
                             elif arrow.data == imported('right_arrow_both'):
                                 fromTrait = reconstuctor.reconstruct(arrow.children[0].children[0])
-                                toTrait = reconstuctor.reconstruct(arrow.children[1].children[0])
+                                toTrait = reconstuctor.reconstruct(arrow.children[-1].children[0])
                                 for lnode, rnode in lrnodes:
-                                    lnode.addConnection(Connection(context=rnode.context, trait=fromTrait, toTrait=toTrait))
+                                    lnode.addConnection(isOverride, rnode, fromTrait, toTrait=toTrait)
                             else:
                                 raise SyntaxError(f'Unknown arrow: {arrow.data}')
                     else:
@@ -297,6 +342,84 @@ class Cluster:
             self.repeaters.extend(node.repeaters)
         self.nodes.extend(self.userNodes)
         self.nodes.extend(self.repeaters)
+
+class Domain(Cluster):
+    def __init__(self, name: str):
+        super().__init__(name)
+        self.extraChevronsSeen = 0
+        self.overridesAllowed = 0
+        self.overridesSeen = 0
+        self.minExtraChevrons = 2
+        self.overridesPerExtraChevron = 2
+
+    @property
+    def clusterType(self) -> str:
+        return "di::Domain<{.MaxDepth=3}>"
+
+    @property
+    def clusterClass(self) -> str:
+        return "domain"
+
+    def nodeMacro(self, node: Node | Repeater) -> str:
+        if node.isUnary:
+            if node.hasState:
+                return "DI_NODE_UNARY"
+            else:
+                return "DI_NODE_UNARY_STATELESS"
+        else:
+            return "DI_NODE_NON_UNARY"
+
+    def validateArrow(self, arrow: Tree) -> bool:
+        sign = self.arrowSign(arrow)
+        lExtra = sign.count('<') - 1
+        rExtra = sign.count('>') - 1
+        isOverride = False
+        if lExtra > 0:
+            isOverride = True
+            if self.extraChevronsSeen and lExtra != self.extraChevronsSeen:
+                raise SyntaxError(f"Inconsistent number of extra chevrons in '{self.name}'")
+            self.extraChevronsSeen = lExtra
+        if rExtra > 0:
+            isOverride = True
+            if self.extraChevronsSeen and rExtra != self.extraChevronsSeen:
+                raise SyntaxError(f"Inconsistent number of extra chevrons in '{self.name}'")
+            self.extraChevronsSeen = rExtra
+
+        if self.extraChevronsSeen:
+            if self.extraChevronsSeen < self.minExtraChevrons:
+                raise SyntaxError(f"Overrides must have at least {1+self.minExtraChevrons} chevrons")
+            if sign.count('-') - 1 < self.extraChevronsSeen:
+                raise SyntaxError("There must be at least as many dashes ('-') as chevrons ('<' or '>')")
+            self.overridesAllowed = self.overridesPerExtraChevron * self.extraChevronsSeen
+
+        return isOverride
+
+    def getConnectionError(self, fromNode: Node, toNode: Node, isOverride: bool) -> str | None:
+        # nexus can connect to anything in any direction
+        if fromNode.isNexus or toNode.isNexus:
+            return None
+
+        # non-nexus nodes may not connect to parent in any direction
+        if fromNode.isParent or toNode.isParent:
+            return "Only nexus node may be connected to parent in domains"
+
+        # unary peers may not connect to anything
+        if fromNode.isUnary or toNode.isUnary:
+            if isOverride and fromNode.isUnary == toNode.isUnary and self.overridesSeen < self.overridesAllowed:
+                self.overridesSeen += 1
+                return None
+            return ("Unary nodes may only be connected to the domain nexus. "
+                "To explicitly allow a unary-to-unary connection you can override with the appropriate extra chevrons ('<' and/or '>')")
+
+        return None
+
+    def finalize(self):
+        minOverrides = self.minExtraChevrons * self.overridesPerExtraChevron
+        if self.overridesAllowed > minOverrides and (self.overridesAllowed - self.overridesSeen) >= self.overridesPerExtraChevron:
+            raise SyntaxError(
+                f"More extra chevrons used in '{self.name}' than is needed for the required number of overrides ({self.overridesSeen} required). "
+                f"Each extra chevron allows you {self.overridesPerExtraChevron} more overrides in the domain, so only "
+                f"{1+max(self.minExtraChevrons, -(self.overridesSeen // -self.overridesPerExtraChevron))} chevrons are needed in total per override.")
 
 class Method:
     __reserved_names__ = [ 'apply', 'visit']
@@ -436,10 +559,10 @@ class Namespace:
             else:
                 raise SyntaxError(f'Unknown namespace entity: {c.data}')
 
-    def addCluster(self, name: str) -> Cluster:
+    def addCluster(self, name: str, isDomain: bool) -> Cluster | Domain:
         assert name not in self.clusterNames, (name, self.clusterNames)
         self.clusterNames.add(name)
-        cluster = Cluster(name)
+        cluster = Domain(name) if isDomain else Cluster(name)
         self.clusters.append(cluster)
         return cluster
 
@@ -462,6 +585,8 @@ class Namespace:
 
     def finalize(self):
         self.clusters.sort(key = lambda v : v.name)
+        for c in self.clusters:
+            c.finalize()
         self.traits.sort(key = lambda v : v.name)
 
 class Repr:
@@ -469,8 +594,8 @@ class Repr:
         self.inputFile = inputFile
         self.includes: list[str] = []
         self.exportModule: str
-        self.importModules: list[tuple[str, str]] = []
-        self.namespaces: list[Namespace] = {}
+        self.importModules: list[str] = []
+        self.namespaces: list[Namespace] = []
         self.namespacesDict: dict[str, Namespace] = {}
         self.hasCluster = False
         self.hasTrait = False
@@ -506,9 +631,10 @@ class Repr:
 
     def visitCluster(self, sourceNs: str, tree: Tree):
         hasTemplate = not isinstance(tree.children[0], Token)
-        nameIndex = 1 if hasTemplate else 0
+        typeIndex = 1 if hasTemplate else 0
+        nameIndex = typeIndex + 1
         name, namespace = self.splitNamespace(sourceNs, tree.children[nameIndex].value)
-        cluster = namespace.addCluster(name)
+        cluster = namespace.addCluster(name, isDomain=tree.children[typeIndex].value == "domain")
         if hasTemplate:
             cluster.addTemplate(tree.children[0])
         cluster.walk(tree.children[(nameIndex+1):])

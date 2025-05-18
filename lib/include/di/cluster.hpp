@@ -110,13 +110,21 @@ struct Cluster
 };
 
 DI_MODULE_EXPORT
-template<std::size_t MaxDepth>
+struct DomainParams
+{
+    std::size_t MaxDepth = 3;
+
+    auto operator<=>(DomainParams const&) const = default;
+};
+
+DI_MODULE_EXPORT
+template<DomainParams Params = {}>
 struct Domain : Cluster
 {
     template<class Context>
     static consteval void ensureDepth()
     {
-        static_assert(Context::Depth <= MaxDepth);
+        static_assert(Context::Depth <= Params.MaxDepth);
     }
 };
 

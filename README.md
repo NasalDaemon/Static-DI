@@ -87,5 +87,6 @@ target_generate_di_src(your_headers_lib
 - [Example project using modules](docs/modules-example.md)
 - [Defining a node](docs/node-structure.md)
 - [DIG cluster syntax](docs/cluster-syntax.md)
+- [DIG domain syntax](docs/domain-syntax.md)
 - [DIG trait syntax](docs/trait-syntax.md)
 - [Embedding DIG into source files](docs/dig-embed.md)

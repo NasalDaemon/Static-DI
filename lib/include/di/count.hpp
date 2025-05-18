@@ -32,6 +32,11 @@ template<IsUnary Node>
 using EnsureUnary = Node;
 
 DI_MODULE_EXPORT
+template<IsUnary Node>
+requires std::is_empty_v<Node>
+using EnsureUnaryStateless = Node;
+
+DI_MODULE_EXPORT
 template<class Node>
 requires (not IsUnary<Node>)
 using EnsureNonUnary = Node;

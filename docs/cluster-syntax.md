@@ -161,18 +161,18 @@ Results in `first::second::second::third::Cluster`, **not** `first::second::thir
 
 ### Cluster type annotations
 
-To make use of the `Context` and `Root` types inside a cluster, the optional type annotations should be listed after the cluster name with square-brackets:
+To make use of the `Context`/`Root`/`Info` types inside a cluster, the optional type annotations should be listed after the cluster name with square-brackets:
 ```cpp
-cluster ClusterWithTypes [Context, Root]
+cluster ClusterWithTypes [Context, Root, Info]
 {
     apple = Root::Apple
 }
 ```
 Alternative names corresponding to the context and the root types can be specified as follows:
 ```cpp
-cluster ClusterWithNamedTypes [C = Context, R = Root]
+cluster ClusterWithNamedTypes [C = Context, R = Root, I = Info]
 {
     apple = R::Apple
 }
 ```
-Without their respective annotations, the Context and Root type names are implementation-defined, and so should not be used inside the cluster.
+Without their respective annotations, the Context, Root, and Info type names are implementation-defined, and so should not be used inside the cluster.

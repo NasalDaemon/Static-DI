@@ -5,7 +5,9 @@ INCLUDE_GLOBAL_FILE: "#include <" /[^\r\n>]+/ ">"
 
 namespace: "namespace" NAMESPACE "{" (cluster | trait)+ "}"
 
-cluster: [template_params] "cluster" FQNAME [cluster_annotations] "{" node+ connection_block* "}"
+cluster: [template_params] CLUSTER_TYPE FQNAME [cluster_annotations] "{" node+ connection_block* "}"
+
+CLUSTER_TYPE: "cluster" | "domain"
 
 cluster_annotations: "[" cluster_annotation ["," cluster_annotation] "]"
 cluster_annotation: [NAME "="] CLUSTER_ANNOTATION_NAME
@@ -59,21 +61,25 @@ connection_context: "using" connection_context_alias ("," connection_context_ali
 
 connection_context_alias: NAME "=" cpp_type
 
-connection_trait: "[" cpp_type ["<->" cpp_type] "]"
+connection_trait: "[" cpp_type [BARROW cpp_type] "]"
 
 connection: node_names (arrow node_names)+
 
-arrow:             "<--"             -> left_arrow
-     |             "-->"             -> right_arrow
-     |             "<->"             -> bi_arrow
-     |             "<--" arrow_trait -> left_arrow_from
-     | arrow_trait "-->"             -> right_arrow_from
-     | arrow_trait "<--"             -> left_arrow_to
-     |             "-->" arrow_trait -> right_arrow_to
-     | arrow_trait "<--" arrow_trait -> left_arrow_both
-     | arrow_trait "-->" arrow_trait -> right_arrow_both
+arrow:             LARROW             -> left_arrow
+     |             RARROW             -> right_arrow
+     |             BARROW             -> bi_arrow
+     |             LARROW arrow_trait -> left_arrow_from
+     | arrow_trait RARROW             -> right_arrow_from
+     | arrow_trait LARROW             -> left_arrow_to
+     |             RARROW arrow_trait -> right_arrow_to
+     | arrow_trait LARROW arrow_trait -> left_arrow_both
+     | arrow_trait RARROW arrow_trait -> right_arrow_both
 
 arrow_trait: "(" cpp_type ")"
+
+LARROW: "<"+ "-"+
+RARROW:      "-"+ ">"+
+BARROW: "<"+ "-"+ ">"+
 
 !cpp_type: [TYPENAME] (NAME | "::" cpp_type_no_typename) cpp_type_cont*
 !cpp_type_no_typename: (NAME | "::" cpp_type_no_typename) cpp_type_cont*

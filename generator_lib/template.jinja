@@ -155,10 +155,10 @@ struct {{ cluster.name }}<
     {%- for prefix, name in cluster.templates -%}
     {{ comma() }}{{ name }}{{ prefix.pack }}
     {%- endfor -%}
->::Node : di::Cluster
+>::Node : {{ cluster.clusterType }}
 {% else %}
 template<class {{ cluster.contextName }}>
-struct {{ cluster.nodeName() }} : di::Cluster
+struct {{ cluster.nodeName() }} : {{ cluster.clusterType }}
 {% endif %}
 {
     {% if 1 == cluster.nodes | length %}
@@ -209,14 +209,18 @@ struct {{ cluster.nodeName() }} : di::Cluster
     {% endfor %}
 
     {% for node in cluster.nodes %}
-    DI_NODE({{ node.context }}, {{ node.name }})
+    {{ cluster.nodeMacro(node) }}({{ node.context }}, {{ node.name }})
     {% endfor %}
 
     constexpr void visit(this auto& self, auto&& visitor)
     {
+        {% if 1 == cluster.userNodes | length %}
+        self.{{ cluster.userNodes.0.name }}.visit(DI_FWD(visitor));
+        {% else %}
         {% for node in cluster.userNodes %}
-        self.{{ node.name }}.visit(DI_FWD(visitor));
+        self.{{ node.name }}.visit(visitor);
         {% endfor %}
+        {% endif %}
     }
 };
 {% endfor %}
