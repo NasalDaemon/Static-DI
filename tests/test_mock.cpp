@@ -13,20 +13,22 @@ import di;
 import std;
 #endif
 
-/* di-embed-begin
+/*
+di-embed-begin
 
 export module di.tests.mock;
 
-trait di::tests::trait::MockTest
+trait di::tests::mock::trait::Trait
 {
     takesNothing() const
     takesInt(int i)
     returnsRef() -> int&
 }
 
-di-embed-end */
+di-embed-end
+*/
 
-using namespace di::tests;
+namespace di::tests::mock {
 
 struct MockTestNode : di::Node
 {
@@ -34,15 +36,15 @@ struct MockTestNode : di::Node
 
     int testNothing(this auto& self)
     {
-        return self.getNode(trait::mockTest).takesNothing();
+        return self.getNode(trait::trait).takesNothing();
     }
     int testInt(this auto& self, int i)
     {
-        return self.getNode(trait::mockTest).takesInt(i);
+        return self.getNode(trait::trait).takesInt(i);
     }
     int& testRef(this auto& self)
     {
-        return self.getNode(trait::mockTest).returnsRef();
+        return self.getNode(trait::trait).returnsRef();
     }
 };
 
@@ -51,21 +53,21 @@ TEST_CASE("di::test::Mock")
     di::test::Graph<MockTestNode> g;
     int i = 101;
 
-    CHECK(0 == g.mocks->methodCallCount(trait::MockTest::takesNothing{}));
-    CHECK(0 == g.mocks->methodCallCount(trait::MockTest::takesInt{}));
+    CHECK(0 == g.mocks->methodCallCount(trait::Trait::takesNothing{}));
+    CHECK(0 == g.mocks->methodCallCount(trait::Trait::takesInt{}));
 
     g.mocks->setThrowIfMissing();
 
     g.mocks->define(
-        [](trait::MockTest::takesNothing)
+        [](trait::Trait::takesNothing)
         {
            return 99;
         },
-        [](trait::MockTest::takesInt, int i)
+        [](trait::Trait::takesInt, int i)
         {
             return 99 - i;
         },
-        [&](trait::MockTest::returnsRef) -> int&
+        [&](trait::Trait::returnsRef) -> int&
         {
             return i;
         });
@@ -79,41 +81,41 @@ TEST_CASE("di::test::Mock")
     CHECK(88 == i);
     CHECK(88 == ref);
 
-    CHECK(1 == g.mocks->methodCallCount(trait::MockTest::takesNothing{}));
-    CHECK(1 == g.mocks->methodCallCount(trait::MockTest::takesInt{}));
-    CHECK(1 == g.mocks->methodCallCount(trait::MockTest::returnsRef{}));
+    CHECK(1 == g.mocks->methodCallCount(trait::Trait::takesNothing{}));
+    CHECK(1 == g.mocks->methodCallCount(trait::Trait::takesInt{}));
+    CHECK(1 == g.mocks->methodCallCount(trait::Trait::returnsRef{}));
 
     g.mocks->reset();
 
-    CHECK(0 == g.mocks->methodCallCount(trait::MockTest::takesNothing{}));
-    CHECK(0 == g.mocks->methodCallCount(trait::MockTest::takesInt{}));
-    CHECK(0 == g.mocks->methodCallCount(trait::MockTest::returnsRef{}));
+    CHECK(0 == g.mocks->methodCallCount(trait::Trait::takesNothing{}));
+    CHECK(0 == g.mocks->methodCallCount(trait::Trait::takesInt{}));
+    CHECK(0 == g.mocks->methodCallCount(trait::Trait::returnsRef{}));
 
     // Default behaviour is to return default value
 
     CHECK(0 == g.node->testNothing());
     CHECK(0 == g.node->testInt(8));
 
-    CHECK(1 == g.mocks->methodCallCount(trait::MockTest::takesNothing{}));
-    CHECK(1 == g.mocks->methodCallCount(trait::MockTest::takesInt{}));
+    CHECK(1 == g.mocks->methodCallCount(trait::Trait::takesNothing{}));
+    CHECK(1 == g.mocks->methodCallCount(trait::Trait::takesInt{}));
 
     g.mocks->setThrowIfMissing();
 
 #if DI_COMPILER_GCC
-    CHECK_THROWS_WITH(g.node->testNothing(), "Mock implementation not defined for apply(di::tests::trait::MockTest@di.tests.mock::takesNothing) const");
-    CHECK_THROWS_WITH(g.node->testInt(8), "Mock implementation not defined for apply(di::tests::trait::MockTest@di.tests.mock::takesInt, int)");
+    CHECK_THROWS_WITH(g.node->testNothing(), "Mock implementation not defined for apply(di::tests::mock::trait::Trait@di.tests.mock::takesNothing) const");
+    CHECK_THROWS_WITH(g.node->testInt(8), "Mock implementation not defined for apply(di::tests::mock::trait::Trait@di.tests.mock::takesInt, int)");
 #else
-    CHECK_THROWS_WITH(g.node->testNothing(), "Mock implementation not defined for apply(di::tests::trait::MockTest::takesNothing) const");
-    CHECK_THROWS_WITH(g.node->testInt(8), "Mock implementation not defined for apply(di::tests::trait::MockTest::takesInt, int)");
+    CHECK_THROWS_WITH(g.node->testNothing(), "Mock implementation not defined for apply(di::tests::mock::trait::Trait::takesNothing) const");
+    CHECK_THROWS_WITH(g.node->testInt(8), "Mock implementation not defined for apply(di::tests::mock::trait::Trait::takesInt, int)");
 #endif
 
-    g.mocks->define([](trait::MockTest::returnsRef) { return 0; });
+    g.mocks->define([](trait::Trait::returnsRef) { return 0; });
 
     // Returning dangling reference throws exception
     CHECK_THROWS_AS(g.node->testRef(), std::bad_any_cast);
 
     // Storing result allows conversion to reference
-    auto refResult = g.mocks->apply(trait::MockTest::returnsRef{});
+    auto refResult = g.mocks->apply(trait::Trait::returnsRef{});
     int& ref1 = refResult;
     int& ref2 = refResult;
     CHECK(&ref1 == &ref2);
@@ -121,4 +123,6 @@ TEST_CASE("di::test::Mock")
     ref1 = 123;
     CHECK(ref1 == 123);
     CHECK(ref2 == 123);
+}
+
 }

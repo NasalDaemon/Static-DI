@@ -10,7 +10,7 @@ import di.tests.repeater.cluster;
 import std;
 #endif
 
-using namespace di::tests::repeater;
+namespace di::tests::repeater {
 
 TEST_CASE("TestRepeater")
 {
@@ -19,3 +19,5 @@ TEST_CASE("TestRepeater")
     g.a.asTrait(trait::trait).defer(i);
     CHECK(14 == i);
 }
+
+} // namespace di::tests::repeater

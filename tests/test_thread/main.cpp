@@ -11,7 +11,7 @@ import di;
 import std;
 #endif
 
-using namespace di::tests::thread;
+namespace di::tests::thread {
 
 TEST_CASE("TestThread")
 {
@@ -23,3 +23,5 @@ TEST_CASE("TestThread")
 
     CHECK(2 == g.a.asTrait(trait::a, postTaskKey).getB());
 }
+
+} // namespace di::tests::thread

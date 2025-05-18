@@ -13,7 +13,7 @@ import di;
 import std;
 #endif
 
-namespace di::tests {
+namespace di::tests::union_ {
 
 namespace trait {
 
@@ -71,7 +71,7 @@ struct Mouse : di::Node
     using Traits = di::Traits<Mouse, trait::Name>;
     struct Types
     {
-        using MouseType = tests::MouseType;
+        using MouseType = union_::MouseType;
     };
 
     int apply(trait::Name::get) const { return 42; }
@@ -89,7 +89,7 @@ struct Union : di::Cluster
     {
         DI_LINK(trait::Name, Mouse)
     };
-    struct Mouse : di::InlineContext<Union, tests::Mouse>
+    struct Mouse : di::InlineContext<Union, union_::Mouse>
     {
         DI_LINK(trait::Name, Onion)
     };
@@ -141,6 +141,6 @@ TEST_CASE("di::Union")
     CHECK(dog.onion.asTrait(trait::Name{}).visit([]<class T>(T) { return requires { typename T::Types::DogType; }; }));
 }
 
-} // di::tests
+} // di::tests::union_
 
-DI_INSTANTIATE(di::InlineGraph<di::tests::Union>, onion->get<1>())
+DI_INSTANTIATE(di::InlineGraph<di::tests::union_::Union>, onion->get<1>())

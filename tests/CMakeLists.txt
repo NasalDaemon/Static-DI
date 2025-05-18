@@ -18,8 +18,8 @@ add_executable(di_tests_module
     test_node_count.cpp
     test_union.cpp
     test_virtual.cpp
-    repeater/main.cpp
-    thread/main.cpp
+    test_repeater/main.cpp
+    test_thread/main.cpp
 )
 add_executable(di_tests_mock
     test_combine.cpp
@@ -43,8 +43,7 @@ target_generate_di_headers(di_tests_headers
 
 target_generate_di_modules(di_tests_module
     GLOB
-        repeater
-        thread
+        test_*
     EMBED
         test_embedded_modules.cpp
         test_node_count.cpp
@@ -58,9 +57,9 @@ target_generate_di_modules(di_tests_mock
 
 target_sources(di_tests_module
     PUBLIC FILE_SET CXX_MODULES FILES
-        repeater/test_node.ixx
-        thread/poster.ixx
-        thread/test_node.ixx
+        test_repeater/test_node.ixx
+        test_thread/poster.ixx
+        test_thread/test_node.ixx
 )
 
 target_generate_di_src(di_tests_module
