@@ -52,6 +52,9 @@ namespace detail {
 
     template<IsNodeHandle T, class Context>
     using ToVirtualNodeImpl = decltype(toVirtualNodeImpl<T, Context>());
+
+    template<class>
+    inline constexpr bool injectVirtualHost = false;
 }
 
 DI_MODULE_EXPORT
@@ -89,19 +92,23 @@ DI_MODULE_EXPORT
 template<IsInterface... Interfaces>
 struct Virtual
 {
-    static_assert(sizeof...(Interfaces) != 0);
-
     template<class Context>
     struct Node : di::Node
     {
     private:
         struct ImplBase : IDestructible
         {
-        protected:
-            friend Node;
             constexpr ImplBase(Node* virtualHost)
                 : virtualHost(virtualHost)
             {}
+
+            virtual void setVirtualHost(Node* newVirtualHost)
+            {
+                virtualHost = newVirtualHost;
+            }
+            Node* getVirtualHost() const { return virtualHost; }
+
+        private:
             Node* virtualHost;
         };
 
@@ -147,7 +154,14 @@ struct Virtual
             static constexpr Node* getVirtualHost(ImplOf<ImplNode> const* p)
             {
                 auto const& self = p->*detail::reverseMemberPointer(&Impl::impl);
-                return self.virtualHost;
+                return self.ImplBase::getVirtualHost();
+            }
+
+            void setVirtualHost(Node* newVirtualHost) final
+            {
+                ImplBase::setVirtualHost(newVirtualHost);
+                if constexpr (detail::injectVirtualHost<ImplNode>)
+                    impl.setVirtualHost(newVirtualHost);
             }
         };
 
@@ -174,10 +188,13 @@ struct Virtual
         using Traits = di::TraitsTemplate<Node, Resolver>;
 
         template<IsNodeHandle T>
-        requires (... && std::derived_from<ImplInterface<T>, Interfaces>)
+        requires (... and std::derived_from<ImplInterface<T>, Interfaces>)
         explicit(false) constexpr Node(std::in_place_type_t<T>, auto&&... args)
         {
-            [[maybe_unused]] auto ignored = init<T>(DI_FWD(args)...);
+            if constexpr (detail::injectVirtualHost<T>)
+                [[maybe_unused]] auto ignored = init<T>(this, DI_FWD(args)...);
+            else
+                [[maybe_unused]] auto ignored = init<T>(DI_FWD(args)...);
         }
 
         template<std::invocable<Constructor<Node>> F>
@@ -187,11 +204,19 @@ struct Virtual
         {}
 
         template<IsNodeHandle T>
-        requires (... && std::derived_from<ImplInterface<T>, Interfaces>)
+        requires (... and std::derived_from<ImplInterface<T>, Interfaces>)
         constexpr ImplOf<T>& emplace(auto&&... args)
         {
-            auto [next, prev] = init<T>(DI_FWD(args)...);
-            return next->impl;
+            if constexpr (detail::injectVirtualHost<T>)
+            {
+                auto [next, prev] = init<T>(this, DI_FWD(args)...);
+                return next->impl;
+            }
+            else
+            {
+                auto [next, prev] = init<T>(DI_FWD(args)...);
+                return next->impl;
+            }
         }
 
         Node(Node const&) = delete;
@@ -201,7 +226,7 @@ struct Virtual
         {
             other.interfaces = {};
             if (implBase)
-                implBase->virtualHost = this;
+                implBase->setVirtualHost(this);
         }
 
         constexpr void onGraphConstructed()
@@ -214,7 +239,7 @@ struct Virtual
         std::unique_ptr<ImplBase> implBase;
 
         template<IsNodeHandle T>
-        requires (... && std::derived_from<ImplInterface<T>, Interfaces>)
+        requires (... and std::derived_from<ImplInterface<T>, Interfaces>)
         [[nodiscard]] constexpr auto init(auto&&... args)
         {
             Impl<T>* p = new Impl<T>(this, DI_FWD(args)...);
@@ -257,6 +282,19 @@ struct Virtual
             Next& next;
             std::unique_ptr<ImplBase> previous;
         };
+    };
+};
+
+template<>
+struct Virtual<>
+{
+    template<class Context>
+    struct Node : di::Node
+    {
+        using Traits = di::Traits<Node>;
+        constexpr explicit Node(auto&&...) {}
+        template<class>
+        constexpr void emplace(auto&&...) {}
     };
 };
 

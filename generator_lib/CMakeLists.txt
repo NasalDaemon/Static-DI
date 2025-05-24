@@ -90,7 +90,7 @@ function(target_generate_di_src TARGET_NAME)
         list(SORT NODE_DOT_PATHS)
         list(REMOVE_DUPLICATES NODE_DOT_PATHS)
         foreach(NODE_DOT_PATH ${NODE_DOT_PATHS})
-            string(APPEND NODE_INSTANTIATIONS "DI_INSTANTIATE(${arg_GRAPH_TYPE}, ${NODE_DOT_PATH})\n")
+            string(APPEND NODE_INSTANTIATIONS "DI_INSTANTIATE((${arg_GRAPH_TYPE}), ${NODE_DOT_PATH})\n")
         endforeach()
 
         # Generate canonical list of module imports/header includes

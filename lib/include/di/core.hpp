@@ -2,6 +2,7 @@
 #define INCLUDE_DI_CORE_HPP
 
 #include "di/alias.hpp"
+#include "di/args.hpp"
 #include "di/cluster.hpp"
 #include "di/context.hpp"
 #include "di/count.hpp"

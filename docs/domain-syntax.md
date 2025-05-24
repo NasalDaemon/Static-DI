@@ -1,15 +1,15 @@
 # Domains
 
 ### PLEASE NOTE:
-Domains in Static-DI are special `cluster`s with extra restrictions. If you are unfamiliar with `cluster` syntax in Static-DI, please first familiarise yourself with `cluster`s and their syntax [here](cluster-syntax.md).
+Domains in Static-DI are special `cluster`s with extra restrictions. If you are unfamiliar with the `cluster` syntax in Static-DI, please first familiarise yourself with `cluster`s and their syntax [here](cluster-syntax.md).
 
 ## Principal motivation
 
 When a project grows in size, the structure of the dependency graph itself increasingly has an impact on the maintainability and simplicity of the codebase. Dependency graphs often become more complex when there are longer chains of dependencies, cyclic dependencies, and deeper nesting of clusters. Greater complexity often makes it more difficult to add new functionality, maintain the existing functionality, and overall reason about and explain the behaviour of the code.
 
-A `domain` in Static-DI is a special kind of `cluster` which when utilised throughout the entire graph encourages a flatter and shallower graph shape overall with looser coupling between nodes, and encourages thoughtful design in terms of delegation of responsibility into logical domains. This is acheived by preferring certain kinds of dependencies and by making explicit the statefulness and arity of sub-nodes (i.e. whether a sub-node is unary or a cluster/domain).
+A `domain` in Static-DI is a special kind of `cluster` which when utilised throughout the entire graph encourages a flatter and shallower graph shape overall, with looser coupling between nodes. It demands thoughtful design in terms of delegation of responsibility into logical domains with clear boundaries. This is acheived by preferring certain kinds of dependencies and by making explicit the statefulness and arity of sub-nodes (i.e. whether a sub-node is unary or a cluster/domain).
 
-NOTE: `domain`s will not solve all technical problems. Astute architectural decisions will result in various patterns, and appropriately using those encouraged by `domain` will generally result in a simpler composition. The intention behind `domain` is to highlight particular dependency anti-patterns to prevent them from pervading the codebase, but there may be situations when the less restrictive `cluster` is preferable. In other words: there are exceptions that prove the rule.
+NOTE: `domain`s will not solve all technical problems. Astute architectural decisions will result in various patterns, and `domain`s provide one such pattern. Appropriately using the patterns that `domain`s provide will generally result in a simpler composition. The intention behind `domain` is to highlight particular dependency anti-patterns to prevent them from pervading the codebase, but there may be situations when the less restrictive `cluster` is preferable. In other words: there are exceptions that prove the rule.
 
 ### Scale-free networks
 In graph theory, the [scale-free](https://en.wikipedia.org/wiki/Scale-free_network) topology describes graphs with a degree distribution (distribution of number of connections per node) that follows a power-law. Below is a visual example representing a scale-free topology:
@@ -19,42 +19,44 @@ In graph theory, the [scale-free](https://en.wikipedia.org/wiki/Scale-free_netwo
 [Scale-free clustering (wikipedia):](https://en.wikipedia.org/wiki/Scale-free_network#Clustering):
 > Another important characteristic of scale-free networks is the clustering coefficient distribution, which decreases as the node degree increases. This distribution also follows a power law. This implies that the low-degree nodes belong to very dense sub-graphs and those sub-graphs are connected to each other through hubs. Consider a social network in which nodes are people and links are acquaintance relationships between people. It is easy to see that people tend to form communities, i.e., small groups in which everyone knows everyone (one can think of such community as a complete graph). In addition, the members of a community also have a few acquaintance relationships to people outside that community. Some people, however, are connected to a large number of communities (e.g., celebrities, politicians). Those people may be considered the hubs responsible for the small-world phenomenon.
 
-Complex networks tend to evolve towards a highly resilient scale-free topology to adapt to sporadic change and growth. For example: the shape of the internet is approximatly scale-free as online services that are resilient enough to meet the increasing demand of their clients organically become significant hubs. Ideally, codebases should likewise remain robust in the face of inevitable change and growth of scope, where bugs are rarely introduced as code is added or refactored.
+Complex networks tend to evolve towards a highly resilient scale-free topology to adapt to sporadic change and growth. For example: the shape of the internet is approximately scale-free. Online services organically become significant hubs when they not only provide high value, but are also resilient enough to meet increasing demand as the number of clients inevitably grows. In order for the hub to remain highly available to clients, it must internally delegate units of work to a small cluster of workers. Clients in turn are able to extract maximal value from the hubs without affecting the stability of the whole network. Ideally, codebases should likewise remain robust in the face of inevitable change and growth in scope, where bugs are rarely introduced as code is added or refactored.
 
-The fact that social networks often form approximately scale-free networks also suggests that it is a suitable topology to aspire to in the dependency graph of a large project developed by multiple teams. One can conceive of the responsibility of `clusters` and `domain`s mapping fairly neatly onto the responsibility of teams, or vice-versa, and the dependencies between teams would then also be expressed explicitly in the Static-DI DIG. By clarifying coupling between teams, cross-team dependencies can optimised to improve the overall velocity in the project as a whole, without compromising its resiliency.
+The fact that social networks often form approximately scale-free networks also suggests that it is a suitable topology to aspire to in the dependency graph of a large project developed by multiple teams. One can conceive of the responsibility of `clusters` and `domain`s mapping fairly neatly onto the responsibility of teams, or vice-versa, and the dependencies between teams would then also be expressed explicitly in the Static-DI DIG. By clarifying coupling between teams, cross-team dependencies can optimised to improve the velocity in the project as a whole, without compromising its stability.
 
 ## Emergence of good topology
 
-According to various studies in the literature, scale-free networks emerge on iteratively growing networks when new nodes preferentially connect to nodes with a higher degree (i.e. hubs connecting to many other nodes). Static-DI `domains` aim to encourage the emergence of approximately scale-free graphs through the following:
+According to various studies in the literature, scale-free networks emerge on iteratively growing networks when new nodes preferentially connect to nodes with a higher degree (i.e. hubs connected to many other nodes). Static-DI `domains` aim to encourage the emergence of approximately scale-free graphs through the following:
 
-* Every `domain` must have a _single_ unary nexus node which acts as the central hub, or coordinator for the `domain`
+* Every `domain` must have a _single_ unary nexus-node which acts as the central hub, or coordinator for the `domain`
 * Sub-`cluster`s or sub-`domain`s must have names in ALL_CAPS
 * Unary nodes (including the nexus) in the `domain` that have state must have names starting with a capital letter (e.g. CamelCase), and stateless nodes must have names starting with lowercase letter (e.g. pascalCase)
-* Only the nexus node is allowed any outward-facing connection to the parent `..` of the `domain`
-* Unary sub-nodes may only depend on the nexus node, and not connect to any other nodes
-  * Only the nexus node may depend on unary sub-nodes, and unary sub-nodes may only depend on the nexus node
-  * Any unary-to-unary connection can be explicitly enabled with strong arrows (`--->>>`) which get progressibely uglier (`---->>>>`) as the total number of overrides in the domain increases to discourage this type of connection
-  * This encourages tightly-coupled unary nodes to be either merged into one node, or put into a sub-`domain`
-* Sub-`clusters` and sub-`domains` may connect directly to each other
-  * sub-`domain`-to-sub-`domain` connections are effectively nexus-to-nexus connections hosted in the greater `domain`
+* The nexus-node is the only node allowed any connection to the parent `..` of the `domain`
+  * In general, the nexus-node has no restrictions on which nodes it is connected to
+* Sub-`clusters` and sub-`domain`s may connect directly to each other
+  * sub-`domain`-to-sub-`domain` connections are effectively indirect nexus-to-nexus connections hosted in the greater `domain`
+* Unary sub-nodes may not be connected to non-unary nodes such as sub-`domain`s or sub-`cluster`s
+  * The only nexus-node that a unary sub-node may be connected to is the nexus-node of its own `domain`
+  * Any other unary-to-unary connection must use strong arrows (`--->>>`) which get progressively uglier (`---->>>>`) as the total number of unary-to-unary connections in the domain increases
+    * Discourages unary-to-unary sub-node connections
+    * Encourages tightly-coupled unary sub-nodes to be either merged into one sub-node, or put into a sub-`domain`
 
 # Domain syntax
 
 The domain syntax is identical to the cluster syntax, with a few key differences:
 
 * The `domain` keyword is used instead of `cluster` to introduce a `domain` block
-* The first node named is the nexus node, which will be made to conform to the responsibilities of the nexus
+* The first node named is the nexus-node, which will be made to conform to the responsibilities of the nexus
 * Node names must be spelt correctly to represent the following properties, which are enforced in the C++ build step once all the types are known:
     * Stateless unary: pascalCase
     * Stateful unary: CamelCase
     * Non-unary (sub-domain or sub-cluster): ALL_CAPS
-* unary-to-unary sub-node connections must be explicitly enabled with strong arrows `--->>>`, all of which will be made to get stronger as the total number of these connections increases
+* unary-to-unary sub-node connections must use strong arrows `--->>>`, all of which will be made to get stronger as the total number of these connections increases
 
 ## Example
 ```
 domain ShopDomain
 {
-    api = ShopRestAPI // `api` is nexus
+    Api = ShopRestAPI // `Api` is stateful nexus
     CUSTOMER = CustomerDomain // sub-domain
     ORDER = OrderDomain // sub-domain
     DELIVERY = DeliveryDomain // sub-domain
@@ -64,21 +66,21 @@ domain ShopDomain
     using orderReq = trait::OrderRequest,   orderRes = trait::OrderResponse
     using delReq = trait::DeliveryRequest,  delRes = trait::DeliveryResponse
 
-    [res      <-> req]      .. <-> api
-    [custRes  <-> custReq]         api <-> CUSTOMER
-    [orderRes <-> orderReq]        api <-> ORDER
-    [delRes   <-> delReq]          api <-> DELIVERY
+    [res      <-> req]      .. <-> Api
+    [custRes  <-> custReq]         Api <-> CUSTOMER
+    [orderRes <-> orderReq]        Api <-> ORDER
+    [delRes   <-> delReq]          Api <-> DELIVERY
 
     // Order may be cancelled due to customer request, compliance or delivery problems
     [trait::OrderCancel]
-    api, CUSTOMER, DELIVERY --> ORDER
+    Api, CUSTOMER, DELIVERY --> ORDER
 }
 
 domain CustomerDomain
 {
-    gw = CustomerGateway // gw is nexus
-    Accounts = CustomerAccounts
-    Regs = CustomerRegulations
+    gw = CustomerGateway // `gw` is stateless nexus
+    Accounts = CustomerAccounts // stateful unary sub-node
+    Regs = CustomerRegulations // stateful unary sub-node
 
     using res = trait::CustomerResponse, req = trait::CustomerRequest
     [res <-> req]
@@ -94,9 +96,9 @@ domain CustomerDomain
 }
 ```
 
-Below is an example of a nexus node in the above `domain`s. It centrally orchestrates multiple `domain` sub-nodes during an `OrderRequest` in C++ code. This is much desirable compared to a long chains or pipelines of nodes, each of which would take partial responsibility for completing the request, ultimately making ownership of the response unclear, implicit, and spread out across multiple nodes.
+Below is an example of the nexus-node for `ShopDomain`. In handwritten C++ code, it explicitly orchestrates multiple sub-`domain`s in order to complete an `OrderRequest`. This is much desirable compared to the alternative pipeline approach, i.e. using a chain of nodes, each of which would take responsibility for completing a part of the request. A chain of nodes ultimately makes it unclear which node has ownership of: (1) completing the request and (2) producing the response; by spreading out the responsibility across multiple nodes. Pipelines are hard to test for correctness, as one often needs to construct large sections of the pipeline, if not the whole thing, to get meaningful behaviour result worth testing. This tight coupling necessitates integration-style testing of the pipeline, and prohibits unit testing.
 
-Instead, `ShopRestAPI` takes ownership of the entire flow of the order, delegating the responsibility for the smaller self-contained units of work to other nodes which take no responsibility for completing the overall order response. This looser form of coupling also allows more fine-grained testing, as each testable unit of behaviour is contained within fewer nodes.
+Instead, `ShopRestAPI` takes ownership of the entire flow of the order, delegating the responsibility for the smaller self-contained units of work to sub-nodes which take no responsibility for completing the overall `OrderRequest`. This looser form of coupling also allows for finer-grained testing, as each testable unit of behaviour is isolated within fewer sub-`domain`s and sub-nodes.
 
 ```cpp
 struct ShopRestAPI

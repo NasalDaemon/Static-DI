@@ -17,9 +17,20 @@ export using ::operator new;
 export namespace di {
     // adapt.hpp
     using di::Adapt;
+    using di::adapt;
     // alias.hpp
     using di::Alias;
     using di::makeAlias;
+    // args.hpp
+    using di::Args;
+    using di::args;
+    using di::IsArgs;
+    using di::IsArgsOf;
+    // box
+    using di::BoxWithRoot;
+    using di::boxWithRoot;
+    using di::Box;
+    using di::box;
     // cluster.hpp
     using di::Cluster;
     using di::IsCluster;

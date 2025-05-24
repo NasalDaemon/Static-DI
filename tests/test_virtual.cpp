@@ -25,7 +25,7 @@ namespace di::tests::virtual_ {
 trait trait::Apple
 {
     seeds() const -> int
-    testExchange()
+    testExchange() -> bool
 }
 
 trait trait::Bread
@@ -36,8 +36,6 @@ trait trait::Bread
 trait trait::Egg
 {
     yolks() const -> int
-}
-
 }
 
 di-embed-end
@@ -56,7 +54,7 @@ struct IApple : di::INode
         using AppleType = virtual_::AppleType;
     };
     virtual int apply(trait::Apple::seeds) const = 0;
-    virtual void apply(trait::Apple::testExchange) = 0;
+    virtual bool apply(trait::Apple::testExchange) = 0;
 };
 struct IBread : di::INode
 {
@@ -92,7 +90,7 @@ struct AppleEgg
             return yolks;
         }
 
-        void apply(trait::Apple::testExchange) final
+        bool apply(trait::Apple::testExchange) final
         {
             if constexpr (di::IsVirtualContext<Context>)
             {
@@ -110,7 +108,9 @@ struct AppleEgg
                 }
                 CHECK(asTrait(trait::apple).seeds() == 46);
                 allowDestroy = true;
+                return true;
             }
+            return false;
         }
 
         explicit Node(int seeds = 10, int yolks = 2)
@@ -173,7 +173,7 @@ void testExchange(auto& g)
     CHECK(g2.asTrait(trait::egg).yolks() == 2);
     CHECK(g2.mocks.asTrait(trait::bread).slices() == 24);
 
-    g2.asTrait(trait::apple).testExchange();
+    CHECK(g2.asTrait(trait::apple).testExchange());
 }
 
 TEST_CASE("di::Virtual")
@@ -230,16 +230,22 @@ TEST_CASE("di::Virtual: Virtual-only node may be final without traits and simple
     CHECK(g.asTrait(trait::bread).slices() == 333);
 }
 
-struct StaticBread : di::Node
+struct StaticBread
 {
-    using Traits = di::Traits<StaticBread, trait::Bread>;
-
-    int apply(this auto const& self, trait::Bread::slices)
+    template<class Context>
+    struct Node : di::Node
     {
-        return self.slices + self.getNode(trait::egg).yolks();
-    }
+        using Traits = di::Traits<Node, trait::Bread>;
 
-    int slices = 42;
+        int apply(trait::Bread::slices) const
+        {
+            return slices + getNode(trait::egg).yolks();
+        }
+
+        explicit Node(int slices = 42) : slices(slices) {}
+
+        int slices;
+    };
 };
 
 struct BreadFacade
@@ -253,12 +259,17 @@ struct BreadFacade
         >;
 
         int apply(trait::Apple::seeds) const { return 0; }
-        void apply(trait::Apple::testExchange)
+        bool apply(trait::Apple::testExchange)
         {
-            auto handle = exchangeImpl<di::Adapt<StaticBread, BreadFacade>>();
-            int expected = 99 + 42 + 1;
-            CHECK(asTrait(trait::bread).slices() == expected);
-            CHECK(handle.getNext().asTrait(trait::bread).slices() == expected);
+            if constexpr (di::IsVirtualContext<Context>)
+            {
+                auto handle = exchangeImpl<di::Adapt<StaticBread, BreadFacade>>();
+                int expected = 99 + 42 + 1;
+                CHECK(asTrait(trait::bread).slices() == expected);
+                CHECK(handle.getNext().asTrait(trait::bread).slices() == expected);
+                return true;
+            }
+            return false;
         }
 
         int apply(trait::Bread::slices) const
@@ -266,28 +277,102 @@ struct BreadFacade
             return test + getNode(trait::bread).slices();
         }
 
-        int test = 99;
+        explicit Node(int test = 99) : test(test) {}
+
+        int test;
     };
 };
 
-struct EggDouble : di::Node
+struct EggDouble
 {
-    using Traits = di::Traits<EggDouble, trait::Egg>;
+    template<class Context>
+    struct Node : di::Node
+    {
+        using Traits = di::Traits<Node, trait::Egg>;
 
-    int apply(trait::Egg::yolks) const { return yolks; }
+        int apply(trait::Egg::yolks) const { return yolks; }
 
-    int yolks = 1;
+        explicit Node(int yolks = 1) : yolks(yolks) {}
+        int yolks;
+    };
 };
 
 TEST_CASE("di::Virtual with di::Adapt")
 {
     di::test::Graph<di::Virtual<IApple, IBread>, EggDouble> g{
-        .node{std::in_place_type<di::Adapt<StaticBread, BreadFacade>>}
+        .node{di::adapt<StaticBread, BreadFacade>}
     };
 
     int expected = 99 + 42 + 1;
     CHECK(g.asTrait(trait::bread).slices() == expected);
-    g.asTrait(trait::apple).testExchange();
+    CHECK(g.asTrait(trait::apple).testExchange());
 }
 
+struct EggFacade
+{
+    template<class Context>
+    struct Node final : IEgg
+    {
+        using Traits = di::Traits<Node, trait::Egg>;
+
+        int apply(trait::Egg::yolks) const
+        {
+            return getNode(trait::egg).yolks();
+        }
+    };
+};
+
+/*
+di-embed-begin
+
+cluster EggBread [R = Root]
+{
+    egg = R::StaticEgg
+    bread = R::VirtualBread
+
+    [trait::Egg <-> trait::Bread]
+    egg <-> bread
 }
+
+di-embed-end
+*/
+
+DI_INSTANTIATE_BOX(StaticBread, BreadFacade, EggFacade, IEgg)
+
+TEST_CASE("di::Box")
+{
+    struct Root
+    {
+        using StaticEgg = virtual_::EggDouble;
+        using VirtualBread = di::Virtual<IBread>;
+    };
+
+    di::Graph<EggBread, Root> g{
+        .bread{di::box<StaticBread, BreadFacade, EggFacade, IEgg>, di::args<StaticBread>(41), di::args<BreadFacade>(98)}
+    };
+
+    CHECK(g.bread.asTrait(trait::bread).slices() == 140);
+
+    auto g2 = std::move(g);
+    CHECK(g2.bread.asTrait(trait::bread).slices() == 140);
+}
+
+DI_INSTANTIATE_BOX(EggDouble, EggFacade)
+
+TEST_CASE("di::Box with no outnode")
+{
+    di::test::Graph<di::Virtual<IEgg>> g{
+        .node{di::box<EggDouble, EggFacade>, 4}
+    };
+
+    CHECK(g.node.asTrait(trait::egg).yolks() == 4);
+
+    auto g2 = std::move(g);
+    CHECK(g2.node.asTrait(trait::egg).yolks() == 4);
+}
+
+// di-embed-begin
+
+} // namespace di::tests::virtual_
+
+// di-embed-end

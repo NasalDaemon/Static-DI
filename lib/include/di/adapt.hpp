@@ -2,6 +2,7 @@
 #define INCLUDE_DI_ADAPT_HPP
 
 #include "di/detail/cast.hpp"
+#include "di/args.hpp"
 #include "di/cluster.hpp"
 #include "di/link.hpp"
 #include "di/macros.hpp"
@@ -57,13 +58,27 @@ struct Adapt
             static ResolvedLink<Context, Trait> resolveLink(Trait);
         };
 
+        DI_NODE(Target_, target)
+
         detail::ToVirtualNodeImpl<Facade, Facade_> facade{};
         friend consteval auto getNodePointer(di::AdlTag<Facade_>) { return &Node::facade; }
         static_assert(IsInterface<decltype(facade)>);
 
-        DI_NODE(Target_, target)
+        template<class... Ts>
+        requires (... and not IsArgs<Ts>)
+        explicit constexpr Node(Ts&&... args) : target{DI_FWD(args)...} {}
+
+        template<class... FArgs, class... TArgs>
+        explicit constexpr Node(Args<Target, TArgs...> const& targs, Args<Facade, FArgs...> const& fargs)
+            : target{targs.template get<TArgs>()...}
+            , facade{fargs.template get<FArgs>()...}
+        {}
     };
 };
+
+DI_MODULE_EXPORT
+template<IsNodeHandle Target, IsNodeHandle Facade>
+inline constexpr std::in_place_type_t<di::Adapt<Target, Facade>> adapt{};
 
 }
 

@@ -14,9 +14,9 @@ struct Constructor
 {
     using type = Type;
 
-    template<class... Ts>
-    requires std::constructible_from<Type, Ts...>
-    constexpr Type operator()(Ts&&... args) const
+    template<class... Args>
+    requires std::constructible_from<Type, Args...>
+    constexpr Type operator()(Args&&... args) const
     {
         return Type{DI_FWD(args)...};
     }

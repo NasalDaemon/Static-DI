@@ -112,7 +112,10 @@
 
 // used in node.cpp
 #define DI_INSTANTIATE(graph, dotPath) \
-    template struct std::remove_cvref_t<decltype(graph::dotPath)>::Node<::di::ContextOf<std::remove_cvref_t<decltype(graph::dotPath)>>>;
+    template struct std::remove_cvref_t<decltype(DI_DEPAREN(graph)::dotPath)>::Node<::di::ContextOf<std::remove_cvref_t<decltype(DI_DEPAREN(graph)::dotPath)>>>;
+
+#define DI_INSTANTIATE_BOX(Main, InFacade, ...) \
+    DI_INSTANTIATE((::di::Box<Main, InFacade __VA_OPT__(,) __VA_ARGS__>::Graph), main)
 
 // used in main.cpp
 #define DI_CONSTRUCT(...) \
