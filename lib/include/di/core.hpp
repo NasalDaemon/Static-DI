@@ -7,6 +7,7 @@
 #include "di/context.hpp"
 #include "di/count.hpp"
 #include "di/detached.hpp"
+#include "di/ensure.hpp"
 #include "di/environment.hpp"
 #include "di/graph.hpp"
 #include "di/link.hpp"

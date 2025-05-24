@@ -3,6 +3,7 @@
 
 #include "di/cluster.hpp"
 #include "di/context.hpp"
+#include "di/ensure.hpp"
 #include "di/link.hpp"
 #include "di/macros.hpp"
 #include "di/node_fwd.hpp"

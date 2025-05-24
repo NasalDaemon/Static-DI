@@ -18,7 +18,7 @@
 				"clear": true,
 				"showReuseMessage": false
 			},
-			"command": "time cmake --build . --config $BUILD_TYPE && ctest --build-config $BUILD_TYPE --output-on-failure",
+			"command": "time cmake --build . --config $BUILD_TYPE -j $JOBS_COUNT && ctest --build-config $BUILD_TYPE --output-on-failure",
 		},
 		{
 			"type": "shell",
@@ -26,6 +26,9 @@
 			"label": "CMake clean",
 			"options": {
 				"cwd": "${workspaceFolder}/build",
+				"env": {
+					"JOBS_COUNT": "$(( 2*$(nproc --all) ))"
+				}
 			},
 			"command": "cmake --build . --target clean",
 		},

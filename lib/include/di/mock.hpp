@@ -152,6 +152,12 @@ struct Mock
             auto const it = methodCountMap.find(std::type_index{typeid(Tag)});
             return it != methodCountMap.end() ? it->second : 0ul;
         }
+        template<IsTrait Tag>
+        std::size_t traitCallCount(Tag) const
+        {
+            auto const it = traitCountMap.find(std::type_index{typeid(Tag)});
+            return it != traitCountMap.end() ? it->second : 0ul;
+        }
         template<class Tag, class... Args>
         std::size_t definitionCallCount() const
         {
@@ -163,14 +169,15 @@ struct Mock
             return it != definitionCountMap.end() ? it->second : 0ul;
         }
 
-        template<class Self, class Tag, class... Args>
-        detail::MockReturn apply(this Self& self, Tag, Args&&... args)
+        template<class Self, class Method, class... Args>
+        detail::MockReturn apply(this Self& self, Method, Args&&... args)
         {
             ArgTypes argTypes{
-                std::type_index{typeid(Tag)},
+                std::type_index{typeid(Method)},
                 std::type_index{typeid(Args)}...};
 
-            self.methodCountMap[std::type_index{typeid(Tag)}]++;
+            self.methodCountMap[std::type_index{typeid(Method)}]++;
+            self.traitCountMap[std::type_index{typeid(di::TraitOf<Method>)}]++;
             self.definitionCountMap[argTypes]++;
 
             detail::MockDef* impl = nullptr;
@@ -213,7 +220,7 @@ struct Mock
                 case detail::MockDefaultBehaviour::ThrowIfMissing:
                     {
                     std::string error = "Mock implementation not defined for apply(";
-                    error += di::detail::typeName<Tag>();
+                    error += di::detail::typeName<Method>();
                     ((error += ", ", error += di::detail::typeName<Args>()), ...);
                     if constexpr (std::is_const_v<Self>)
                         error += ") const";
@@ -279,6 +286,7 @@ struct Mock
         detail::MockDefaultBehaviour defaultBehaviour = detail::MockDefaultBehaviour::ReturnDefault;
         mutable std::map<ArgTypes, detail::MockDefs> definitions;
         mutable std::map<ArgTypes, std::size_t> definitionCountMap;
+        mutable std::map<std::type_index, std::size_t> traitCountMap;
         mutable std::map<std::type_index, std::size_t> methodCountMap;
     };
 };

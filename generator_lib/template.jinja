@@ -209,7 +209,7 @@ struct {{ cluster.nodeName() }} : {{ cluster.clusterType }}
     {% endfor %}
 
     {% for node in cluster.nodes %}
-    {{ cluster.nodeMacro(node) }}({{ node.context }}, {{ node.name }})
+    DI_NODE({{ node.context }}, {{ node.name }}{{ cluster.predicatesStr(node) }})
     {% endfor %}
 
     constexpr void visit(this auto& self, auto&& visitor)

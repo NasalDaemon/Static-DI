@@ -5,7 +5,7 @@ Domains in Static-DI are special `cluster`s with extra restrictions. If you are 
 
 ## Principal motivation
 
-When a project grows in size, the structure of the dependency graph itself increasingly has an impact on the maintainability and simplicity of the codebase. Dependency graphs often become more complex when there are longer chains of dependencies, cyclic dependencies, and deeper nesting of clusters. Greater complexity often makes it more difficult to add new functionality, maintain the existing functionality, and overall reason about and explain the behaviour of the code.
+When a project grows in size, the structure of the dependency graph itself increasingly has an impact on the maintainability and simplicity of the codebase. Dependency graphs often become more complex when there are longer chains of dependencies, cyclic dependencies, and deeper nesting of clusters. Greater complexity often makes it more difficult to add new functionality, maintain the existing functionality, and generally reason about the code and explain its behaviour.
 
 A `domain` in Static-DI is a special kind of `cluster` which when utilised throughout the entire graph encourages a flatter and shallower graph shape overall, with looser coupling between nodes. It demands thoughtful design in terms of delegation of responsibility into logical domains with clear boundaries. This is acheived by preferring certain kinds of dependencies and by making explicit the statefulness and arity of sub-nodes (i.e. whether a sub-node is unary or a cluster/domain).
 
@@ -21,20 +21,20 @@ In graph theory, the [scale-free](https://en.wikipedia.org/wiki/Scale-free_netwo
 
 Complex networks tend to evolve towards a highly resilient scale-free topology to adapt to sporadic change and growth. For example: the shape of the internet is approximately scale-free. Online services organically become significant hubs when they not only provide high value, but are also resilient enough to meet increasing demand as the number of clients inevitably grows. In order for the hub to remain highly available to clients, it must internally delegate units of work to a small cluster of workers. Clients in turn are able to extract maximal value from the hubs without affecting the stability of the whole network. Ideally, codebases should likewise remain robust in the face of inevitable change and growth in scope, where bugs are rarely introduced as code is added or refactored.
 
-The fact that social networks often form approximately scale-free networks also suggests that it is a suitable topology to aspire to in the dependency graph of a large project developed by multiple teams. One can conceive of the responsibility of `clusters` and `domain`s mapping fairly neatly onto the responsibility of teams, or vice-versa, and the dependencies between teams would then also be expressed explicitly in the Static-DI DIG. By clarifying coupling between teams, cross-team dependencies can optimised to improve the velocity in the project as a whole, without compromising its stability.
+The fact that social networks are approximately scale-free in shape also suggests that it is a suitable topology to aspire to in the dependency graph of a large project developed by multiple teams. One can conceive of the responsibility of `clusters` and `domain`s mapping fairly neatly onto the responsibility of teams, or vice-versa, and the dependencies between teams would then also be expressed explicitly in the Static-DI DIG. By clarifying coupling between teams, cross-team dependencies can be optimised to improve each team's velocity in the project without compromising the overall project's stability.
 
 ## Emergence of good topology
 
-According to various studies in the literature, scale-free networks emerge on iteratively growing networks when new nodes preferentially connect to nodes with a higher degree (i.e. hubs connected to many other nodes). Static-DI `domains` aim to encourage the emergence of approximately scale-free graphs through the following:
+According to various studies in the literature, iteratively growing networks tend to become scale-free when new nodes preferentially connect to existing nodes with a higher degree (i.e. hubs connected to many other nodes). Static-DI `domains` aim to encourage the emergence of approximately scale-free depedency graphs through the following:
 
 * Every `domain` must have a _single_ unary nexus-node which acts as the central hub, or coordinator for the `domain`
 * Sub-`cluster`s or sub-`domain`s must have names in ALL_CAPS
 * Unary nodes (including the nexus) in the `domain` that have state must have names starting with a capital letter (e.g. CamelCase), and stateless nodes must have names starting with lowercase letter (e.g. pascalCase)
-* The nexus-node is the only node allowed any connection to the parent `..` of the `domain`
+* The nexus-node is the only node allowed any connection to or from the parent `..` of the `domain`
   * In general, the nexus-node has no restrictions on which nodes it is connected to
 * Sub-`clusters` and sub-`domain`s may connect directly to each other
   * sub-`domain`-to-sub-`domain` connections are effectively indirect nexus-to-nexus connections hosted in the greater `domain`
-* Unary sub-nodes may not be connected to non-unary nodes such as sub-`domain`s or sub-`cluster`s
+* Unary sub-nodes may not be connected to or from non-unary nodes such as sub-`domain`s or sub-`cluster`s
   * The only nexus-node that a unary sub-node may be connected to is the nexus-node of its own `domain`
   * Any other unary-to-unary connection must use strong arrows (`--->>>`) which get progressively uglier (`---->>>>`) as the total number of unary-to-unary connections in the domain increases
     * Discourages unary-to-unary sub-node connections
@@ -56,20 +56,20 @@ The domain syntax is identical to the cluster syntax, with a few key differences
 ```
 domain ShopDomain
 {
-    Api = ShopRestAPI // `Api` is stateful nexus
+    Api = ShopRestAPI         // `Api` is stateful nexus
     CUSTOMER = CustomerDomain // sub-domain
-    ORDER = OrderDomain // sub-domain
+    ORDER = OrderDomain       // sub-domain
     DELIVERY = DeliveryDomain // sub-domain
 
     using req = trait::ShopRequest,         res = trait::ShopResponse
     using custReq = trait::CustomerRequest, custRes = trait::CustomerResponse
-    using orderReq = trait::OrderRequest,   orderRes = trait::OrderResponse
     using delReq = trait::DeliveryRequest,  delRes = trait::DeliveryResponse
+    using orderReq = trait::OrderRequest,   orderRes = trait::OrderResponse
 
     [res      <-> req]      .. <-> Api
     [custRes  <-> custReq]         Api <-> CUSTOMER
-    [orderRes <-> orderReq]        Api <-> ORDER
     [delRes   <-> delReq]          Api <-> DELIVERY
+    [orderRes <-> orderReq]        Api <-> ORDER
 
     // Order may be cancelled due to customer request, compliance or delivery problems
     [trait::OrderCancel]
@@ -78,9 +78,9 @@ domain ShopDomain
 
 domain CustomerDomain
 {
-    gw = CustomerGateway // `gw` is stateless nexus
+    gw = CustomerGateway        // `gw` is stateless nexus
     Accounts = CustomerAccounts // stateful unary sub-node
-    Regs = CustomerRegulations // stateful unary sub-node
+    Regs = CustomerRegulations  // stateful unary sub-node
 
     using res = trait::CustomerResponse, req = trait::CustomerRequest
     [res <-> req]
@@ -96,7 +96,7 @@ domain CustomerDomain
 }
 ```
 
-Below is an example of the nexus-node for `ShopDomain`. In handwritten C++ code, it explicitly orchestrates multiple sub-`domain`s in order to complete an `OrderRequest`. This is much desirable compared to the alternative pipeline approach, i.e. using a chain of nodes, each of which would take responsibility for completing a part of the request. A chain of nodes ultimately makes it unclear which node has ownership of: (1) completing the request and (2) producing the response; by spreading out the responsibility across multiple nodes. Pipelines are hard to test for correctness, as one often needs to construct large sections of the pipeline, if not the whole thing, to get meaningful behaviour result worth testing. This tight coupling necessitates integration-style testing of the pipeline, and prohibits unit testing.
+Below is an example of the nexus-node for `ShopDomain`. In handwritten C++ code, it explicitly orchestrates multiple sub-`domain`s in order to complete an `OrderRequest`. This is much desirable compared to the alternative pipeline approach, i.e. using a chain of nodes, each of which would take responsibility for completing a part of the request. By spreading out the responsibility across multiple nodes, a chain of nodes makes it fundamentally unclear which node has ownership of: (1) completing the request and (2) producing the response. Pipelines tend to be difficult to test for correctness, as one often needs to construct large sections of the pipeline, if not the whole thing, to get meaningful behaviour worth testing. This tight coupling necessitates integration-style testing of the pipeline, and prohibits granular unit testing.
 
 Instead, `ShopRestAPI` takes ownership of the entire flow of the order, delegating the responsibility for the smaller self-contained units of work to sub-nodes which take no responsibility for completing the overall `OrderRequest`. This looser form of coupling also allows for finer-grained testing, as each testable unit of behaviour is isolated within fewer sub-`domain`s and sub-nodes.
 
@@ -108,6 +108,7 @@ struct ShopRestAPI
     {
         using Traits = di::Traits<Node
             , trait::ShopRequest
+            , trait::CustomerResponse
             , trait::DeliveryResponse
         >;
 
@@ -117,58 +118,88 @@ struct ShopRestAPI
         void apply(trait::ShopRequest::order, OrderRequest req)
         {
             // Gateway coordinates the order flow by delegating to the other nodes
-            getNode(trait::deliveryRequest).newDelivery(req.id, req.productId, req.quantity);
-            getNode(trait::customerRequest).deductFunds(req.id, req.customerId, req.productId, req.quantity);
             newOrderFlows[req.id].req = std::move(req);
+            scheduleTimeout(req.id);
+            getNode(trait::customerRequest).canAfford(req.id, req.customerId, req.productId, req.quantity);
+            getNode(trait::deliveryRequest).canDeliver(req.id, req.productId, req.quantity);
         }
 
-        void apply(trait::DeliveryResponse::newDelivery, RequestId reqId, NewDelivery res)
+        void sheduleTimeout(RequestId reqId)
         {
-            // Record delivery response
-            auto& flow = newOrderFlows[reqId];
-            flow.delivery = std::move(res);
-            // Respond to client if we received all responses
-            if (flow.respond())
-                getNode(trait::shopResponse).order(reqId, makeResponse(flow))
+            // ... logic to respond with timeout if not all subdomains respond in time
         }
 
-        // ... etc
+        void apply(trait::CustomerResponse::canAfford, RequestId reqId, bool canAfford)
+        {
+            updateFlow(reqId, &NewOrderFlow::canAfford, canAfford);
+        }
 
-        ShopRespose makeResponse(NewOrderFlow const& flow)
+        void apply(trait::DeliveryResponse::canDeliver, RequestId reqId, bool canDeliver)
+        {
+            updateFlow(reqId, &NewOrderFlow::canDeliver, canDeliver);
+        }
+
+        template<class T>
+        void updateFlow(RequestId reqId, T::NewOrderFlow* memPtr, T const& value)
+        {
+            if (auto flowIt = newOrderFlows.find(reqId); it != newOrderFlows.end())
+            {
+                auto& flow = flowIt->second;
+                flow.*memPtr = value;
+                // Respond to client if we have received all responses or a failure condition
+                if (flow.readyToRespond())
+                {
+                    cancelTimeout(reqId);
+                    onResponseReady(flow);
+                    newOrderFlows.erase(flowIt);
+                }
+            }
+        }
+
+        void onResponseReady(NewOrderFlow const& flow)
         {
             ShopRespose res;
-            if (not *flow.customerValid)
+            if (not *flow.canAfford)
             {
                 res.success = false;
-                return res;
+                res.failureReason = "Not enough funds";
             }
-            // ... build response
-
-            // If we are responding with success, start the order in the backend
-            if (res.success)
+            else if (not *flow.canDeliver)
             {
-                getNode(trait::orderRequest).startOrder(
+                res.sucess = false;
+                res.failureReason = "Not enough stock";
+            }
+            else
+            {
+                // If we are responding with success, start the order in the backend
+                res.success = true;
+                res.orderId = getNode(trait::orderRequest).startOrder(
                     flow.req.id,
                     flow.req.customerId,
                     flow.req.productId,
                     flow.req.quantity);
             }
-            return res;
+
+            getNode(trait::shopResponse).order(reqId, res);
         }
+
+        // ... etc
 
         struct NewOrderFlow
         {
             OrderRequest req;
-            std::optional<bool> customerValid;
-            std::optional<NewDelivery> delivery;
+            std::optional<bool> canAfford;
+            std::optional<bool> canDeliver;
 
-            bool respond() const
+            bool readyToRespond() const
             {
-                return customerValidId and delivery;
+                return canAfford and (not *canAfford or canDeliver);
             }
         };
 
-        std::map<RequestId, NewOrderResponses> newOrderFlows;
+        std::map<RequestId, NewOrderFlow> newOrderFlows;
     };
 }
 ```
+
+See a chat with Copilot [here](copilot/domain-refactor.md) which describes when domains should be chosen over clusters and vice versa.

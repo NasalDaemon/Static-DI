@@ -54,10 +54,6 @@ export namespace di {
     // count.hpp
     using di::nodeCount;
     using di::IsUnary;
-    using di::EnsureAny;
-    using di::EnsureUnary;
-    using di::EnsureUnaryStateless;
-    using di::EnsureNonUnary;
     // detached.hpp
     using di::DetachedInterface;
     using di::IsDetachedInterface;
@@ -66,6 +62,13 @@ export namespace di {
     using di::HasDetachedContext;
     // empty_types.hpp
     using di::EmptyTypes;
+    // ensure.hpp
+    using di::Ensure;
+    namespace pred {
+        using pred::Unary;
+        using pred::NonUnary;
+        using pred::Stateless;
+    }
     // environment.hpp
     using di::Environment;
     using di::EnvironmentOverlay;

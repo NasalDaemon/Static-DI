@@ -194,8 +194,14 @@ class Cluster:
     def clusterClass(self) -> str:
         return "cluster"
 
-    def nodeMacro(self, node) -> str:
-        return "DI_NODE"
+    def predicates(self, node) -> list[str]:
+        return []
+
+    def predicatesStr(self, node) -> str:
+        if preds := self.predicates(node):
+            return ", " + ", ".join(preds)
+        else:
+            return ""
 
     def nodeName(self):
         if self.templates:
@@ -360,14 +366,13 @@ class Domain(Cluster):
     def clusterClass(self) -> str:
         return "domain"
 
-    def nodeMacro(self, node: Node | Repeater) -> str:
-        if node.isUnary:
-            if node.hasState:
-                return "DI_NODE_UNARY"
-            else:
-                return "DI_NODE_UNARY_STATELESS"
-        else:
-            return "DI_NODE_NON_UNARY"
+    def predicates(self, node: Node | Repeater) -> list[str]:
+        if not node.isUnary:
+            return ["di::pred::NonUnary"]
+        preds = ["di::pred::Unary"]
+        if not node.hasState:
+            preds.append("di::pred::Stateless")
+        return preds
 
     def validateArrow(self, arrow: Tree) -> bool:
         sign = self.arrowSign(arrow)

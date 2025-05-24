@@ -31,7 +31,15 @@ struct Repeater
         template<class Key>
         struct WithKey;
 
-        using Types = di::ResolveTypes<Context, RepeaterTrait<0>>;
+        template<std::size_t I>
+        struct TypesAtT : di::ResolveTypes<Context, RepeaterTrait<I>>
+        {
+            static constexpr std::size_t TypesCount = Count;
+            template<std::size_t Index>
+            using TypesAt = TypesAtT<Index>;
+        };
+
+        using Types = TypesAtT<0>;
 
         using Traits = di::Traits<Node, Trait>;
 
