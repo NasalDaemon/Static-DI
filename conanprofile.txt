@@ -2,20 +2,31 @@
 os={{ detect_api.detect_os() }}
 arch={{ detect_api.detect_arch() }}
 build_type={{ os.getenv("BUILD_TYPE") }}
+
 {% set compiler, version, compiler_exe = detect_api.detect_default_compiler() %}
 compiler={{ compiler }}
 {% set compiler_version = detect_api.default_compiler_version(compiler, version) %}
+compiler.version={{ compiler_version }}
 
 # MSVC
 {% if compiler == 'msvc' %}
 {% set runtime, _ = detect_api.default_msvc_runtime(compiler) %}
+compiler.cppstd=23
 compiler.runtime={{ runtime }}
-compiler.version={{ compiler_version }}
+
+[conf]
+tools.build:cxxflags=['/Zc:preprocessor']
 
 # Clang, GCC
 {% else %}
-compiler.version={{ 19 if compiler_version == 20 else 14 if compiler_version == 15 else compiler_version }}
+compiler.cppstd=gnu23
 compiler.libcxx={{ "libstdc++11" if compiler == "gcc" else "libc++" }}
+
 [conf]
 tools.cmake.cmaketoolchain:generator=Ninja Multi-Config
+{% if detect_api.detect_os() == 'Linux' %}
+tools.build:exelinkflags=['-fuse-ld=mold']
+tools.build:sharedlinkflags=['-fuse-ld=mold']
+{% endif %}
+
 {% endif %}
