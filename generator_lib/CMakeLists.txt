@@ -31,7 +31,7 @@ add_custom_command(
     OUTPUT "${DI_GENERATOR_VENV}.stamp"
     DEPENDS "${DI_GENERATOR_PYTHON}" "${DI_GENERATOR_DIR}/requirements.txt"
     COMMAND ${DI_GENERATOR_PYTHON} -m pip install -r "${DI_GENERATOR_DIR}/requirements.txt" --upgrade
-    COMMAND touch ${DI_GENERATOR_VENV}.stamp
+    COMMAND ${CMAKE_COMMAND} -E touch "${DI_GENERATOR_VENV}.stamp"
     COMMENT "di_generator: Installing dependencies"
 )
 add_custom_target(di_generator_python DEPENDS "${DI_GENERATOR_VENV}.stamp")

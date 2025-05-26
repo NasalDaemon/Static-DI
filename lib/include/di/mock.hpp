@@ -28,7 +28,7 @@ namespace detail {
     struct MockReturn
     {
         template<class T>
-        operator T&() const &&
+        constexpr operator T&() const &&
         {
             if (Ref const* ref = std::get_if<Ref>(&value))
             {
@@ -39,7 +39,7 @@ namespace detail {
         }
 
         template<class T>
-        operator T&() &
+        constexpr operator T&() &
         {
             if (std::any* any = std::get_if<std::any>(&value))
             {
@@ -61,7 +61,7 @@ namespace detail {
         }
 
         template<class T>
-        operator T&&() &&
+        constexpr operator T&&() &&
         {
             if (std::any* any = std::get_if<std::any>(&value))
             {
@@ -81,7 +81,7 @@ namespace detail {
         }
 
         template<class T, class Arg>
-        void emplace(Arg&& arg)
+        constexpr void emplace(Arg&& arg)
         {
             if constexpr (std::is_reference_v<T>)
                 value.emplace<Ref>(std::addressof(arg), typeid(T), std::is_lvalue_reference_v<T>);
@@ -89,9 +89,9 @@ namespace detail {
                 value.emplace<std::any>(std::in_place_type<T>, std::forward<Arg>(arg));
         }
 
-        void reset() { value.emplace<std::monostate>(); }
+        constexpr void reset() { value.emplace<std::monostate>(); }
 
-        void setReturnDefault() { returnDefault = true; }
+        constexpr void setReturnDefault() { returnDefault = true; }
 
     private:
         bool returnDefault = false;
@@ -138,28 +138,28 @@ struct Mock
 
         using Types = DefaultTypes;
 
-        void reset()
+        constexpr void reset()
         {
             *this = {};
         }
 
-        void setReturnDefault() { defaultBehaviour = detail::MockDefaultBehaviour::ReturnDefault; }
-        void setThrowIfMissing() { defaultBehaviour = detail::MockDefaultBehaviour::ThrowIfMissing; }
+        constexpr void setReturnDefault() { defaultBehaviour = detail::MockDefaultBehaviour::ReturnDefault; }
+        constexpr void setThrowIfMissing() { defaultBehaviour = detail::MockDefaultBehaviour::ThrowIfMissing; }
 
         template<class Tag>
-        std::size_t methodCallCount(Tag) const
+        constexpr std::size_t methodCallCount(Tag) const
         {
             auto const it = methodCountMap.find(std::type_index{typeid(Tag)});
             return it != methodCountMap.end() ? it->second : 0ul;
         }
         template<IsTrait Tag>
-        std::size_t traitCallCount(Tag) const
+        constexpr std::size_t traitCallCount(Tag) const
         {
             auto const it = traitCountMap.find(std::type_index{typeid(Tag)});
             return it != traitCountMap.end() ? it->second : 0ul;
         }
         template<class Tag, class... Args>
-        std::size_t definitionCallCount() const
+        constexpr std::size_t definitionCallCount() const
         {
             ArgTypes argTypes{
                 std::type_index{typeid(Tag)},
@@ -170,7 +170,7 @@ struct Mock
         }
 
         template<class Self, class Method, class... Args>
-        detail::MockReturn apply(this Self& self, Method, Args&&... args)
+        constexpr detail::MockReturn apply(this Self& self, Method, Args&&... args)
         {
             ArgTypes argTypes{
                 std::type_index{typeid(Method)},
@@ -235,18 +235,18 @@ struct Mock
         }
 
         template<class... Fs>
-        void define(Fs... fs)
+        constexpr void define(Fs... fs)
         {
             (defineImpl((decltype(getTypes(&Fs::operator()))) nullptr, false, fs), ...);
             (defineImpl((decltype(getTypes(&Fs::operator()))) nullptr, true, fs), ...);
         }
         template<class... Fs>
-        void defineConst(Fs... fs)
+        constexpr void defineConst(Fs... fs)
         {
             (defineImpl((decltype(getTypes(&Fs::operator()))) nullptr, true, std::move(fs)), ...);
         }
         template<class... Fs>
-        void defineMut(Fs... fs)
+        constexpr void defineMut(Fs... fs)
         {
             (defineImpl((decltype(getTypes(&Fs::operator()))) nullptr, false, std::move(fs)), ...);
         }
@@ -258,7 +258,7 @@ struct Mock
         static auto getTypes(R (F::*)(Args...) const) -> R(*)(Args...);
 
         template<class R, class Tag, class... Args, class F>
-        void defineImpl(R(*)(Tag, Args...), bool isConst, F&& f)
+        constexpr void defineImpl(R(*)(Tag, Args...), bool isConst, F&& f)
         {
             ArgTypes argTypes{
                 std::type_index{typeid(std::remove_cvref_t<Tag>)},
