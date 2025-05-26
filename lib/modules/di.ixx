@@ -35,6 +35,7 @@ export namespace di {
     using di::Cluster;
     using di::IsCluster;
     using di::Domain;
+    using di::DomainParams;
     // combine.hpp
     using di::Combine;
     // context_fwd.hpp

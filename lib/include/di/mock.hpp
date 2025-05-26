@@ -13,6 +13,8 @@
 #include <functional>
 #include <map>
 #include <span>
+#include <string>
+#include <string_view>
 #include <stdexcept>
 #include <typeindex>
 #include <typeinfo>

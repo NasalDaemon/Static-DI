@@ -360,7 +360,7 @@ class Domain(Cluster):
 
     @property
     def clusterType(self) -> str:
-        return "di::Domain<{.MaxDepth=3}>"
+        return "di::Domain<di::DomainParams{.MaxDepth=3}>"
 
     @property
     def clusterClass(self) -> str:

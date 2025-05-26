@@ -12,6 +12,7 @@
 #include "di/trait_view.hpp"
 
 #if !DI_IMPORT_STD
+#include <compare>
 #include <type_traits>
 #endif
 

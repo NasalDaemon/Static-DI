@@ -61,8 +61,8 @@ namespace detail {
         using Node::Node;
 
         // Expose utility functions from the underlying node
-        using typename Node::Traits;
-        using typename Node::Environment;
+        using Traits = Node::Traits;
+        using Environment = Node::Environment;
         using Node::isUnary;
         using Node::getNode;
         using Node::canGetNode;
