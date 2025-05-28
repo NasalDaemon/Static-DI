@@ -12,8 +12,8 @@ endif()
 target_link_libraries(di_tests_abc_lib PUBLIC di::di)
 target_link_libraries(di_tests_abc_module_lib PUBLIC di::module)
 
-target_include_directories(di_tests_abc_lib PUBLIC include)
-target_generate_di_headers(di_tests_abc_lib INCLUDE_DIR include
+target_include_directories(di_tests_abc_lib PUBLIC headers/include)
+target_generate_di_headers(di_tests_abc_lib INCLUDE_DIR headers/include
     # GLOB
     #     abc
     # FILES
@@ -37,6 +37,12 @@ target_generate_di_src(di_tests_abc_lib
 )
 
 target_generate_di_modules(di_tests_abc_module_lib)
+
+target_sources(di_tests_abc_lib
+    PRIVATE
+        headers/src/alice.cpp
+        headers/src/ellie.cpp
+)
 
 target_sources(di_tests_abc_module_lib
     PUBLIC FILE_SET CXX_MODULES FILES

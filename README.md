@@ -5,6 +5,7 @@ Dependency injection framework without the need for runtime dispatch, virtual ca
 - [x] Clang 20+
 - [x] GCC 14.2+ (15+ for `import std;`)
 - [ ] MSVC
+- [x] MSVC (header only)
 
 ## How to use in your project
 Add the following to your CMake, which imports the code for the latest release into your project.

@@ -54,8 +54,8 @@ namespace detail {
 
     struct TestMapInfo
     {
-        template<class Context>
-        struct MapInfo : Context::Info
+        template<class Info>
+        struct MapInfo : Info
         {
             static void isTestContext(detail::TestContextTag);
         };

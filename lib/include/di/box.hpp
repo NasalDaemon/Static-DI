@@ -140,9 +140,6 @@ struct BoxWithRoot
     using WithRoot = BoxWithRoot<NewRoot, Main, InFacade, OutFacade, OutInterfaces...>;
 };
 
-template<class... Ts>
-constexpr bool detail::injectVirtualHost<BoxWithRoot<Ts...>> = true;
-
 DI_MODULE_EXPORT
 template<IsRootContext Root, IsNodeHandle Main, IsNodeHandle InFacade, class OutFacade = void, IsInterface... OutInterfaces>
 inline constexpr std::in_place_type_t<BoxWithRoot<Root, Main, InFacade, OutFacade, OutInterfaces...>> boxWithRoot{};
@@ -160,8 +157,12 @@ struct Box
     using WithRoot = BoxWithRoot<Root, Main, InFacade, OutFacade, OutInterfaces...>;
 };
 
-template<class... Ts>
-constexpr bool detail::injectVirtualHost<Box<Ts...>> = true;
+namespace detail {
+    template<IsRootContext Root, IsNodeHandle Main, IsNodeHandle InFacade, class OutFacade, IsInterface... OutInterfaces>
+    constexpr bool injectVirtualHost<BoxWithRoot<Root, Main, InFacade, OutFacade, OutInterfaces...>> = true;
+    template<IsNodeHandle Main, IsNodeHandle InFacade, class OutFacade, IsInterface... OutInterfaces>
+    constexpr bool injectVirtualHost<Box<Main, InFacade, OutFacade, OutInterfaces...>> = true;
+}
 
 DI_MODULE_EXPORT
 template<IsNodeHandle Main, IsNodeHandle InFacade, class OutFacade = void, IsInterface... OutInterfaces>

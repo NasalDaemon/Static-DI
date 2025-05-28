@@ -23,3 +23,10 @@ CHARLIE::Charlie::apply(trait::Charlie::get) const -> int
 {
      return charlie;
 }
+
+
+CHARLIE::apply(trait::Visitable::count, int& counter) -> void
+{
+    std::puts("trait::Visitable::count: Visited Charlie");
+    counter++;
+}

@@ -38,9 +38,9 @@ struct DetachedImpl : Interface, private Node
     static_assert(std::is_empty_v<Interface>);
 
     // Expose utility functions from the underlying node
-    using typename Node::Traits;
-    using typename Node::Types;
-    using typename Node::Environment;
+    using Traits = Node::Traits;
+    using Types = Node::Types;
+    using Environment = Node::Environment;
     using Node::isUnary;
     using Node::finalize;
     using Node::visit;

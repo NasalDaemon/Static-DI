@@ -1,7 +1,6 @@
-export module abc.alice:impl;
+#pragma once
 
-import abc.alice;
-import abc.traits;
+#include "abc/alice.hpp"
 
 #define ALICE \
     template<class Context> \

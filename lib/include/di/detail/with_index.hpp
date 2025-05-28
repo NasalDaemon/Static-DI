@@ -72,7 +72,7 @@ constexpr Result withIndexInvoke(auto tag, std::size_t i, Visitor&& visitor)
     else
     {
         // Bucket: ceil of count/3 with an upper bound of 8
-        constexpr std::size_t m = std::min(8ul, 1 + ((tag.count - 1) / 3));
+        constexpr std::size_t m = std::min(static_cast<decltype(tag.count)>(8), 1 + ((tag.count - 1) / 3));
         switch (i / m)
         {
         case 0:  return withIndexInvoke<Result>(nextTag<0, m, false>(tag), i,       DI_FWD(visitor));
