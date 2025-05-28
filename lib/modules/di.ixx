@@ -38,6 +38,14 @@ export namespace di {
     using di::DomainParams;
     // combine.hpp
     using di::Combine;
+    // compiler.hpp
+    namespace compiler {
+        using compiler::clang;
+        using compiler::gcc;
+        using compiler::gnu;
+        using compiler::msvc;
+        using compiler::version;
+    }
     // context_fwd.hpp
     using di::Context;
     using di::IsContext;

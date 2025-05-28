@@ -89,7 +89,7 @@ TEST_CASE("di::Combine test doubles")
     CHECK(99 == g.node.getNode(trait::b).c());
 }
 
-#if 0
+#if !(DI_OS_WINDOWS && DI_COMPILER_GCC)
 TEST_CASE_TEMPLATE("di::Combine with Mock", Mock, test::Mock<EmptyTypes, trait::B>, Narrow<test::Mock<>, trait::B>)
 {
     test::Graph<C, Combine<A, Mock>> g;

@@ -4,8 +4,8 @@
 #include <cstdio>
 #endif
 
-import di;
 import di.tests.repeater.cluster;
+import di;
 #if DI_IMPORT_STD
 import std;
 #endif

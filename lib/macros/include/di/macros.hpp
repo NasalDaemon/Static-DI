@@ -7,23 +7,46 @@
 #   define DI_MODULE_EXPORT
 #endif
 
+#define DI_DEPAREN(X) DI_ESC(DI_ISH X)
+#define DI_ISH(...) DI_ISH __VA_ARGS__
+#define DI_ESC(...) DI_ESC_(__VA_ARGS__)
+#define DI_ESC_(...) DI_VANISH_ ## __VA_ARGS__
+#define DI_VANISH_DI_ISH
+
 #define DI_MAKE_VER(major, minor, patch) \
     ((1000 * 1000 * (major)) + (1000 * (minor)) + (patch))
 
 #if defined(__clang__)
-#   define DI_COMPILER_CLANG 1
-#   define DI_COMPILER_GNU 1
+#   define DI_COMPILER_IS_X(clang, gcc, msvc) clang
 #   define DI_COMPILER_VER DI_MAKE_VER(__clang_major__, __clang_minor__, __clang_patchlevel__)
 #elif defined(__GNUC__) || defined(__GNUG__)
-#   define DI_COMPILER_GCC 1
-#   define DI_COMPILER_GNU 1
+#   define DI_COMPILER_IS_X(clang, gcc, msvc) gcc
 #   define DI_COMPILER_VER DI_MAKE_VER(__GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__)
 #elif defined(_MSC_VER)
-#   define DI_COMPILER_MSVC 1
+#   define DI_COMPILER_IS_X(clang, gcc, msvc) msvc
 #   define DI_COMPILER_VER _MSC_VER
 #else
 #   error Unsupported compiler
 #endif
+
+#define DI_IF_CLANG(x)      DI_DEPAREN(DI_COMPILER_IS_X(x,  ,  ))
+#define DI_IF_GCC(x)        DI_DEPAREN(DI_COMPILER_IS_X( , x,  ))
+#define DI_IF_GNU(x)        DI_DEPAREN(DI_COMPILER_IS_X(x, x,  ))
+#define DI_IF_MSVC(x)       DI_DEPAREN(DI_COMPILER_IS_X( ,  , x))
+#define DI_IF_NOT_CLANG(x)  DI_DEPAREN(DI_COMPILER_IS_X( , x, x))
+#define DI_IF_NOT_GCC(x)    DI_DEPAREN(DI_COMPILER_IS_X(x,  , x))
+#define DI_IF_NOT_GNU(x)    DI_DEPAREN(DI_COMPILER_IS_X( ,  , x))
+#define DI_IF_NOT_MSVC(x)   DI_DEPAREN(DI_COMPILER_IS_X(x, x,  ))
+
+#define DI_IF_CLANG_ELSE(IF, ELSE)  DI_IF_CLANG(IF) DI_IF_NOT_CLANG(ELSE)
+#define DI_IF_GCC_ELSE(IF, ELSE)    DI_IF_GCC  (IF) DI_IF_NOT_GCC  (ELSE)
+#define DI_IF_GNU_ELSE(IF, ELSE)    DI_IF_GNU  (IF) DI_IF_NOT_GNU  (ELSE)
+#define DI_IF_MSVC_ELSE(IF, ELSE)   DI_IF_MSVC (IF) DI_IF_NOT_MSVC (ELSE)
+
+#define DI_COMPILER_CLANG DI_IF_CLANG_ELSE(1, 0)
+#define DI_COMPILER_GCC   DI_IF_GCC_ELSE(1, 0)
+#define DI_COMPILER_GNU   DI_IF_GNU_ELSE(1, 0)
+#define DI_COMPILER_MSVC  DI_IF_MSVC_ELSE(1, 0)
 
 #if DI_COMPILER_MSVC
 #   define DI_CPP_VER _MSVC_LANG
@@ -31,8 +54,16 @@
 #   define DI_CPP_VER __cplusplus
 #endif
 
+#if defined(_WIN32)
+#   define DI_OS_WINDOWS 1
+#else
+#   define DI_OS_WINDOWS 0
+#endif
+
 #if defined(__INTELLISENSE__) or defined(DI_CLANGD)
 #   define DI_AUTOCOMPLETE 1
+#else
+#   define DI_AUTOCOMPLETE 0
 #endif
 
 // Clang won't detail the failure in the build diagnostic when asserting the concept directly
@@ -45,12 +76,6 @@
 #endif
 
 #define DI_FWD(name) static_cast<decltype(name)&&>(name)
-
-#define DI_DEPAREN(X) DI_ESC(DI_ISH X)
-#define DI_ISH(...) DI_ISH __VA_ARGS__
-#define DI_ESC(...) DI_ESC_(__VA_ARGS__)
-#define DI_ESC_(...) DI_VANISH_ ## __VA_ARGS__
-#define DI_VANISH_DI_ISH
 
 // used in traits.hpp
 #define DI_METHODS(traitName) \

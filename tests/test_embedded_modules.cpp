@@ -1,8 +1,7 @@
-module;
-
 #include <doctest/doctest.h>
 
-module di.tests.embedded;
+import di.tests.embedded;
+import di;
 
 #if 0
 // di-embed-begin

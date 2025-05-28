@@ -4,6 +4,7 @@
 #include "di/alias.hpp"
 #include "di/args.hpp"
 #include "di/cluster.hpp"
+#include "di/compiler.hpp"
 #include "di/context.hpp"
 #include "di/count.hpp"
 #include "di/detached.hpp"

@@ -32,10 +32,13 @@ struct Charlie
             , trait::Charlie(Charlie, CharlieTypes)
             , trait::Charlie2(Charlie2, CharlieTypes)
             , trait::Charlie3(Charlie3, CharlieTypes)
+            , trait::Visitable
         >;
 
         using AliceType = AliceTypes::AliceType;
         using CharlieType = CharlieTypes::CharlieType;
+
+        void apply(trait::Visitable::count, int& counter);
 
     protected:
         AliceType charlie = 99;

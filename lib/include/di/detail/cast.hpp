@@ -1,6 +1,9 @@
 #ifndef INCLUDE_DI_DETAIL_CAST_HPP
 #define INCLUDE_DI_DETAIL_CAST_HPP
 
+#include "di/compiler.hpp"
+#include "di/macros.hpp"
+
 #if !DI_IMPORT_STD
 #include <bit>
 #include <memory>
@@ -13,7 +16,8 @@ template<class Derived, class Base>
 constexpr Derived& downCast(Base& base)
 {
     static_assert(std::is_base_of_v<Base, Derived>);
-    static_assert(sizeof(Derived) == sizeof(Base));
+    if constexpr (not compiler::msvc) // MSVC doesn't have proper EBO
+        static_assert(sizeof(Derived) == sizeof(Base));
     return *(Derived*)std::addressof(base);
 }
 
@@ -21,7 +25,8 @@ template<class Derived, class Base>
 constexpr Derived const& downCast(Base const& base)
 {
     static_assert(std::is_base_of_v<Base, Derived>);
-    static_assert(sizeof(Derived) == sizeof(Base));
+    if constexpr (not compiler::msvc) // MSVC doesn't have proper EBO
+        static_assert(sizeof(Derived) == sizeof(Base));
     return *(Derived const*)std::addressof(base);
 }
 

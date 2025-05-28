@@ -39,7 +39,6 @@ jobs:
             os: ubuntu-latest
           - name: cl
             header_only: header-only
-            allow_build_failure: allow-failure
             os: windows-latest
 
     steps:
