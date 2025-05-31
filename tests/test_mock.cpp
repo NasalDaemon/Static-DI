@@ -101,9 +101,9 @@ TEST_CASE("di::test::Mock")
 
     g.mocks->setThrowIfMissing();
 
-    switch (di::compiler::type)
+    switch (di::compiler.kind)
     {
-    using enum di::compiler::Type;
+    using enum di::Compiler::Kind;
     case GCC:
         CHECK_THROWS_WITH(g.node->testNothing(), "Mock implementation not defined for apply(di::tests::mock::trait::Trait@di.tests.mock::takesNothing) const");
         CHECK_THROWS_WITH(g.node->testInt(8), "Mock implementation not defined for apply(di::tests::mock::trait::Trait@di.tests.mock::takesInt, int)");

@@ -3,7 +3,7 @@
 
 #include "di/macros.hpp"
 
-#if DI_CPP_VER > 202302L and __cpp_pack_indexing >= 202311L
+#if DI_CPP_VERSION > 202302L and __cpp_pack_indexing >= 202311L
 #   define DI_TYPE_AT_VER 1
 #elif DI_COMPILER_GNU
 #   define DI_TYPE_AT_VER 2
