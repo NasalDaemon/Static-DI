@@ -116,7 +116,9 @@ struct DomainParams
 {
     std::size_t MaxDepth = 3;
 
+#if !DI_COMPILER_MSVC
     auto operator<=>(DomainParams const&) const = default;
+#endif
 };
 
 DI_MODULE_EXPORT

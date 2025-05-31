@@ -21,12 +21,13 @@
 				}
 			},
 			"windows": {
+				"command": "%CONAN_INSTALL%=Debug && %CONAN_INSTALL%=RelWithDebInfo && %CONAN_INSTALL%=Release",
 				"options": {
 					"env": {
-						"CXX": "C:/msys64/ucrt64/bin/g++.exe",
-						"CC": "C:/msys64/ucrt64/bin/gcc.exe",
-						// "CXX": "C:/msys64/ucrt64/bin/clang++.exe",
-						// "CC": "C:/msys64/ucrt64/bin/clang.exe",
+						// "CXX": "C:/msys64/ucrt64/bin/g++.exe",
+						// "CC": "C:/msys64/ucrt64/bin/gcc.exe",
+						"CXX": "C:/msys64/ucrt64/bin/clang++.exe",
+						"CC": "C:/msys64/ucrt64/bin/clang.exe",
 					}
 				}
 			}
@@ -39,18 +40,19 @@
 			"options": {
 				"cwd": "${workspaceFolder}/build",
 				"env": {
-					"COMPRESS_TYPES": "TRUE",
+					"COMPRESS_TYPES": "FALSE",
 					"ENABLE_LTO": "FALSE",
 					"ENABLE_SAN": "FALSE",
 				},
 			},
 			"windows": {
+				"command": "cmake .. --preset conan-default -DDI_BUILD_TESTS=TRUE -DCMAKE_COLOR_DIAGNOSTICS=TRUE -DCMAKE_CXX_MODULE_STD=${input:ImportStd} -DDI_COMPRESS_TYPES=%COMPRESS_TYPES% -DDI_TESTS_LTO=%ENABLE_LTO% -DDI_TESTS_DEBUG_SAN=%ENABLE_SAN%",
 				"options": {
 					"env": {
-						"CXX": "C:/msys64/ucrt64/bin/g++.exe",
-						"CC": "C:/msys64/ucrt64/bin/gcc.exe",
-						// "CXX": "C:/msys64/ucrt64/bin/clang++.exe",
-						// "CC": "C:/msys64/ucrt64/bin/clang.exe",
+						// "CXX": "C:/msys64/ucrt64/bin/g++.exe",
+						// "CC": "C:/msys64/ucrt64/bin/gcc.exe",
+						"CXX": "C:/msys64/ucrt64/bin/clang++.exe",
+						"CC": "C:/msys64/ucrt64/bin/clang.exe",
 					}
 				}
 			}
