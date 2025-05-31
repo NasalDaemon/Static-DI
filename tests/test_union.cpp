@@ -19,7 +19,7 @@ namespace trait {
 
     struct Name : di::Trait
     {
-        #define Name_DI_METHODS(TAG) \
+        #define DI_METHODS_Name(TAG) \
             TAG(get) \
 
         DI_METHODS(Name)

@@ -6,7 +6,7 @@ namespace abc::trait {
 
 struct AliceRead : di::Trait
 {
-    #define AliceRead_DI_METHODS(TAG) \
+    #define DI_METHODS_AliceRead(TAG) \
         TAG(get) \
 
     DI_METHODS(AliceRead)
@@ -22,7 +22,7 @@ struct AliceRead : di::Trait
 
 struct AliceWrite : di::Trait
 {
-    #define AliceWrite_DI_METHODS(TAG) \
+    #define DI_METHODS_AliceWrite(TAG) \
         TAG(set) \
 
     DI_METHODS(AliceWrite)
@@ -38,7 +38,7 @@ struct AliceWrite : di::Trait
 
 struct Bob : di::Trait
 {
-    #define Bob_DI_METHODS(TAG) \
+    #define DI_METHODS_Bob(TAG) \
         TAG(get) \
         TAG(set) \
 
@@ -55,7 +55,7 @@ struct Bob : di::Trait
 
 struct Charlie : di::Trait
 {
-    #define Charlie_DI_METHODS(TAG) \
+    #define DI_METHODS_Charlie(TAG) \
         TAG(get) \
 
     DI_METHODS(Charlie)
@@ -72,7 +72,7 @@ struct Charlie : di::Trait
 
 struct Ellie : di::Trait
 {
-    #define Ellie_DI_METHODS(TAG) \
+    #define DI_METHODS_Ellie(TAG) \
         TAG(get) \
 
     DI_METHODS(Ellie)
@@ -87,7 +87,7 @@ struct Ellie : di::Trait
 
 struct Visitable : di::Trait
 {
-    #define Visitable_DI_METHODS(TAG) \
+    #define DI_METHODS_Visitable(TAG) \
         TAG(count) \
 
     DI_METHODS(Visitable)
@@ -109,7 +109,7 @@ inline constexpr Ellie3 ellie3{};
 
 }
 
-#undef AliceRead_DI_METHODS
-#undef AliceWrite_DI_METHODS
-#undef Bob_DI_METHODS
-#undef Charlie_DI_METHODS
+#undef DI_METHODS_AliceRead
+#undef DI_METHODS_AliceWrite
+#undef DI_METHODS_Bob
+#undef DI_METHODS_Charlie

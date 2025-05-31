@@ -14,9 +14,6 @@ compiler.version={{ compiler_version }}
 compiler.cppstd=23
 compiler.runtime={{ runtime }}
 
-[conf]
-tools.build:cxxflags=['/Zc:preprocessor']
-
 # Clang, GCC
 {% else %}
 compiler.cppstd=gnu23

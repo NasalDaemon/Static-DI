@@ -44,11 +44,7 @@ constexpr Base const& upCast(Derived const& derived)
     return *(Base const*)std::addressof(derived);
 }
 
-#if DI_COMPILER_MSVC
-using MemPtrInt = std::int32_t;
-#else
-using MemPtrInt = std::ptrdiff_t;
-#endif
+using MemPtrInt = DI_IF_MSVC_ELSE(std::int32_t)(std::ptrdiff_t);
 
 template<class Class, class Member>
 MemPtrInt memPtrToInt(Member Class::* memPtr)

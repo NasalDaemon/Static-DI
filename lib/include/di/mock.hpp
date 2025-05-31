@@ -220,16 +220,7 @@ struct Mock
                     result.setReturnDefault();
                     break;
                 case detail::MockDefaultBehaviour::ThrowIfMissing:
-                    {
-                    std::string error = "Mock implementation not defined for apply(";
-                    error += di::detail::typeName<Method>();
-                    ((error += ", ", error += di::detail::typeName<Args>()), ...);
-                    if constexpr (std::is_const_v<Self>)
-                        error += ") const";
-                    else
-                        error += ')';
-                    throw std::runtime_error(error);
-                    }
+                    throw std::runtime_error(notDefinedError<Self, Method, Args...>());
                 }
             }
 
@@ -267,7 +258,7 @@ struct Mock
                 std::type_index{typeid(Args)}...};
             auto& defs = definitions[argTypes];
             (isConst ? defs.con : defs.mut) =
-                [f = std::forward<F>(f)](this auto&, detail::MockReturn& result, void** args) -> void
+                [f = std::forward<F>(f)](DI_IF_NOT_MSVC(this auto&,) detail::MockReturn& result, void** args) -> void
                 {
                     [&]<std::size_t... I>(std::index_sequence<I...>) -> void
                     {
@@ -283,6 +274,19 @@ struct Mock
                         }
                     }(std::index_sequence_for<Args...>{});
                 };
+        }
+
+        template<class Self, class Method, class... Args>
+        static constexpr std::string notDefinedError()
+        {
+            std::string error = "Mock implementation not defined for apply(";
+            error += di::detail::typeName<Method>();
+            ((error += ", ", error += di::detail::typeName<Args>()), ...);
+            if constexpr (std::is_const_v<Self>)
+                error += ") const";
+            else
+                error += ')';
+            return error;
         }
 
         detail::MockDefaultBehaviour defaultBehaviour = detail::MockDefaultBehaviour::ReturnDefault;

@@ -40,11 +40,15 @@ export namespace di {
     using di::Combine;
     // compiler.hpp
     namespace compiler {
+        using compiler::Type;
         using compiler::clang;
         using compiler::gcc;
         using compiler::gnu;
         using compiler::msvc;
         using compiler::version;
+        using compiler::type;
+        using compiler::makeVersion;
+        using compiler::atLeast;
     }
     // context_fwd.hpp
     using di::Context;

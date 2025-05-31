@@ -48,7 +48,7 @@ namespace detail {
         template<class Self>
         inline static auto& getCluster(auto& node)
         {
-            constexpr auto memPtr = getNodePointer(AdlTag<Self>{});
+            DI_IF_NOT_MSVC(constexpr) auto memPtr = getNodePointer(AdlTag<Self>{});
             using StateType = decltype(getMemberType(memPtr));
             auto& n = downCast<StateType>(node);
             return n.*reverseMemberPointer(memPtr);

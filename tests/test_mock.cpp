@@ -101,13 +101,22 @@ TEST_CASE("di::test::Mock")
 
     g.mocks->setThrowIfMissing();
 
-#if DI_COMPILER_GCC
-    CHECK_THROWS_WITH(g.node->testNothing(), "Mock implementation not defined for apply(di::tests::mock::trait::Trait@di.tests.mock::takesNothing) const");
-    CHECK_THROWS_WITH(g.node->testInt(8), "Mock implementation not defined for apply(di::tests::mock::trait::Trait@di.tests.mock::takesInt, int)");
-#else
-    CHECK_THROWS_WITH(g.node->testNothing(), "Mock implementation not defined for apply(di::tests::mock::trait::Trait::takesNothing) const");
-    CHECK_THROWS_WITH(g.node->testInt(8), "Mock implementation not defined for apply(di::tests::mock::trait::Trait::takesInt, int)");
-#endif
+    switch (di::compiler::type)
+    {
+    using enum di::compiler::Type;
+    case GCC:
+        CHECK_THROWS_WITH(g.node->testNothing(), "Mock implementation not defined for apply(di::tests::mock::trait::Trait@di.tests.mock::takesNothing) const");
+        CHECK_THROWS_WITH(g.node->testInt(8), "Mock implementation not defined for apply(di::tests::mock::trait::Trait@di.tests.mock::takesInt, int)");
+        break;
+    case Clang:
+        CHECK_THROWS_WITH(g.node->testNothing(), "Mock implementation not defined for apply(di::tests::mock::trait::Trait::takesNothing) const");
+        CHECK_THROWS_WITH(g.node->testInt(8), "Mock implementation not defined for apply(di::tests::mock::trait::Trait::takesInt, int)");
+        break;
+    case MSVC:
+        CHECK_THROWS_WITH(g.node->testNothing(), "Mock implementation not defined for apply(struct di::tests::mock::trait::Trait::takesNothing) const");
+        CHECK_THROWS_WITH(g.node->testInt(8), "Mock implementation not defined for apply(struct di::tests::mock::trait::Trait::takesInt, int)");
+        break;
+    }
 
     g.mocks->define([](trait::Trait::returnsRef) { return 0; });
 

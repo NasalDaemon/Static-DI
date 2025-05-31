@@ -6,6 +6,7 @@
 #include "di/cluster.hpp"
 #include "di/context.hpp"
 #include "di/link.hpp"
+#include "di/macros.hpp"
 #include "di/trait.hpp"
 
 #if !DI_IMPORT_STD
@@ -30,7 +31,7 @@ namespace detail {
 
         [[no_unique_address]] ContextToNodeState<Context> node{};
 
-        friend consteval decltype(node) CombineNode::* getNodePointer(di::AdlTag<Context>)
+        friend DI_IF_MSVC_ELSE(constexpr)(consteval) decltype(node) CombineNode::* getNodePointer(di::AdlTag<Context>)
         {
             return &CombinePart::node;
         }
