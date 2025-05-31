@@ -104,9 +104,12 @@ TEST_CASE("di::test::Mock")
 #if DI_COMPILER_GCC
     CHECK_THROWS_WITH(g.node->testNothing(), "Mock implementation not defined for apply(di::tests::mock::trait::Trait@di.tests.mock::takesNothing) const");
     CHECK_THROWS_WITH(g.node->testInt(8), "Mock implementation not defined for apply(di::tests::mock::trait::Trait@di.tests.mock::takesInt, int)");
-#else
+#elif DI_COMPILER_CLANG
     CHECK_THROWS_WITH(g.node->testNothing(), "Mock implementation not defined for apply(di::tests::mock::trait::Trait::takesNothing) const");
     CHECK_THROWS_WITH(g.node->testInt(8), "Mock implementation not defined for apply(di::tests::mock::trait::Trait::takesInt, int)");
+#else
+    CHECK_THROWS_WITH(g.node->testNothing(), "Mock implementation not defined for apply(struct di::tests::mock::trait::Trait::takesNothing) const");
+    CHECK_THROWS_WITH(g.node->testInt(8), "Mock implementation not defined for apply(struct di::tests::mock::trait::Trait::takesInt, int)");
 #endif
 
     g.mocks->define([](trait::Trait::returnsRef) { return 0; });

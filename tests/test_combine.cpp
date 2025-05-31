@@ -17,7 +17,7 @@ namespace trait {
 
     struct A : di::UnconstrainedTrait
     {
-        #define A_DI_METHODS(TAG) \
+        #define DI_METHODS_A(TAG) \
             TAG(a) \
             TAG(c)
         DI_METHODS(A)
@@ -25,7 +25,7 @@ namespace trait {
 
     struct B : di::UnconstrainedTrait
     {
-        #define B_DI_METHODS(TAG) \
+        #define DI_METHODS_B(TAG) \
             TAG(b) \
             TAG(c)
         DI_METHODS(B)
@@ -33,7 +33,7 @@ namespace trait {
 
     struct C : di::UnconstrainedTrait
     {
-        #define C_DI_METHODS(TAG) \
+        #define DI_METHODS_C(TAG) \
             TAG(c)
         DI_METHODS(C)
     } inline constexpr c{};

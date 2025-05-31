@@ -3,54 +3,90 @@
 	"tasks": [
 		{
 			"type": "shell",
-			"group": {
-				"kind": "build",
-				"isDefault": true
+			"group": "build",
+			"label": "RM build dir",
+			"windows": {
+				"command": "rmdir /s /q build",
 			},
-			"label": "CMake build",
+			"command": "rm -rf build"
+		},
+		{
+			"type": "shell",
+			"group": "build",
+			"label": "Conan install",
+			"command": "conan install . --output-folder=build --build=missing --profile=conanprofile.txt",
 			"options": {
-				"cwd": "${workspaceFolder}/build",
 				"env": {
 					"BUILD_TYPE": "${input:BuildType}",
 				},
 			},
-			"presentation": {
-				"clear": true,
-				"showReuseMessage": false
-			},
-			"command": "time cmake --build . --config $BUILD_TYPE -j $JOBS_COUNT && ctest --build-config $BUILD_TYPE --output-on-failure",
+			"windows": {
+				"options": {
+					"env": {
+						"CXX": "C:/msys64/ucrt64/bin/g++.exe",
+						"CC": "C:/msys64/ucrt64/bin/gcc.exe",
+					}
+				}
+			}
 		},
 		{
 			"type": "shell",
 			"group": "build",
-			"label": "CMake clean",
+			"label": "CMake configure",
+			"command": "cmake .. --preset conan-default -DDI_BUILD_TESTS=ON -DCMAKE_COLOR_DIAGNOSTICS=ON -DCMAKE_CXX_MODULE_STD=${input:ImportStd} -DDI_COMPRESS_TYPES=${env:COMPRESS_TYPES} -DDI_TESTS_LTO=${env:ENABLE_LTO} -DDI_TESTS_DEBUG_SAN=${env:ENABLE_SAN}",
 			"options": {
 				"cwd": "${workspaceFolder}/build",
-				"env": {
-					"JOBS_COUNT": "$(( 2*$(nproc --all) ))"
-				}
-			},
-			"command": "cmake --build . --target clean",
-		},
-		{
-			"type": "shell",
-			"group": "build",
-			"label": "CMake clean reconfigure",
-			"command": "rm -rf build && conan install . --output-folder=build --build=missing --profile=conanprofile.txt && pushd build && cmake .. --preset conan-default -DDI_BUILD_TESTS=ON -DCMAKE_COLOR_DIAGNOSTICS=ON -DCMAKE_CXX_MODULE_STD=${input:ImportStd} -DDI_COMPRESS_TYPES=$COMPRESS_TYPES -DDI_TESTS_LTO=$ENABLE_LTO -DDI_TESTS_DEBUG_SAN=$ENABLE_SAN && popd",
-			"options": {
 				"env": {
 					"BUILD_TYPE": "${input:BuildType}",
 					"COMPRESS_TYPES": "TRUE",
 					"ENABLE_LTO": "TRUE",
 					"ENABLE_SAN": "FALSE",
 				},
+			},
+			"windows": {
+				"options": {
+					"env": {
+						"CXX": "C:/msys64/ucrt64/bin/g++.exe",
+						"CC": "C:/msys64/ucrt64/bin/gcc.exe",
+					}
+				}
 			}
 		},
 		{
 			"type": "shell",
 			"group": "build",
+			"label": "CMake clean",
+			"command": "cmake --build . --target clean",
+			"options": {
+				"cwd": "${workspaceFolder}/build",
+			},
+		},
+		{
+			"type": "shell",
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"label": "CMake build",
+			"linux": {
+				"command": "time cmake --build . --config ${input:BuildType} && ctest --build-config ${input:BuildType} --output-on-failure"
+			},
+			"windows": {
+				"command": "ptime cmake --build . --config ${input:BuildType} && ctest --build-config ${input:BuildType} --output-on-failure"
+			},
+			"options": {
+				"cwd": "${workspaceFolder}/build",
+			},
+			"presentation": {
+				"clear": true,
+				"showReuseMessage": false
+			},
+		},
+		{
+			"type": "shell",
+			"group": "build",
 			"label": "CMake clean reconfigure and build",
-			"dependsOn": ["CMake clean reconfigure", "CMake build"],
+			"dependsOn": ["RM build dir", "Conan install", "CMake configure", "CMake build"],
 			"dependsOrder": "sequence"
 		}
 	],
