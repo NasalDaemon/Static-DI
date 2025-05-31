@@ -3,30 +3,75 @@
 
 #include "di/macros.hpp"
 
+#if !DI_IMPORT_STD
+#include <compare>
+#endif
+
 DI_MODULE_EXPORT
 namespace di::compiler {
     enum Type
     {
         Clang, GCC, MSVC
     };
-    inline constexpr bool clang = DI_COMPILER_CLANG == 1;
-    inline constexpr bool gcc = DI_COMPILER_GCC == 1;
-    inline constexpr bool gnu = DI_COMPILER_GNU == 1;
-    inline constexpr bool msvc = DI_COMPILER_MSVC == 1;
-    inline constexpr auto version = DI_COMPILER_VER;
-    inline constexpr Type type = clang ? Clang : gcc ? GCC : MSVC;
 
-    constexpr auto makeVersion(unsigned major, unsigned minor = 0, unsigned patch = 0)
+    // Opaque and strongly-typed version that can only be compared with another instance
+    struct Version
     {
-        return DI_MAKE_VER(major, minor, patch);
+        struct FromMacro{};
+        constexpr explicit Version(FromMacro, unsigned long long version)
+            : version(version)
+        {}
+
+        constexpr explicit Version(unsigned major, unsigned minor = 0, unsigned patch = 0)
+            : Version(FromMacro{}, DI_MAKE_VERSION(major, minor, patch))
+        {}
+
+        auto operator<=>(Version const&) const = default;
+    private:
+        unsigned long long version;
+    };
+
+    // Can only be compared to another instance
+    struct Spec
+    {
+        constexpr Spec(Type type, Version version) : type(type), version(version) {}
+        constexpr Spec(Type type, unsigned major, unsigned minor = 0, unsigned patch = 0)
+            : Spec(type, Version(major, minor, patch))
+        {}
+
+        bool operator==(Spec const&) const = default;
+        constexpr auto operator<=>(Spec const& other) const
+        {
+            return type != other.type
+                ? std::partial_ordering::unordered
+                : version <=> other.version;
+        }
+
+    private:
+        Type type;
+        Version version;
+    };
+
+    inline constexpr bool isClang = DI_COMPILER_CLANG == 1;
+    inline constexpr bool isGcc = DI_COMPILER_GCC == 1;
+    inline constexpr bool isGnu = DI_COMPILER_GNU == 1;
+    inline constexpr bool isMsvc = DI_COMPILER_MSVC == 1;
+
+    inline constexpr Type type = isClang ? Clang : isGcc ? GCC : MSVC;
+    inline constexpr Version version(Version::FromMacro{}, DI_COMPILER_VERSION);
+    inline constexpr Spec spec(type, version);
+
+    constexpr Spec clang(unsigned major, unsigned minor = 0, unsigned patch = 0)
+    {
+        return {Clang, major, minor, patch};
     }
-    constexpr bool atLeast(unsigned major, unsigned minor = 0, unsigned patch = 0)
+    constexpr Spec gcc(unsigned major, unsigned minor = 0, unsigned patch = 0)
     {
-        return version >= makeVersion(major, minor, patch);
+        return {GCC, major, minor, patch};
     }
-    constexpr bool atLeast(Type type, unsigned major, unsigned minor = 0, unsigned patch = 0)
+    constexpr Spec msvc(unsigned major, unsigned minor = 0, unsigned patch = 0)
     {
-        return compiler::type == type and atLeast(major, minor, patch);
+        return {MSVC, major, minor, patch};
     }
 }
 

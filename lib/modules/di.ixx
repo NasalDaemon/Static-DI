@@ -41,14 +41,18 @@ export namespace di {
     // compiler.hpp
     namespace compiler {
         using compiler::Type;
+        using compiler::Version;
+        using compiler::Spec;
+        using compiler::isClang;
+        using compiler::isGcc;
+        using compiler::isGnu;
+        using compiler::isMsvc;
+        using compiler::type;
+        using compiler::version;
+        using compiler::spec;
         using compiler::clang;
         using compiler::gcc;
-        using compiler::gnu;
         using compiler::msvc;
-        using compiler::version;
-        using compiler::type;
-        using compiler::makeVersion;
-        using compiler::atLeast;
     }
     // context_fwd.hpp
     using di::Context;

@@ -187,7 +187,7 @@ struct {{ cluster.nodeName() }} : {{ cluster.clusterType }}
 
     {% for connection in cluster.parentNode.connections %}
     {% if connection.isRenaming() %}
-    DI_LINK_TO(({{ connection.trait }}), {{ connection.context }}, ({{ connection.toTrait }}))
+    DI_LINK(({{ connection.trait }}), {{ connection.context }}, ({{ connection.toTrait }}))
     {% else %}
     DI_LINK(({{ connection.trait }}), {{ connection.context }})
     {% endif %}
@@ -200,7 +200,7 @@ struct {{ cluster.nodeName() }} : {{ cluster.clusterType }}
     {
         {% for connection in node.connections %}
         {% if connection.isRenaming() %}
-        DI_LINK_TO(({{ connection.trait }}), {{ connection.context }}, ({{ connection.toTrait }}))
+        DI_LINK(({{ connection.trait }}), {{ connection.context }}, ({{ connection.toTrait }}))
         {% else %}
         DI_LINK(({{ connection.trait }}), {{ connection.context }})
         {% endif %}
