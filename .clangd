@@ -1,5 +1,6 @@
 CompileFlags:
   CompilationDatabase: build/
   Add: [
-    -DDI_CLANGD=1
+    -DDI_CLANGD=1,
+    -DDI_COMPRESS_TYPES=1
   ]

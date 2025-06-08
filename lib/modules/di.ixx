@@ -7,7 +7,7 @@ module;
 export module di;
 
 #if DI_IMPORT_STD
-import std;
+export import std;
 #define DI_MODULE_EXPORT export
 #include "di/di.hpp"
 #else
@@ -102,6 +102,8 @@ export namespace di {
         using key::IsKey;
         using key::Trait;
     }
+    // lazy.hpp
+    using di::Lazy;
     // link.hpp
     using di::CanGetNode;
     using di::HasTrait;

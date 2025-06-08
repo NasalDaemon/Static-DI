@@ -28,12 +28,9 @@ namespace detail {
             struct WithTrait;
 
             template<class Trait>
-            struct Resolver
-            {
-                // Types not used as this is behind a facade which already concretises the types
-                using Types = EmptyTypes;
-                using Interface = WithTrait<Trait>;
-            };
+            // Types not used as this is behind a facade which already concretises the types
+            using Resolver = ResolvedTrait<WithTrait<Trait>, EmptyTypes>;
+
             using Traits = di::TraitsTemplate<Node, Resolver>;
 
             explicit constexpr Node(OuterNode* outerNode) : outerNode(outerNode) {}

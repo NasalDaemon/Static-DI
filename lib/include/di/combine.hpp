@@ -10,6 +10,7 @@
 #include "di/trait.hpp"
 
 #if !DI_IMPORT_STD
+#include <cstdint>
 #include <type_traits>
 #endif
 
@@ -71,7 +72,7 @@ struct Combine
         requires (I < sizeof...(Nodes))
         auto& get(this auto& self)
         {
-            return detail::upCast<detail::TypeAt<I, detail::CombinePart<Node, Nodes>...>>(self).node;
+            return detail::upCast<detail::CombinePart<Node, detail::TypeAt<I, Nodes...>>>(self).node;
         }
 
         constexpr void visit(this auto& self, auto&& visitor)

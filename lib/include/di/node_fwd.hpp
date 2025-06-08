@@ -72,6 +72,17 @@ struct InlineNode
     using Node = NodeTmpl<Context>;
 };
 
+namespace detail {
+
+template<class Node>
+struct NodeHasTraitsNodePred
+{
+    template<class T>
+    static constexpr bool value = std::is_same_v<typename T::Traits::Node, Node>;
+};
+
+}
+
 } // namespace di
 
 

@@ -427,7 +427,7 @@ class Domain(Cluster):
                 f"{1+max(self.minExtraChevrons, -(self.overridesSeen // -self.overridesPerExtraChevron))} chevrons are needed in total per override.")
 
 class Method:
-    __reserved_names__ = [ 'apply', 'visit']
+    __reserved_names__ = ['apply', 'visit']
 
     def __init__(self):
         self.name: str = "<unknown>"

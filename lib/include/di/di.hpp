@@ -6,6 +6,7 @@
 #include "di/adapt.hpp"
 #include "di/box.hpp"
 #include "di/combine.hpp"
+#include "di/lazy.hpp"
 #include "di/mock.hpp"
 #include "di/narrow.hpp"
 #include "di/test.hpp"

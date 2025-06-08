@@ -4,7 +4,6 @@
 #include "di/detail/as_ref.hpp"
 #include "di/context_fwd.hpp"
 #include "di/environment.hpp"
-#include "di/key.hpp"
 #include "di/link.hpp"
 #include "di/macros.hpp"
 #include "di/node_fwd.hpp"

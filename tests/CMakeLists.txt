@@ -23,6 +23,7 @@ add_executable(di_tests_module
 )
 add_executable(di_tests_mock
     test_combine.cpp
+    test_lazy.cpp
     test_mock.cpp
 )
 

@@ -128,7 +128,7 @@ struct TraitView final : Trait::Meta::Methods
     constexpr decltype(auto) visit(this auto&& self, auto&& visitor)
     {
         return self.impl->visit(
-            [&](auto& impl)
+            [&](auto& impl) -> decltype(auto)
             {
                 return std::invoke(DI_FWD(visitor), impl.asTrait(Trait{}));
             });

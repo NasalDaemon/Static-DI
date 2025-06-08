@@ -7,9 +7,6 @@
 #endif
 
 import di;
-#if DI_IMPORT_STD
-import std;
-#endif
 
 namespace di::tests::combine {
 
@@ -89,7 +86,6 @@ TEST_CASE("di::Combine test doubles")
     CHECK(99 == g.node.getNode(trait::b).c());
 }
 
-#if !(DI_OS_WINDOWS && DI_COMPILER_GCC)
 TEST_CASE_TEMPLATE("di::Combine with Mock", Mock, test::Mock<EmptyTypes, trait::B>, Narrow<test::Mock<>, trait::B>)
 {
     test::Graph<C, Combine<A, Mock>> g;
@@ -110,5 +106,5 @@ TEST_CASE_TEMPLATE("di::Combine with Mock", Mock, test::Mock<EmptyTypes, trait::
     CHECK(99 == g.node.getNode(trait::a).c());
     CHECK(99 == int(g.node.getNode(trait::b).c()));
 }
-#endif
+
 } // namespace di::tests::combine

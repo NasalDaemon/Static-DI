@@ -24,6 +24,9 @@ tools.cmake.cmaketoolchain:generator=Ninja Multi-Config
 {% if detect_api.detect_os() == 'Linux' %}
 tools.build:exelinkflags=['-fuse-ld=mold']
 tools.build:sharedlinkflags=['-fuse-ld=mold']
+{% elif detect_api.detect_os() == 'Windows' %}
+tools.build:exelinkflags=['-fuse-ld=lld']
+tools.build:sharedlinkflags=['-fuse-ld=lld']
 {% endif %}
 
 {% endif %}

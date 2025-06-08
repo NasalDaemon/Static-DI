@@ -44,7 +44,10 @@ struct Cat : di::Node
         struct CatType;
     };
 
-    int apply(trait::Name::get) const { return 99; }
+    int apply(this auto& self, trait::Name::get)
+    {
+        return self.getNode(trait::Name{}).get() + 99;
+    }
 };
 struct Dog
 {
@@ -122,9 +125,9 @@ TEST_CASE("di::Union")
 
     CHECK(42 == cat.mouse.asTrait(trait::Name{}).get());
 
-    CHECK(99 == cat.onion.asTrait(trait::Name{}).get());
+    CHECK(141 == cat.onion.asTrait(trait::Name{}).get());
 
-    CHECK(99 == cat.mouse.getNode(trait::Name{}).get());
+    CHECK(141 == cat.mouse.getNode(trait::Name{}).get());
 
     CHECK(42 == dog.mouse.asTrait(trait::Name{}).get());
 

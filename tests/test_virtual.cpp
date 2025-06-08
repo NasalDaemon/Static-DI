@@ -1,5 +1,4 @@
 #include <doctest/doctest.h>
-#include <utility>
 #include "di/macros.hpp"
 
 #if !DI_IMPORT_STD

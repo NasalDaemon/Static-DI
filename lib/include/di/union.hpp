@@ -2,6 +2,7 @@
 #define INCLUDE_DI_UNION_HPP
 
 #include "di/detail/cast.hpp"
+#include "di/detail/select.hpp"
 #include "di/detail/type_at.hpp"
 #include "di/detail/with_index.hpp"
 
@@ -33,23 +34,23 @@ struct Union
     template<class Context>
     class Node : public di::Node
     {
-        struct InnerContext_;
-        using InnerContext = detail::CompressContext<InnerContext_>;
-        struct InnerContext_ : Context
+        struct InnerContext : Context
         {
-            template<IsTrait Trait>
+            template<class Option, IsTrait Trait>
             requires detail::HasLink<Context, Trait>
-            static constexpr auto getNode(auto& option, Trait trait)
+            static constexpr auto getNode(Option& option, Trait trait)
             {
-                using Option = std::remove_cvref_t<decltype(option)>;
-                static_assert((... || std::is_same_v<Option, typename ToNodeWrapper<Options>::template Node<InnerContext>>));
-                auto const nodePtr = std::bit_cast<Node Option::*>(-detail::memPtrToInt(&Node::bytes));
-                return Context{}.getNode(option.*nodePtr, trait);
+                using OptionNode = detail::SelectIf<
+                    detail::NodeHasTraitsNodePred<typename Option::Traits::Node>,
+                    ToNode<Options>...
+                >;
+                auto const nodePtr = std::bit_cast<Node OptionNode::*>(-detail::memPtrToInt(&Node::bytes));
+                return Context{}.getNode(detail::downCast<OptionNode>(option).*nodePtr, trait);
             }
         };
 
         template<class Option>
-        using ToNode = ToNodeWrapper<Option>::template Node<InnerContext>;
+        using ToNode = ToNodeWrapper<Option>::template Node<detail::CompressContext<InnerContext>>;
 
     public:
         template<std::size_t I>

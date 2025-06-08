@@ -17,7 +17,7 @@ target_sources(di_module_lib
 )
 
 if(DI_COMPRESS_TYPES)
-    target_compile_definitions(di_module_lib PUBLIC    DI_COMPRESS_TYPES=1)
+    target_compile_definitions(di_module_lib PRIVATE   DI_COMPRESS_TYPES=1)
     target_compile_definitions(di_lib        INTERFACE DI_COMPRESS_TYPES=1)
 endif()
 
