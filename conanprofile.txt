@@ -1,7 +1,6 @@
 [settings]
 os={{ detect_api.detect_os() }}
 arch={{ detect_api.detect_arch() }}
-build_type={{ os.getenv("BUILD_TYPE") }}
 
 {% set compiler, version, compiler_exe = detect_api.detect_default_compiler() %}
 compiler={{ compiler }}

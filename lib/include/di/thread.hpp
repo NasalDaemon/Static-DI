@@ -132,12 +132,13 @@ namespace key {
                     });
             }
 
-            constexpr decltype(auto) apply(this auto& self, auto&&... args)
+            template<class... Args>
+            constexpr decltype(auto) apply(this auto& self, Args&&... args)
             {
                 return Poster<CurrentThreadId, requiredThreadId>::post(
-                    [&]() -> decltype(auto)
+                    [&self, ...args = DI_FWD(args)]() mutable -> decltype(auto)
                     {
-                        return self.T::apply(DI_FWD(args)...);
+                        return self.T::apply(std::move(args)...);
                     });
             }
 

@@ -1,6 +1,6 @@
 #!/usr/bin/bash
 
-pushd $(dirname "$0")
+cd $(dirname "$0")
 
 BUILD_TYPE="Release"
 STD_MODULE="OFF"
@@ -20,9 +20,8 @@ done
 
 # sudo apt install cmake ninja-build mold python3 pipx
 # pipx install conan
-BUILD_TYPE=$BUILD_TYPE \
-    conan install . --output-folder=build --build=missing --profile=conanprofile.txt
-pushd build
+conan install . --output-folder=build --build=missing --profile=conanprofile.txt --settings=build_type=$BUILD_TYPE
+cd build
 cmake .. --preset conan-default \
     -DDI_BUILD_TESTS=TRUE \
     -DDI_COMPRESS_TYPES=TRUE \
@@ -30,5 +29,3 @@ cmake .. --preset conan-default \
     -DCMAKE_CXX_MODULE_STD=$STD_MODULE
 cmake --build . --config $BUILD_TYPE
 ctest --build-config $BUILD_TYPE --output-on-failure
-popd
-popd
