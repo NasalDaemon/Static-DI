@@ -135,9 +135,9 @@ namespace key {
             constexpr decltype(auto) apply(this auto& self, auto&&... args)
             {
                 return Poster<CurrentThreadId, requiredThreadId>::post(
-                    [&]() -> decltype(auto)
+                    [&self, ...args = DI_FWD(args)]() mutable -> decltype(auto)
                     {
-                        return self.T::apply(DI_FWD(args)...);
+                        return self.T::apply(std::move(args)...);
                     });
             }
 

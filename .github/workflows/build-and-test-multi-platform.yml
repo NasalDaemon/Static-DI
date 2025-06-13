@@ -92,7 +92,7 @@ jobs:
         BUILD_TYPE: ${{ matrix.build_type }}
       run: |
         conan profile detect
-        conan install . --output-folder=build --build=missing --profile=conanprofile.txt
+        conan install . --output-folder=build --build=missing --profile=conanprofile.txt --settings=build_type=${{ matrix.build_type }}
 
     - name: Configure CMake ${{ matrix.compiler.std_module }}
       working-directory: ${{ github.workspace }}/build

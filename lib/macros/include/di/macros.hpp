@@ -32,10 +32,10 @@
     _51,_52,_53,_54,_55,_56,_57,_58,_59,_60, \
     _61,_62,_63,N,...) N
 
-#define DI_OVERLOAD(macro, ...) DI_APPLY(DI_CAT, macro, DI_ARGC(__VA_ARGS__))(__VA_ARGS__)
+#define DI_OVERLOAD(macro, ...) DI_APPLY(DI_CAT, macro, DI_ARGC(__VA_ARGS__))
 
 // DI_MAKE_VERSION(major, minor=0, patch=0)
-#define DI_MAKE_VERSION(...) DI_OVERLOAD(DI_MAKE_VERSION, __VA_ARGS__)
+#define DI_MAKE_VERSION(...) DI_OVERLOAD(DI_MAKE_VERSION, __VA_ARGS__)(__VA_ARGS__)
 
 // MMM|NNN|PPPPP
 #define DI_MAKE_VERSION3(major, minor, patch) ((1'000ull * 100'000ull * (major)) + (100'000ull * (minor)) + (patch))
@@ -118,10 +118,13 @@
     static_assert(::di::Implements<Impl, Types, Trait>)
 #endif
 
-#define DI_FWD(name) static_cast<decltype(name)&&>(name)
+#define DI_FWD(...) DI_OVERLOAD(DI_FWD, __VA_ARGS__)(__VA_ARGS__)
+
+#define DI_FWD1(name)    DI_FWD2(decltype(name), name)
+#define DI_FWD2(T, name) static_cast<T&&>(name)
 
 // DI_METHODS(TraitName, MethodList=DI_METHODS_TraitName)
-#define DI_METHODS(...) DI_OVERLOAD(DI_METHODS, __VA_ARGS__)
+#define DI_METHODS(...) DI_OVERLOAD(DI_METHODS, __VA_ARGS__)(__VA_ARGS__)
 
 #define DI_METHODS1(traitName) \
     DI_METHODS2(traitName, DI_METHODS_ ## traitName)
@@ -163,7 +166,7 @@
     }
 
 // DI_LINK(TraitName, TargetContext, TargetTraitRename=<NoRename>)
-#define DI_LINK(...) DI_OVERLOAD(DI_LINK, __VA_ARGS__)
+#define DI_LINK(...) DI_OVERLOAD(DI_LINK, __VA_ARGS__)(__VA_ARGS__)
 
 #define DI_LINK2(traitName, targetContext) \
     DI_LINK3(traitName, targetContext, T)

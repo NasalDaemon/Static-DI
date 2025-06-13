@@ -125,12 +125,13 @@ struct TraitView final : Trait::Meta::Methods
     }
 
     // Visit the TraitView of the concrete implementation (e.g. active node of union)
-    constexpr decltype(auto) visit(this auto&& self, auto&& visitor)
+    template<class Visitor>
+    constexpr decltype(auto) visit(this auto&& self, Visitor&& visitor)
     {
         return self.impl->visit(
             [&](auto& impl) -> decltype(auto)
             {
-                return std::invoke(DI_FWD(visitor), impl.asTrait(Trait{}));
+                return std::invoke(DI_FWD(Visitor, visitor), impl.asTrait(Trait{}));
             });
     }
 

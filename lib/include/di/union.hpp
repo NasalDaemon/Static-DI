@@ -115,13 +115,14 @@ struct Union
             return *new (bytes) ToNode<Option>{DI_FWD(args)...};
         }
 
-        constexpr decltype(auto) visit(this auto& self, auto&& visitor)
+        template<class Visitor>
+        constexpr decltype(auto) visit(this auto& self, Visitor&& visitor)
         {
             return withIndex(
                 self.index,
                 [&](auto i) -> decltype(auto)
                 {
-                    return std::invoke(DI_FWD(visitor), self.template get<i>());
+                    return std::invoke(DI_FWD(Visitor, visitor), self.template get<i>());
                 });
         }
 
@@ -188,13 +189,13 @@ template<class Trait>
 template<class Key>
 struct Union<Options...>::Node<Context>::AsTrait<Trait>::WithKey : AsTrait
 {
-    template<class Self>
-    constexpr decltype(auto) applyWithKey(this Self& self, Key key, auto&&... args)
+    template<class Self, class... Args>
+    constexpr decltype(auto) applyWithKey(this Self& self, Key key, Args&&... args)
     {
         using Environment = Self::Environment;
         return self.visit([&](auto& option) -> decltype(auto)
         {
-            return withEnv<Environment>(option).asTrait(Trait{}, key).apply(DI_FWD(args)...);
+            return withEnv<Environment>(option).asTrait(Trait{}, key).apply(DI_FWD(Args, args)...);
         });
     }
 };

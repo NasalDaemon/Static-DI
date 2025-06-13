@@ -14,11 +14,11 @@
 			"type": "shell",
 			"group": "build",
 			"label": "Conan install",
-			"command": "conan install . --output-folder=build --build=missing --profile=conanprofile.txt",
+			"command": "$CONAN_INSTALL=Debug && $CONAN_INSTALL=RelWithDebInfo && $CONAN_INSTALL=Release",
 			"options": {
 				"env": {
-					"BUILD_TYPE": "${input:BuildType}",
-				},
+					"CONAN_INSTALL": "conan install . --output-folder=build --build=missing --profile=conanprofile.txt --settings=build_type"
+				}
 			},
 			"windows": {
 				"options": {
@@ -35,14 +35,13 @@
 			"type": "shell",
 			"group": "build",
 			"label": "CMake configure",
-			"command": "cmake .. --preset conan-default -DDI_BUILD_TESTS=ON -DCMAKE_COLOR_DIAGNOSTICS=ON -DCMAKE_CXX_MODULE_STD=${input:ImportStd} -DDI_COMPRESS_TYPES=${env:COMPRESS_TYPES} -DDI_TESTS_LTO=${env:ENABLE_LTO} -DDI_TESTS_DEBUG_SAN=${env:ENABLE_SAN}",
+			"command": "cmake .. --preset conan-default -DDI_BUILD_TESTS=TRUE -DCMAKE_COLOR_DIAGNOSTICS=TRUE -DCMAKE_CXX_MODULE_STD=${input:ImportStd} -DDI_COMPRESS_TYPES=$COMPRESS_TYPES -DDI_TESTS_LTO=$ENABLE_LTO -DDI_TESTS_DEBUG_SAN=$ENABLE_SAN",
 			"options": {
 				"cwd": "${workspaceFolder}/build",
 				"env": {
-					"BUILD_TYPE": "${input:BuildType}",
 					"COMPRESS_TYPES": "TRUE",
 					"ENABLE_LTO": "TRUE",
-					"ENABLE_SAN": "TRUE",
+					"ENABLE_SAN": "FALSE",
 				},
 			},
 			"windows": {
@@ -89,8 +88,15 @@
 		{
 			"type": "shell",
 			"group": "build",
+			"label": "CMake configure and build",
+			"dependsOn": ["CMake configure", "CMake build"],
+			"dependsOrder": "sequence"
+		},
+		{
+			"type": "shell",
+			"group": "build",
 			"label": "CMake clean reconfigure and build",
-			"dependsOn": ["RM build dir", "Conan install", "CMake configure", "CMake build"],
+			"dependsOn": ["RM build dir", "Conan install", "CMake configure and build"],
 			"dependsOrder": "sequence"
 		}
 	],
@@ -108,7 +114,7 @@
 		{
 			"id": "ImportStd",
 			"type": "pickString",
-			"options": ["ON", "OFF"],
+			"options": ["TRUE", "FALSE"],
 			"description": "Whether to use 'import std'"
 		}
 	],

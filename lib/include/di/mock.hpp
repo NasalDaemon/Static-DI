@@ -82,13 +82,13 @@ namespace detail {
             throw std::bad_any_cast();
         }
 
-        template<class T, class Arg>
-        constexpr void emplace(Arg&& arg)
+        template<class T>
+        constexpr void emplace(auto&& arg)
         {
             if constexpr (std::is_reference_v<T>)
                 value.emplace<Ref>(std::addressof(arg), typeid(T), std::is_lvalue_reference_v<T>);
             else
-                value.emplace<std::any>(std::in_place_type<T>, std::forward<Arg>(arg));
+                value.emplace<std::any>(std::in_place_type<T>, DI_FWD(arg));
         }
 
         constexpr void reset() { value.emplace<std::monostate>(); }
@@ -250,15 +250,15 @@ struct Mock
         template<class R, class F, class... Args>
         static auto getTypes(R (F::*)(Args...) const) -> R(*)(Args...);
 
-        template<class R, class Tag, class... Args, class F>
-        constexpr void defineImpl(R(*)(Tag, Args...), bool isConst, F&& f)
+        template<class R, class Tag, class... Args>
+        constexpr void defineImpl(R(*)(Tag, Args...), bool isConst, auto&& f)
         {
             ArgTypes argTypes{
                 std::type_index{typeid(std::remove_cvref_t<Tag>)},
                 std::type_index{typeid(Args)}...};
             auto& defs = definitions[argTypes];
             (isConst ? defs.con : defs.mut) =
-                [f = std::forward<F>(f)](DI_IF_NOT_MSVC(this auto&,) detail::MockReturn& result, void** args) -> void
+                [f = DI_FWD(f)](DI_IF_NOT_MSVC(this auto&,) detail::MockReturn& result, void** args) -> void
                 {
                     [&]<std::size_t... I>(std::index_sequence<I...>) -> void
                     {
