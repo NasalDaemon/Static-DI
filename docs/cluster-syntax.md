@@ -17,22 +17,22 @@ Header includes and module imports should be listed at the top of the file, [see
 NOTE: when defining a cluster, it must either be wrapped in a namespace, which cannot be anonymous, or given a qualified name including the namespace. Clusters take the following form (simplified):
 
 ```
-namespace <fully::qualified::namespace> {
+namespace <fully-qualified-namespace> {
 
 cluster <cluster-name> [<cluster-annotations>...]
 {
     <"node":
-    : <node-name> = <node-type>
+    | <node-name> = <node-type>
     >...
 
     <either "alias":
-        : using <alias-name> = <trait-type>
+        | using <alias-name> = <trait-type>
      or "connection-block":
         <"connection-block-tag":
-        : [<trait-type or alias-name>]
+        | [<trait-type or alias-name>]
         >
         <"connection":
-        : <node-name>... <arrow> <node-name>...
+        | <node-name>... <arrow> <node-name>...
         >...
     >...
 }

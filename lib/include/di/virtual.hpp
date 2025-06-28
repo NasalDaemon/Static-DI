@@ -253,7 +253,7 @@ struct Virtual
         constexpr auto exchangeImpl(auto& current, auto&&... args)
         {
             if (get<0>(interfaces) != current.asInterface())
-                throw std::runtime_error("Pointers not matching");
+                throw std::runtime_error("Not exchanging the current interface");
 
             auto [next, prev] = init<T>(DI_FWD(args)...);
             return Exchanged(next->impl, std::move(prev));
@@ -277,7 +277,7 @@ struct Virtual
 
             // Access to next only allowed when ExchangeHandle is an lvalue to ensure that
             // previous lifetime has at least been extended to the block scope of the exchangeImpl caller
-            constexpr Next& getNext() & { return next; }
+            constexpr Next& getNext() const & { return next; }
         private:
             Next& next;
             std::unique_ptr<ImplBase> previous;

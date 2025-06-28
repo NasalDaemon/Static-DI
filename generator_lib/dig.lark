@@ -5,9 +5,10 @@ INCLUDE_GLOBAL_FILE: "#include <" /[^\r\n>]+/ ">"
 
 namespace: "namespace" NAMESPACE "{" (cluster | trait)+ "}"
 
-cluster: [template_params] CLUSTER_TYPE FQNAME [cluster_annotations] "{" node+ connection_block* "}"
+cluster: [template_params] (CLUSTER | DOMAIN) FQNAME [cluster_annotations] "{" node+ connection_block* "}"
 
-CLUSTER_TYPE: "cluster" | "domain"
+CLUSTER: "cluster"
+DOMAIN: "domain"
 
 cluster_annotations: "[" cluster_annotation ["," cluster_annotation] "]"
 cluster_annotation: [NAME "="] CLUSTER_ANNOTATION_NAME

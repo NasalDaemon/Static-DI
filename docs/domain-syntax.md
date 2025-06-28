@@ -3,13 +3,26 @@
 ### PLEASE NOTE:
 Domains in Static-DI are special `cluster`s with extra restrictions. If you are unfamiliar with the `cluster` syntax in Static-DI, please first familiarise yourself with `cluster`s and their syntax [here](cluster-syntax.md).
 
+<details>
+<summary>:eyes: TL;DR:</summary>
+
+> **Domains** in Static-DI are specialized clusters designed to enforce clear boundaries, reduce coupling, and encourage a scale-free topology in your dependency graph. Scale-free topologies—where a few nodes (hubs) have many connections and most have few—make large codebases more maintainable, resilient, and easier to reason about, mirroring robust real-world networks.
+>
+> Domains differ from normal clusters by requiring a single nexus node (the orchestrator), restricting direct sub-node connections, and enforcing naming/wiring rules. This results in flatter, shallower, and more modular graphs, ideal for complex or growing projects.
+>
+> **To define a domain:**
+> Use `domain` instead of `cluster`, specify a single nexus, and follow naming conventions (ALL_CAPS for sub-clusters/domains, CamelCase for stateful nodes, lowercase for stateless).
+>
+> Use domains when you need strict boundaries, orchestration, and scalability; use clusters for simpler groupings.
+</details>
+
 ## Principal motivation
 
 When a project grows in size, the structure of the dependency graph itself increasingly has an impact on the maintainability and simplicity of the codebase. Dependency graphs often become more complex when there are longer chains of dependencies, cyclic dependencies, and deeper nesting of clusters. Greater complexity often makes it more difficult to add new functionality, maintain the existing functionality, and generally reason about the code and explain its behaviour.
 
 A `domain` in Static-DI is a special kind of `cluster` which when utilised throughout the entire graph encourages a flatter and shallower graph shape overall, with looser coupling between nodes. It demands thoughtful design in terms of delegation of responsibility into logical domains with clear boundaries. This is acheived by preferring certain kinds of dependencies and by making explicit the statefulness and arity of sub-nodes (i.e. whether a sub-node is unary or a cluster/domain).
 
-NOTE: `domain`s will not solve all technical problems. Astute architectural decisions will result in various patterns, and `domain`s provide one such pattern. Appropriately using the patterns that `domain`s provide will generally result in a simpler composition. The intention behind `domain` is to highlight particular dependency anti-patterns to prevent them from pervading the codebase, but there may be situations when the less restrictive `cluster` is preferable. In other words: there are exceptions that prove the rule.
+**NOTE:** `domain`s will not solve all architectural problems. They encourage a graph shape that will generally result in a simpler composition. It does this by restriciting or highlighting particular dependency anti-patterns to prevent them from pervading the graph and the wider codebase, but there may be situations when the less restrictive `cluster` is preferable.
 
 ### Scale-free networks
 In graph theory, the [scale-free](https://en.wikipedia.org/wiki/Scale-free_network) topology describes graphs with a degree distribution (distribution of number of connections per node) that follows a power-law. Below is a visual example representing a scale-free topology:
@@ -19,9 +32,9 @@ In graph theory, the [scale-free](https://en.wikipedia.org/wiki/Scale-free_netwo
 [Scale-free clustering (wikipedia):](https://en.wikipedia.org/wiki/Scale-free_network#Clustering):
 > Another important characteristic of scale-free networks is the clustering coefficient distribution, which decreases as the node degree increases. This distribution also follows a power law. This implies that the low-degree nodes belong to very dense sub-graphs and those sub-graphs are connected to each other through hubs. Consider a social network in which nodes are people and links are acquaintance relationships between people. It is easy to see that people tend to form communities, i.e., small groups in which everyone knows everyone (one can think of such community as a complete graph). In addition, the members of a community also have a few acquaintance relationships to people outside that community. Some people, however, are connected to a large number of communities (e.g., celebrities, politicians). Those people may be considered the hubs responsible for the small-world phenomenon.
 
-Complex networks tend to evolve towards a highly resilient scale-free topology to adapt to sporadic change and growth. For example: the shape of the internet is approximately scale-free. Online services organically become significant hubs when they not only provide high value, but are also resilient enough to meet increasing demand as the number of clients inevitably grows. In order for the hub to remain highly available to clients, it must internally delegate units of work to a small cluster of workers. Clients in turn are able to extract maximal value from the hubs without affecting the stability of the whole network. Ideally, codebases should likewise remain robust in the face of inevitable change and growth in scope, where bugs are rarely introduced as code is added or refactored.
+Complex networks tend to evolve towards a highly resilient scale-free topology to adapt to sporadic change and growth. For example: the shape of the internet is approximately scale-free. Online services organically become significant hubs when they not only provide high value, but are also resilient enough to meet increasing demand as the number of clients inevitably grows. In order for the hub to remain highly available to clients, it internally delegates units of work to a small cluster of workers. Clients in turn are able to extract maximal value from the hubs without affecting the stability of the whole network. Ideally, codebases should likewise remain robust in the face of inevitable change and growth in scope, where bugs are rarely introduced as code is added or refactored.
 
-The fact that social networks are approximately scale-free in shape also suggests that it is a suitable topology to aspire to in the dependency graph of a large project developed by multiple teams. One can conceive of the responsibility of `clusters` and `domain`s mapping fairly neatly onto the responsibility of teams, or vice-versa, and the dependencies between teams would then also be expressed explicitly in the Static-DI DIG. By clarifying coupling between teams, cross-team dependencies can be optimised to improve each team's velocity in the project without compromising the overall project's stability.
+The fact that social networks are approximately scale-free in shape also suggests that it is a suitable topology to aspire to in the dependency graph of a large project developed by multiple teams. One can conceive of the responsibility of `clusters` and `domain`s mapping fairly neatly onto the responsibility of teams, and vice-versa. The dependencies between teams would then be expressed explicitly in the Static-DI DIG. By clarifying coupling between teams, cross-team dependencies can be optimised to improve each team's velocity in the project without compromising the overall project's stability.
 
 ## Emergence of good topology
 
@@ -202,4 +215,6 @@ struct ShopRestAPI
 }
 ```
 
-See a chat with Copilot [here](copilot/domain-refactor.md) which describes when domains should be chosen over clusters and vice versa.
+## When to use domains instead of clusters
+
+See a chat with Copilot [here](copilot/domain-refactor.md) which helps to explain when domains should be chosen over clusters and vice versa.

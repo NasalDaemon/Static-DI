@@ -40,7 +40,7 @@
 				"cwd": "${workspaceFolder}/build",
 				"env": {
 					"COMPRESS_TYPES": "TRUE",
-					"ENABLE_LTO": "TRUE",
+					"ENABLE_LTO": "FALSE",
 					"ENABLE_SAN": "FALSE",
 				},
 			},
