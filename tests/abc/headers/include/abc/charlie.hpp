@@ -3,6 +3,7 @@
 #include "abc/traits.hpp"
 
 #include "di/node.hpp"
+#include "di/requires.hpp"
 #include "di/resolve.hpp"
 #include "di/traits.hpp"
 
@@ -13,19 +14,15 @@ struct Charlie
     template<class Context>
     struct Node : di::Node
     {
+        using Requires = di::Requires<trait::Alice>;
+
         struct Alice;
         struct Charlie;
         struct Charlie2;
         struct Charlie3;
 
-        struct AliceTypes
-        {
-            using AliceType = di::ResolveTypes<Context, trait::AliceRead>::AliceType;
-        };
-        struct CharlieTypes
-        {
-            using CharlieType = int;
-        };
+        struct AliceTypes;
+        struct CharlieTypes;
 
         using Traits = di::Traits<Node
             , trait::AliceRead(Alice, AliceTypes)
@@ -34,6 +31,15 @@ struct Charlie
             , trait::Charlie3(Charlie3, CharlieTypes)
             , trait::Visitable
         >;
+
+        struct AliceTypes
+        {
+            using AliceType = di::ResolveTypes<Node, trait::AliceRead>::AliceType;
+        };
+        struct CharlieTypes
+        {
+            using CharlieType = int;
+        };
 
         using AliceType = AliceTypes::AliceType;
         using CharlieType = CharlieTypes::CharlieType;

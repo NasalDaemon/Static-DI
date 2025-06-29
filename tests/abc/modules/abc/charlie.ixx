@@ -18,23 +18,39 @@ struct Charlie
     template<class Context>
     struct Node : di::Node
     {
+        using Requires = di::Requires<trait::Alice>;
+
+        struct Alice;
+        struct Charlie;
+        struct Charlie2;
+        struct Charlie3;
+
+        struct AliceTypes;
+        struct CharlieTypes;
+
+        using Traits = di::Traits<Node
+            , trait::AliceRead(Alice, AliceTypes)
+            , trait::Charlie(Charlie, CharlieTypes)
+            , trait::Charlie2(Charlie2, CharlieTypes)
+            , trait::Charlie3(Charlie3, CharlieTypes)
+            , trait::Visitable
+        >;
+
         struct AliceTypes
         {
-            using AliceType = di::ResolveTypes<Context, trait::AliceRead>::AliceType;
+            using AliceType = di::ResolveTypes<Node, trait::AliceRead>::AliceType;
         };
         struct CharlieTypes
         {
             using CharlieType = int;
         };
 
-        struct Alice;
-
         struct Charlie : di::DetachedInterface
         {
             template<class Self>
             int apply(this Self const& self, trait::Charlie::get)
             {
-                using AliceType = di::ResolveTypes<di::ContextOf<Self>, trait::Alice>::AliceType;
+                using AliceType = di::ResolveTypes<Self, trait::Alice>::AliceType;
                 static_assert(std::is_same_v<int, AliceType>);
                 return self->charlie;
             }
@@ -55,14 +71,6 @@ struct Charlie
                 return 15;
             }
         };
-
-        using Traits = di::Traits<Node
-            , trait::AliceRead(Alice, AliceTypes)
-            , trait::Charlie(Charlie, CharlieTypes)
-            , trait::Charlie2(Charlie2, CharlieTypes)
-            , trait::Charlie3(Charlie3, CharlieTypes)
-            , trait::Visitable
-        >;
 
         using AliceType = AliceTypes::AliceType;
         using CharlieType = CharlieTypes::CharlieType;

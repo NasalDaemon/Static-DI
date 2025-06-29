@@ -184,6 +184,7 @@ namespace my {
 // in separate .cpp files for faster compilation.
 export struct AuthService : di::Node
 {
+    using Requires = di::Requires<trait::TokenStore>;
     using Traits = di::Traits<AuthService, trait::AuthService>;
     // shorthand for:
     //      di::Traits<AuthService
@@ -274,6 +275,7 @@ export struct Sessions
     template<class Context>
     struct Node : di::Node
     {
+        using Requires = di::Requires<trait::AuthService>;
         using Traits = di::Traits<Node, trait::TokenStore, trait::SessionManager>;
         // shorthand for:
         //      di::Traits<Node
@@ -285,7 +287,7 @@ export struct Sessions
         {
             // Exposes Token type to satisfy `trait::TokenStore` and `trait::SessionManager`
             // by deferring to the type provided by `trait::AuthService`
-            using Token = di::ResolveTypes<Context, trait::AuthService>::Token;
+            using Token = di::ResolveTypes<Node, trait::AuthService>::Token;
             // Resolves to `my::AuthService::Types::Token` in this example
         };
 

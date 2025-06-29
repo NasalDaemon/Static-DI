@@ -138,6 +138,7 @@ class Node:
     def __init__(self, name: str, impl: str, cluster: 'Cluster | Domain', isFirst: bool):
         self.repeaters: list[Repeater] = []
         self.connections: list[Connection] = []
+        self.clients: list[tuple[Node, str]] = []
         self.name: str = name
         self.impl: str = impl
         self.cluster = cluster
@@ -158,6 +159,7 @@ class Node:
         if error := self.cluster.getConnectionError(self, toNode, isOverride):
             raise SyntaxError(f"Cannot connect '{self.name}' to '{toNode.name}' in {self.cluster.clusterClass} '{self.cluster.name}': {error}")
 
+        toNode.addClient(self, trait)
         connection = Connection(toNode.context, trait=trait, toTrait=toTrait)
         if existing := next((c for c in self.connections if c.trait == connection.trait), None):
             if existing.toRepeater is None:
@@ -173,6 +175,9 @@ class Node:
         else:
             self.connections.append(connection)
 
+    def addClient(self, client, trait):
+        self.clients.append((client, trait))
+
 class Cluster:
     def __init__(self, name: str):
         self.name = name
@@ -185,6 +190,7 @@ class Cluster:
         self.repeaters: list[Repeater] = []
         self.nodes: list[Node | Repeater] = []
         self.aliases: list[tuple[str, str]] = []
+        self.requirements: list[str] = []
 
     @property
     def clusterType(self) -> str:
@@ -348,6 +354,7 @@ class Cluster:
             self.repeaters.extend(node.repeaters)
         self.nodes.extend(self.userNodes)
         self.nodes.extend(self.repeaters)
+        self.requirements = [aliases.get(trait, trait) for _, trait in self.parentNode.clients]
 
 class Domain(Cluster):
     def __init__(self, name: str):

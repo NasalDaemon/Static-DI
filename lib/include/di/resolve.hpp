@@ -10,35 +10,40 @@ namespace di {
 
 namespace detail {
 
-    template<class T, class Trait>
-    struct ResolveTypes
+    template<class T, class Trait_>
+    struct ResolveTrait
     {
-        using type = NodeTypes<T, Trait>;
+        using type = ResolveTrait;
+        using Node = T;
+        using Trait = Trait_;
+
+        template<template<class, class> class Template>
+        using Apply = Template<Node, Trait>;
     };
 
     template<class T, class Trait>
     requires HasLink<T, Trait>
-    struct ResolveTypes<T, Trait>
+    struct ResolveTrait<T, Trait>
     {
         using Target = ResolveLink<T, Trait>;
-        using type = ResolveTypes<ContextToNode<typename Target::Context>, typename Target::Trait>::type;
+        using type = ResolveTrait<ContextToNode<typename Target::Context>, typename Target::Trait>::type;
     };
 
     // Delegate resolution to the parent cluster's context
     template<class T, class Trait>
     requires LinksToParent<T, Trait>
-    struct ResolveTypes<T, Trait>
+    struct ResolveTrait<T, Trait>
     {
         using Target = ResolveLink<T, Trait>;
-        using type = ResolveTypes<typename Target::Context, typename Target::Trait>::type;
+        using type = ResolveTrait<typename Target::Context, typename Target::Trait>::type;
     };
 
 } // namespace detail
 
 DI_MODULE_EXPORT
-template<IsContext Context, IsTrait Trait>
-requires detail::HasLink<Context, Trait>
-using ResolveTypes = detail::ResolveTypes<Context, Trait>::type;
+template<class Node, IsTrait Trait>
+requires detail::HasLink<ContextOf<Node>, Trait> and NodeRequires<Node, Trait>
+using ResolveTypes = detail::ResolveTrait<ContextOf<Node>, Trait>::type::template Apply<NodeTypes>;
 
 DI_MODULE_EXPORT
 template<IsContext Context>

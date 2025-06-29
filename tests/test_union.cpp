@@ -60,7 +60,7 @@ struct Dog
             struct DogType;
         };
 
-        static_assert(std::is_same_v<MouseType, typename di::ResolveTypes<Context, trait::Name>::MouseType>);
+        static_assert(std::is_same_v<MouseType, typename di::ResolveTypes<Node, trait::Name>::MouseType>);
 
         int apply(trait::Name::get) const
         {

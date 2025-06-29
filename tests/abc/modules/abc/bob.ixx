@@ -17,6 +17,8 @@ struct Bob
     template<class Context>
     struct Node : di::Node
     {
+        using Requires = di::Requires<trait::Alice, trait::Charlie>;
+
         using Traits = di::Traits<Node
             , trait::AliceRead
             , trait::Bob
@@ -41,10 +43,10 @@ struct Bob
         struct Types
         {
             using BobType = int;
-            using CharlieType = di::ResolveTypes<Context, trait::Charlie>::CharlieType;
+            using CharlieType = di::ResolveTypes<Node, trait::Charlie>::CharlieType;
         };
 
-        using AliceType = di::ResolveTypes<Context, trait::Alice>::AliceType;
+        using AliceType = di::ResolveTypes<Node, trait::Alice>::AliceType;
         using BobType = Types::BobType;
         using CharlieType = Types::CharlieType;
 

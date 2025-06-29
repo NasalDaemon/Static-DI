@@ -128,9 +128,13 @@ export namespace di {
     using di::ToNodeWrapper;
     using di::NodeTypes;
     using di::InlineNode;
+    using di::NodeRequires;
+    using di::NodeRequirementsSatisfied;
     // repeater.hpp
     using di::Repeater;
     using di::RepeaterTrait;
+    // requires.hpp
+    using di::Requires;
     // resolve.hpp
     using di::ResolveTypes;
     using di::ResolveRoot;

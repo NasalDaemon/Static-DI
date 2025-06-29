@@ -176,6 +176,9 @@ namespace app {
 // Short-hand node with contextless state
 struct Alice : di::Node
 {
+    // (Optional) list of traits this node depends on
+    using Requires = di::Requires<trait::Person>;
+    // Traits provided by this node
     using Traits = di::Traits<Alice, trait::Person>;
 
     void apply(this auto& self, trait::Person::hello) const
@@ -212,6 +215,7 @@ struct Bob
     template<class Context>
     struct Node : di::Node
     {
+        using Requires = di::Requires<trait::Person>;
         using Traits = di::Traits<Node, trait::Person>;
 
         void apply(trait::Person::hello) const

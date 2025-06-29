@@ -16,6 +16,7 @@
 #include "di/node.hpp"
 #include "di/resolve.hpp"
 #include "di/repeater.hpp"
+#include "di/requires.hpp"
 #include "di/traits.hpp"
 #include "di/trait_view.hpp"
 

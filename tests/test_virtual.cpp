@@ -77,7 +77,7 @@ struct AppleEgg
     {
         using Traits = di::Traits<Node, trait::Apple, trait::Egg>;
 
-        static_assert(std::is_same_v<BreadType, typename di::ResolveTypes<Context, trait::Bread>::BreadType>);
+        static_assert(std::is_same_v<BreadType, typename di::ResolveTypes<Node, trait::Bread>::BreadType>);
 
         int apply(trait::Apple::seeds) const final
         {
@@ -139,7 +139,7 @@ struct Bread
         Node(Node const&) = delete;
         Node(Node&&) = delete;
 
-        static_assert(std::is_same_v<AppleType, typename di::ResolveTypes<Context, trait::Apple>::AppleType>);
+        static_assert(std::is_same_v<AppleType, typename di::ResolveTypes<Node, trait::Apple>::AppleType>);
 
         int apply(trait::Bread::slices) const final
         {

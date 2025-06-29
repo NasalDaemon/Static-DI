@@ -28,11 +28,13 @@ struct Repeater
     template<class Context>
     struct Node : di::Node
     {
+        using Traits = di::Traits<Node, Trait>;
+
         template<class Key>
         struct WithKey;
 
         template<std::size_t I>
-        struct TypesAtT : di::ResolveTypes<Context, RepeaterTrait<I>>
+        struct TypesAtT : di::ResolveTypes<Node, RepeaterTrait<I>>
         {
             static constexpr std::size_t TypesCount = Count;
             template<std::size_t Index>
@@ -40,8 +42,6 @@ struct Repeater
         };
 
         using Types = TypesAtT<0>;
-
-        using Traits = di::Traits<Node, Trait>;
 
         template<class Source, class Key>
         constexpr auto finalize(this auto& self, Source&, Key key)

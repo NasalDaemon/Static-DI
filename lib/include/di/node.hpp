@@ -9,6 +9,7 @@
 #include "di/key.hpp"
 #include "di/macros.hpp"
 #include "di/node_fwd.hpp"
+#include "di/requires.hpp"
 #include "di/trait.hpp"
 #include "di/trait_view.hpp"
 #include "di/traits_fwd.hpp"
@@ -26,6 +27,7 @@ struct Node
     static constexpr bool isUnary() { return true; }
     using Types = EmptyTypes;
     using Environment = di::Environment<>;
+    using Requires = di::Requires<>;
 
     template<class Self, std::invocable<Self&> Visitor>
     constexpr decltype(auto) visit(this Self& self, Visitor&& visitor)
@@ -42,6 +44,9 @@ struct Node
     template<class Self, IsTrait Trait, class Key = ContextOf<Self>::Info::DefaultKey>
     constexpr IsTraitViewOf<Trait, Key> auto getNode(this Self& self, Trait trait, Key key = {})
     {
+        assertNodeRequirements<Self>();
+        if constexpr (not detail::IsNodeState<Self>)
+            static_assert(NodeRequires<Self, Trait>, "Requested trait not in list of required dependencies of node");
         using ThisNode = Self::Traits::Node;
         auto& node = detail::upCast<ThisNode>(self);
         auto target = ContextOf<Self>{}.getNode(node, trait);
@@ -69,6 +74,7 @@ struct Node
     template<class Self, IsTrait Trait>
     constexpr auto asTrait(this Self& self, detail::AsRef, Trait)
     {
+        assertNodeRequirements<Self>();
         using ThisNode = Self::Traits::Node;
         auto& node = detail::upCast<ThisNode>(self);
 
@@ -78,16 +84,22 @@ struct Node
         return detail::TargetRef{detail::downCast<Interface>(node), std::type_identity<Types>{}};
     }
 
+    template<class Self, IsTrait Trait>
+    constexpr auto hasTrait(this Self&, Trait) -> std::bool_constant<detail::TraitsHasTrait<typename Self::Traits, Trait>>
+    {
+        return {};
+    }
+
     template<class Self>
     constexpr auto finalize(this Self& self, auto& source, auto key)
     {
         return ContextOf<Self>::Info::finalize(source, self, key);
     }
 
-    template<class Self, IsTrait Trait>
-    constexpr auto hasTrait(this Self&, Trait) -> std::bool_constant<detail::TraitsHasTrait<typename Self::Traits, Trait>>
+    template<class Self>
+    static consteval void assertNodeRequirements()
     {
-        return {};
+        static_assert(NodeRequirementsSatisfied<Self, true>, "Node dependency requirements are not satisfied transitively.");
     }
 };
 

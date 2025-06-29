@@ -7,6 +7,7 @@
 #include "di/link.hpp"
 #include "di/macros.hpp"
 #include "di/node_fwd.hpp"
+#include "di/requires.hpp"
 #include "di/trait.hpp"
 #include "di/trait_view.hpp"
 
@@ -33,6 +34,7 @@ struct Cluster
 {
     static constexpr bool isUnary() { return false; }
     using Environment = di::Environment<>;
+    using Requires = di::Requires<>;
 
     template<class Self>
     requires IsRootContext<ContextParameterOf<Self>>

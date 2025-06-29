@@ -168,6 +168,10 @@ struct {{ cluster.nodeName() }} : {{ cluster.clusterType }}
     }
 
     {% endif %}
+    {% if cluster.requirements %}
+    using Requires = di::Requires<{{ cluster.requirements | join(", ") }}>;
+
+    {% endif %}
     {% if cluster.rootName %}
     using {{ cluster.rootName }} = di::ResolveRoot<{{ cluster.contextName }}>;
     {% endif %}

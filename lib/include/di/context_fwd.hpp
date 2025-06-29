@@ -33,6 +33,13 @@ namespace detail {
     {
         return {};
     }
+
+    template<class T>
+    requires requires { typename T::Traits; }
+    auto getContext() -> T::Traits::template GetContext<>;
+
+    template<class T>
+    auto getContext() -> decltype(getContextParameter(std::declval<T const&>()));
 }
 
 DI_MODULE_EXPORT
@@ -41,7 +48,7 @@ using ContextParameterOf = decltype(detail::getContextParameter(std::declval<T>(
 
 DI_MODULE_EXPORT
 template<class T>
-using ContextOf = T::Traits::template GetContext<>;
+using ContextOf = decltype(detail::getContext<T>());
 
 DI_MODULE_EXPORT
 template<IsContext Context>

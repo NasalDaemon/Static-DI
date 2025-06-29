@@ -22,7 +22,7 @@ cluster AliceBob
     [a]  alice   <--      .., bob, charlie
     [b]  bob     <--      .., alice, charlie
     [c]  charlie <--      .., alice, bob, ellie
-    [e]  ellie   <--      .., alice, bob, charlie
+    [e]  ellie   <--      .., bob, charlie
          ellie   <-- (e2) alice
     [e3] ellie   <--      alice
 }

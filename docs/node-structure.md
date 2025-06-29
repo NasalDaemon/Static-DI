@@ -10,7 +10,7 @@ A Node is a C++ class that can implement its own traits and/or depend on traits 
 ## Nodes are provided:
 1. Access to implementations of its own traits, using the function `asTrait(trait::OtherTrait)`.
 2. Access to other nodes by trait, using a `getNode(trait::Trait)` call, as long as the dependency is specified in the cluster definiton
-3. Access to the types exported by other nodes by trait, using `di::ResolveTypes<Context, trait::Trait>`, as long as the dependency is specified in the cluster definiton
+3. Access to the types exported by other nodes by trait, using `di::ResolveTypes<Node, trait::Trait>`, as long as the dependency is specified in the cluster definiton
 
 ## Defining a node class
 There are two ways to define a node, each with different pros and cons:
@@ -19,6 +19,15 @@ There are two ways to define a node, each with different pros and cons:
       ```cpp
       struct PiCache : di::Node
       {
+         // (Optional) list dependencies of this node
+         using Requires = di::Requires<trait::Pi>;
+         // Checks early that the node has all required dependencies provided to it by the cluster.
+         // If requirements are specified, and any dependencies are queried via getNode or ResolveTypes
+         // for traits not in the above list, the node will not compile.
+         // If a requirement is optional, i.e. the getNode call is not necessarily made
+         // by this node in every graph, then the trait can be specified as `trait::TraitName*`
+         // in the Requires list, so that the dependency is only checked at the point of use.
+
          using Traits = di::Traits<PiCache, trait::Pi>;
 
          // Context can only be deduced in member functions via an explicit object parameter (deducing-this)
@@ -278,16 +287,14 @@ struct Guest : di::Node
    template<class Self>
    void apply(this Self& self, trait::Guest::eat)
    {
-      using Context = di::ContextOf<Self>;
-
       // FruitBasket::Node<...>::Types::Orange
-      using Orange = di::ResolveTypes<Context, trait::Orange>::Orange;
+      using Orange = di::ResolveTypes<Self, trait::Orange>::Orange;
       // FruitBasket::Node<...>::Types::Apple
-      using Apple = di::ResolveTypes<Context, trait::Apple>::Apple;
+      using Apple = di::ResolveTypes<Self, trait::Apple>::Apple;
       // FruitBasket::Node<...>::BananaTypes::Banana
-      using Banana = di::ResolveTypes<Context, trait::Banana>::Banana;
+      using Banana = di::ResolveTypes<Self, trait::Banana>::Banana;
       // FruitBasket::Node<...>::TangerineTypes::Orange
-      using Tangerine = di::ResolveTypes<Context, trait::Tangerine>::Orange;
+      using Tangerine = di::ResolveTypes<Self, trait::Tangerine>::Orange;
 
       // FruitBasket::Node<...>::apply(trait::Orange::take{}, 3)
       std::same_as<Orange> auto oranges = self.getNode(trait::orange).take(3);

@@ -29,12 +29,9 @@ struct Alice
     template<class Context>
     struct Node : NodeBase
     {
-        struct Types
-        {
-            using AliceType = int;
-            using BobType = di::ResolveTypes<Context, trait::Bob>::BobType;
-            using CharlieType = di::ResolveTypes<Context, trait::Bob>::CharlieType;
-        };
+        using Requires = di::Requires<trait::Bob, trait::Charlie>;
+
+        struct Types;
 
         using Traits = di::Traits<Node
             , trait::Alice*(Types)
@@ -42,6 +39,13 @@ struct Alice
             , trait::Charlie
             , trait::Visitable
         >;
+
+        struct Types
+        {
+            using AliceType = int;
+            using BobType = di::ResolveTypes<Node, trait::Bob>::BobType;
+            using CharlieType = di::ResolveTypes<Node, trait::Bob>::CharlieType;
+        };
 
         using AliceType = Types::AliceType;
         using BobType = Types::BobType;
@@ -53,7 +57,6 @@ struct Alice
 
         int apply(trait::Charlie::get method) const;
 
-    private:
         static_assert(std::is_same_v<decltype(NodeBase::alice), BobType>);
         static_assert(std::is_same_v<di::NullContext::Root, di::ResolveRoot<Context>>);
         static_assert(std::is_same_v<di::NullContext::Info, di::ResolveInfo<Context>>);

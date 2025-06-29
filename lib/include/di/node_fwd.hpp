@@ -72,6 +72,14 @@ struct InlineNode
     using Node = NodeTmpl<Context>;
 };
 
+DI_MODULE_EXPORT
+template<class Node, class Trait>
+concept NodeRequires = Node::Requires::isEmpty or Node::Requires::template contains<Trait>;
+
+DI_MODULE_EXPORT
+template<class Node, bool Transitive = false>
+concept NodeRequirementsSatisfied = requires { typename Node::Requires::template AssertSatisfied<Node, Transitive>; };
+
 namespace detail {
 
 template<class Node>

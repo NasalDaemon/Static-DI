@@ -3,11 +3,16 @@
 
 #include "di/count.hpp"
 #include "di/macros.hpp"
+#include "di/node_fwd.hpp"
+
+#if !DI_IMPORT_STD
+#include <type_traits>
+#endif
 
 namespace di {
 
 DI_MODULE_EXPORT
-template<class T, template<class> class... Pred>
+template<NodeRequirementsSatisfied T, template<class> class... Pred>
 requires (... and Pred<T>::value)
 using Ensure = T;
 
