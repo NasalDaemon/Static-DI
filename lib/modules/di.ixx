@@ -80,6 +80,7 @@ export namespace di {
         using pred::Unary;
         using pred::NonUnary;
         using pred::Stateless;
+        using pred::HasRequires;
     }
     // environment.hpp
     using di::Environment;
@@ -128,6 +129,7 @@ export namespace di {
     using di::ToNodeWrapper;
     using di::NodeTypes;
     using di::InlineNode;
+    using di::NodeHasRequires;
     using di::NodeRequires;
     using di::NodeRequirementsSatisfied;
     // repeater.hpp

@@ -32,6 +32,10 @@ namespace pred {
     requires std::is_empty_v<Node>
     using Stateless = std::true_type;
 
+    DI_MODULE_EXPORT
+    template<NodeHasRequires Node>
+    using HasRequires = std::true_type;
+
 }
 
 }

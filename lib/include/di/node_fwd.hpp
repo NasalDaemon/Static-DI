@@ -73,8 +73,12 @@ struct InlineNode
 };
 
 DI_MODULE_EXPORT
+template<class Node>
+concept NodeHasRequires = not Node::Requires::isEmpty;
+
+DI_MODULE_EXPORT
 template<class Node, class Trait>
-concept NodeRequires = Node::Requires::isEmpty or Node::Requires::template contains<Trait>;
+concept NodeRequires = not NodeHasRequires<Node> or Node::Requires::template contains<Trait>;
 
 DI_MODULE_EXPORT
 template<class Node, bool Transitive = false>
