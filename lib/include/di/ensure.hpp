@@ -12,7 +12,7 @@
 namespace di {
 
 DI_MODULE_EXPORT
-template<NodeRequirementsSatisfied T, template<class> class... Pred>
+template<NodeDependenciesSatisfied T, template<class> class... Pred>
 requires (... and Pred<T>::value)
 using Ensure = T;
 
@@ -31,6 +31,10 @@ namespace pred {
     template<class Node>
     requires std::is_empty_v<Node>
     using Stateless = std::true_type;
+
+    DI_MODULE_EXPORT
+    template<NodeHasDepends Node>
+    using HasDepends = std::true_type;
 
 }
 

@@ -73,12 +73,16 @@ struct InlineNode
 };
 
 DI_MODULE_EXPORT
+template<class Node>
+concept NodeHasDepends = Node::Depends::isSpecified;
+
+DI_MODULE_EXPORT
 template<class Node, class Trait>
-concept NodeRequires = Node::Requires::isEmpty or Node::Requires::template contains<Trait>;
+concept NodeDependencyAllowed = Node::Depends::template dependencyAllowed<Trait>;
 
 DI_MODULE_EXPORT
 template<class Node, bool Transitive = false>
-concept NodeRequirementsSatisfied = requires { typename Node::Requires::template AssertSatisfied<Node, Transitive>; };
+concept NodeDependenciesSatisfied = requires { typename Node::Depends::template AssertSatisfied<Node, Transitive>; };
 
 namespace detail {
 

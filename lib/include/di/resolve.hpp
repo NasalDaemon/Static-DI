@@ -42,7 +42,7 @@ namespace detail {
 
 DI_MODULE_EXPORT
 template<class Node, IsTrait Trait>
-requires detail::HasLink<ContextOf<Node>, Trait> and NodeRequires<Node, Trait>
+requires detail::HasLink<ContextOf<Node>, Trait> and NodeDependencyAllowed<Node, Trait>
 using ResolveTypes = detail::ResolveTrait<ContextOf<Node>, Trait>::type::template Apply<NodeTypes>;
 
 DI_MODULE_EXPORT

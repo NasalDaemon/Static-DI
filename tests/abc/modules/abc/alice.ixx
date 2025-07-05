@@ -29,7 +29,7 @@ struct Alice
     template<class Context>
     struct Node : NodeBase
     {
-        using Requires = di::Requires<trait::Bob, trait::Charlie>;
+        using Depends = di::Depends<trait::Bob, trait::Charlie>;
 
         struct Types;
 

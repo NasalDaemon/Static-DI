@@ -62,7 +62,7 @@ namespace detail {
 
         // Expose utility functions from the underlying node
         using Traits = Node::Traits;
-        using Requires = Node::Requires;
+        using Depends = Node::Depends;
         using Environment = Node::Environment;
         using Node::isUnary;
         using Node::getNode;

@@ -20,13 +20,13 @@ There are two ways to define a node, each with different pros and cons:
       struct PiCache : di::Node
       {
          // (Optional) list dependencies of this node
-         using Requires = di::Requires<trait::Pi>;
+         using Depends = di::Depends<trait::Pi>;
          // Checks early that the node has all required dependencies provided to it by the cluster.
-         // If requirements are specified, and any dependencies are queried via getNode or ResolveTypes
-         // for traits not in the above list, the node will not compile.
+         // If dependencies are specified, and any dependencies are queried via getNode or ResolveTypes
+         // for traits not in the above list, the node will fail to compile.
          // If a requirement is optional, i.e. the getNode call is not necessarily made
          // by this node in every graph, then the trait can be specified as `trait::TraitName*`
-         // in the Requires list, so that the dependency is only checked at the point of use.
+         // in the Depends list, so that the dependency is only checked at the point of use.
 
          using Traits = di::Traits<PiCache, trait::Pi>;
 

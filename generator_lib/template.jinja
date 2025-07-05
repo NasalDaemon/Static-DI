@@ -161,15 +161,13 @@ template<class {{ cluster.contextName }}>
 struct {{ cluster.nodeName() }} : {{ cluster.clusterType }}
 {% endif %}
 {
+    using Depends = di::Depends<{{ cluster.dependencies | join(", ") }}>;
+
     {% if 1 == cluster.nodes | length %}
     static constexpr bool isUnary()
     {
         return decltype({{ cluster.nodes.0.name }})::isUnary();
     }
-
-    {% endif %}
-    {% if cluster.requirements %}
-    using Requires = di::Requires<{{ cluster.requirements | join(", ") }}>;
 
     {% endif %}
     {% if cluster.rootName %}

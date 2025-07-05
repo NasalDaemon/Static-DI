@@ -52,6 +52,8 @@ According to various studies in the literature, iteratively growing networks ten
   * Any other unary-to-unary connection must use strong arrows (`--->>>`) which get progressively uglier (`---->>>>`) as the total number of unary-to-unary connections in the domain increases
     * Discourages unary-to-unary sub-node connections
     * Encourages tightly-coupled unary sub-nodes to be either merged into one sub-node, or put into a sub-`domain`
+* All sub-nodes must have their dependencies specified via a `di::Depends` list in the node definition, even if the list is empty
+  * In clusters, this is optional, but in domains it is mandatory to ensure that nodes are held to the higher standards of the domain
 
 # Domain syntax
 

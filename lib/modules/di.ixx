@@ -66,6 +66,8 @@ export namespace di {
     // count.hpp
     using di::nodeCount;
     using di::IsUnary;
+    // depends.hpp
+    using di::Depends;
     // detached.hpp
     using di::DetachedInterface;
     using di::IsDetachedInterface;
@@ -80,6 +82,7 @@ export namespace di {
         using pred::Unary;
         using pred::NonUnary;
         using pred::Stateless;
+        using pred::HasDepends;
     }
     // environment.hpp
     using di::Environment;
@@ -128,13 +131,12 @@ export namespace di {
     using di::ToNodeWrapper;
     using di::NodeTypes;
     using di::InlineNode;
-    using di::NodeRequires;
-    using di::NodeRequirementsSatisfied;
+    using di::NodeHasDepends;
+    using di::NodeDependencyAllowed;
+    using di::NodeDependenciesSatisfied;
     // repeater.hpp
     using di::Repeater;
     using di::RepeaterTrait;
-    // requires.hpp
-    using di::Requires;
     // resolve.hpp
     using di::ResolveTypes;
     using di::ResolveRoot;

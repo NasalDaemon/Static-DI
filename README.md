@@ -139,10 +139,14 @@ target_generate_di_src(your_headers_lib
 // File: app/traits.ixx.dig
 export module app.traits;
 
-trait app::trait::Person
+trait app::trait::Greeter
 {
-    hello()
-    respond()
+    greet()
+}
+
+trait app::trait::Responder
+{
+    respondTo(std::string_view name)
 }
 ```
 ```cpp
@@ -158,9 +162,9 @@ cluster app::Forum
     alice = Alice
     bob = Bob
 
-    [trait::Person]
-    alice --> bob   // Can also simply be expressed as:
-    alice <-- bob   // alice <-> bob
+    [trait::Responder]
+    alice --> bob       // Can also simply be expressed as:
+    alice <-- bob       // alice <-> bob
 }
 ```
 ```cpp
@@ -176,21 +180,22 @@ namespace app {
 // Short-hand node with contextless state
 struct Alice : di::Node
 {
-    // (Optional) list of traits this node depends on
-    using Requires = di::Requires<trait::Person>;
-    // Traits provided by this node
-    using Traits = di::Traits<Alice, trait::Person>;
+    // (Optional) list of traits to be provided by other nodes
+    using Depends = di::Depends<trait::Responder>;
 
-    void apply(this auto& self, trait::Person::hello) const
+    // Traits that this node implements, and can provide to other nodes
+    using Traits = di::Traits<Alice, trait::Greeter, trait::Responder>;
+
+    void apply(this auto& self, trait::Greeter::greet) const
     {
         std::println("Hello from Alice! I am {} years old.", self.age);
-        // Context injected in explicit object parameter `self`, gives access to other nodes
-        self.getNode(trait::person).respond();
+        // Context injected via explicit object parameter `self`, gives access to other nodes
+        self.getNode(trait::responder).respondTo("Alice");
     }
 
-    void apply(trait::Person::respond) const
+    void apply(trait::Responder::respondTo, std::string_view name) const
     {
-        std::println("Well met, I am Alice of {} years!", age);
+        std::println("Well met, {}. I am Alice of {} years!", name, age);
     }
 
     Alice(int age) : age(age) {}
@@ -215,19 +220,19 @@ struct Bob
     template<class Context>
     struct Node : di::Node
     {
-        using Requires = di::Requires<trait::Person>;
-        using Traits = di::Traits<Node, trait::Person>;
+        using Depends = di::Depends<trait::Responder>;
+        using Traits = di::Traits<Node, trait::Greeter, trait::Responder>;
 
-        void apply(trait::Person::hello) const
+        void apply(trait::Greeter::greet) const
         {
             std::println("Hello from Bob!");
             // Can call getNode directly, as Context is already injected into the state
-            getNode(trait::person).respond();
+            getNode(trait::responder).respondTo("Bob");
         }
 
-        void apply(trait::Person::respond) const
+        void apply(trait::Respond::respondTo, std::string_view name) const
         {
-            std::println("Well met, I am Bob of {} years!", age);
+            std::println("Well met, {}. I am Bob of {} years!", name, age);
         }
 
         Bob(int age) : age(age) {}
@@ -253,15 +258,15 @@ int main()
     // Graph is a single object on the stack containing all nodes
     static_assert(sizeof(graph) == 2 * sizeof(int));
 
-    graph.alice.asTrait(trait::person).hello();
+    graph.alice.asTrait(trait::greeter).hello();
     // Output:
     // Hello from Alice! I am 29 years old.
-    // Well met, I am Bob of 30 years!
+    // Well met, Alice. I am Bob of 30 years!
 
-    graph.bob.asTrait(trait::person).hello();
+    graph.bob.asTrait(trait::greeter).hello();
     // Output:
     // Hello from Bob! I am 30 years old.
-    // Well met, I am Alice of 29 years!
+    // Well met, Bob. I am Alice of 29 years!
 
     return 0;
 }

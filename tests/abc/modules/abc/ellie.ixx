@@ -17,10 +17,10 @@ struct EllieType3{};
 
 struct Ellie : di::Node
 {
-    using Requires = di::Requires<trait::Charlie>;
+    using Depends = di::Depends<trait::Charlie>;
 
-    struct Charlie2;
     struct Charlie;
+    struct Charlie2;
     struct Ellie3Types;
 
     using Traits = di::Traits<Ellie

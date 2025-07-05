@@ -5,11 +5,11 @@
 #include "di/detail/cast.hpp"
 
 #include "di/context_fwd.hpp"
+#include "di/depends.hpp"
 #include "di/environment.hpp"
 #include "di/key.hpp"
 #include "di/macros.hpp"
 #include "di/node_fwd.hpp"
-#include "di/requires.hpp"
 #include "di/trait.hpp"
 #include "di/trait_view.hpp"
 #include "di/traits_fwd.hpp"
@@ -27,7 +27,7 @@ struct Node
     static constexpr bool isUnary() { return true; }
     using Types = EmptyTypes;
     using Environment = di::Environment<>;
-    using Requires = di::Requires<>;
+    using Depends = detail::DependsImplicitly;
 
     template<class Self, std::invocable<Self&> Visitor>
     constexpr decltype(auto) visit(this Self& self, Visitor&& visitor)
@@ -44,9 +44,9 @@ struct Node
     template<class Self, IsTrait Trait, class Key = ContextOf<Self>::Info::DefaultKey>
     constexpr IsTraitViewOf<Trait, Key> auto getNode(this Self& self, Trait trait, Key key = {})
     {
-        assertNodeRequirements<Self>();
+        assertNodeDependencies<Self>();
         if constexpr (not detail::IsNodeState<Self>)
-            static_assert(NodeRequires<Self, Trait>, "Requested trait not in list of required dependencies of node");
+            static_assert(NodeDependencyAllowed<Self, Trait>, "Requested trait not listed in node definition");
         using ThisNode = Self::Traits::Node;
         auto& node = detail::upCast<ThisNode>(self);
         auto target = ContextOf<Self>{}.getNode(node, trait);
@@ -74,7 +74,7 @@ struct Node
     template<class Self, IsTrait Trait>
     constexpr auto asTrait(this Self& self, detail::AsRef, Trait)
     {
-        assertNodeRequirements<Self>();
+        assertNodeDependencies<Self>();
         using ThisNode = Self::Traits::Node;
         auto& node = detail::upCast<ThisNode>(self);
 
@@ -97,9 +97,9 @@ struct Node
     }
 
     template<class Self>
-    static consteval void assertNodeRequirements()
+    static consteval void assertNodeDependencies()
     {
-        static_assert(NodeRequirementsSatisfied<Self, true>, "Node dependency requirements are not satisfied transitively.");
+        static_assert(NodeDependenciesSatisfied<Self, true>, "Listed node dependencies are not satisfied transitively.");
     }
 };
 

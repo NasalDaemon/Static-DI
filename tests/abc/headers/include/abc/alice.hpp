@@ -3,8 +3,8 @@
 #include "abc/traits.hpp"
 
 #include "di/context.hpp"
+#include "di/depends.hpp"
 #include "di/node.hpp"
-#include "di/requires.hpp"
 #include "di/resolve.hpp"
 #include "di/traits.hpp"
 
@@ -27,7 +27,7 @@ struct Alice
     template<class Context>
     struct Node : NodeBase
     {
-        using Requires = di::Requires<trait::Bob, trait::Charlie>;
+        using Depends = di::Depends<trait::Bob, trait::Charlie>;
 
         struct Types;
 

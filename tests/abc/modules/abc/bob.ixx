@@ -17,7 +17,7 @@ struct Bob
     template<class Context>
     struct Node : di::Node
     {
-        using Requires = di::Requires<trait::Alice, trait::Charlie>;
+        using Depends = di::Depends<trait::Alice, trait::Charlie>;
 
         using Traits = di::Traits<Node
             , trait::AliceRead

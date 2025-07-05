@@ -39,7 +39,7 @@ struct DetachedImpl : Interface, private Node
 
     // Expose utility functions from the underlying node
     using Traits = Node::Traits;
-    using Requires = Node::Requires;
+    using Depends = Node::Depends;
     using Types = Node::Types;
     using Environment = Node::Environment;
     using Node::isUnary;

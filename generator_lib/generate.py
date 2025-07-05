@@ -190,7 +190,7 @@ class Cluster:
         self.repeaters: list[Repeater] = []
         self.nodes: list[Node | Repeater] = []
         self.aliases: list[tuple[str, str]] = []
-        self.requirements: list[str] = []
+        self.dependencies: list[str] = []
 
     @property
     def clusterType(self) -> str:
@@ -229,7 +229,7 @@ class Cluster:
         return None
 
     def arrowSign(self, arrow: Tree) -> str:
-        return next((c.value for c in arrow.children if isinstance(c, Token)), None)
+        return next((c.value for c in arrow.children if isinstance(c, Token)))
 
     def validateArrow(self, arrow: Tree):
         sign = self.arrowSign(arrow)
@@ -347,14 +347,16 @@ class Cluster:
 
         self.userNodes = [node for node in nodes.values() if node.name != '..']
         self.aliases = sorted(aliases.items())
-        self.parentNode.connections.sort(key = lambda v : v.trait)
+        self.parentNode.connections.sort(key=lambda v : v.trait)
         self.repeaters.extend(self.parentNode.repeaters)
         for node in self.userNodes:
-            node.connections.sort(key = lambda v : v.trait)
+            node.connections.sort(key=lambda v : v.trait)
             self.repeaters.extend(node.repeaters)
         self.nodes.extend(self.userNodes)
+        self.repeaters.sort(key=lambda r : r.name)
         self.nodes.extend(self.repeaters)
-        self.requirements = [aliases.get(trait, trait) for _, trait in self.parentNode.clients]
+        self.dependencies = [aliases.get(trait, trait) for _, trait in self.parentNode.clients]
+        self.dependencies.sort()
 
 class Domain(Cluster):
     def __init__(self, name: str):
@@ -374,9 +376,11 @@ class Domain(Cluster):
         return "domain"
 
     def predicates(self, node: Node | Repeater) -> list[str]:
+        preds = ["di::pred::HasDepends"]
         if not node.isUnary:
-            return ["di::pred::NonUnary"]
-        preds = ["di::pred::Unary"]
+            preds.append("di::pred::NonUnary")
+            return preds
+        preds.append("di::pred::Unary")
         if not node.hasState:
             preds.append("di::pred::Stateless")
         return preds

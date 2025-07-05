@@ -2,8 +2,8 @@
 
 #include "abc/traits.hpp"
 
+#include "di/depends.hpp"
 #include "di/node.hpp"
-#include "di/requires.hpp"
 #include "di/resolve.hpp"
 #include "di/traits.hpp"
 
@@ -14,7 +14,7 @@ struct Bob
     template<class Context>
     struct Node : di::Node
     {
-        using Requires = di::Requires<trait::Alice, trait::Charlie>;
+        using Depends = di::Depends<trait::Alice, trait::Charlie>;
 
         using Traits = di::Traits<Node
             , trait::AliceRead

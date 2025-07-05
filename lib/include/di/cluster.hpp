@@ -3,11 +3,11 @@
 
 #include "di/detail/as_ref.hpp"
 #include "di/context_fwd.hpp"
+#include "di/depends.hpp"
 #include "di/environment.hpp"
 #include "di/link.hpp"
 #include "di/macros.hpp"
 #include "di/node_fwd.hpp"
-#include "di/requires.hpp"
 #include "di/trait.hpp"
 #include "di/trait_view.hpp"
 
@@ -34,7 +34,7 @@ struct Cluster
 {
     static constexpr bool isUnary() { return false; }
     using Environment = di::Environment<>;
-    using Requires = di::Requires<>;
+    using Depends = detail::DependsImplicitly;
 
     template<class Self>
     requires IsRootContext<ContextParameterOf<Self>>

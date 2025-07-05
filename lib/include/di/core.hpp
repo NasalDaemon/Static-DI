@@ -7,6 +7,7 @@
 #include "di/compiler.hpp"
 #include "di/context.hpp"
 #include "di/count.hpp"
+#include "di/depends.hpp"
 #include "di/detached.hpp"
 #include "di/ensure.hpp"
 #include "di/environment.hpp"
@@ -16,7 +17,6 @@
 #include "di/node.hpp"
 #include "di/resolve.hpp"
 #include "di/repeater.hpp"
-#include "di/requires.hpp"
 #include "di/traits.hpp"
 #include "di/trait_view.hpp"
 

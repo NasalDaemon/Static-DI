@@ -18,7 +18,7 @@ struct Charlie
     template<class Context>
     struct Node : di::Node
     {
-        using Requires = di::Requires<trait::Alice>;
+        using Depends = di::Depends<trait::Alice>;
 
         struct Alice;
         struct Charlie;
