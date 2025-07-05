@@ -38,7 +38,6 @@ jobs:
             std_module: std-module
             os: ubuntu-latest
           - name: cl
-            header_only: header-only
             os: windows-latest
 
     steps:
@@ -113,7 +112,6 @@ jobs:
       run: >
         cmake --build .
         --config ${{ matrix.build_type }}
-        ${{ matrix.compiler.header_only && '-t di_tests_headers' || '' }}
 
     # - uses: mainmatter/continue-on-error-comment@v1
     #   if: matrix.compiler.allow_build_failure
@@ -129,4 +127,3 @@ jobs:
         ctest
         --verbose
         --build-config ${{ matrix.build_type }}
-        ${{ matrix.compiler.header_only && '-R di_tests_headers' || '' }}

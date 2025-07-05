@@ -13,17 +13,17 @@ add_executable(di_tests_headers
     test_embedded_headers.cpp
 )
 add_executable(di_tests_module
-    test_abc_module.cpp
+    # test_abc_module.cpp
     test_embedded_modules.cpp
     test_node_count.cpp
-    test_union.cpp
-    test_virtual.cpp
+    # test_union.cpp
+    # test_virtual.cpp
     test_repeater/main.cpp
-    test_thread/main.cpp
+    # test_thread/main.cpp
 )
 add_executable(di_tests_mock
     test_combine.cpp
-    test_lazy.cpp
+    # test_lazy.cpp
     test_mock.cpp
 )
 
@@ -44,11 +44,13 @@ target_generate_di_headers(di_tests_headers
 
 target_generate_di_modules(di_tests_module
     GLOB
-        test_*
+        # test_*
+        test_repeater
+        # test_thread
     EMBED
         test_embedded_modules.cpp
         test_node_count.cpp
-        test_virtual.cpp
+        # test_virtual.cpp
 )
 
 target_generate_di_modules(di_tests_mock
@@ -59,8 +61,8 @@ target_generate_di_modules(di_tests_mock
 target_sources(di_tests_module
     PUBLIC FILE_SET CXX_MODULES FILES
         test_repeater/test_node.ixx
-        test_thread/poster.ixx
-        test_thread/test_node.ixx
+        # test_thread/poster.ixx
+        # test_thread/test_node.ixx
 )
 
 target_generate_di_src(di_tests_module

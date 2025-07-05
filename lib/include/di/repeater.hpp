@@ -21,13 +21,16 @@ struct RepeaterTrait : di::Trait
 {};
 
 DI_MODULE_EXPORT
-template<class Trait, std::size_t Count>
-requires (Count > 0)
+template<class Trait, std::size_t Count_>
+requires (Count_ > 0)
 struct Repeater
 {
-    template<class Context>
+    template<class Context_>
     struct Node : di::Node
     {
+        static constexpr auto Count = Count_;
+        using Context = Context_;
+
         using Traits = di::Traits<Node, Trait>;
 
         template<class Key>
