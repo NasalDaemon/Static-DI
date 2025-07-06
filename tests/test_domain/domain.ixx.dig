@@ -41,6 +41,7 @@ domain Domain [R = Root]
     nexus <-- unary1
     unary1 <<<--->>> unary2
     unary1 <<<--->>> unary2
+    // unary1 <<<--->>> unary2
 }
 
 domain Domain1 [R = Root]

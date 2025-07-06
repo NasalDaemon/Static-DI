@@ -230,12 +230,12 @@ struct Bob
             getNode(trait::responder).respondTo("Bob");
         }
 
-        void apply(trait::Respond::respondTo, std::string_view name) const
+        void apply(trait::Responder::respondTo, std::string_view name) const
         {
             std::println("Well met, {}. I am Bob of {} years!", name, age);
         }
 
-        Bob(int age) : age(age) {}
+        Node(int age) : age(age) {}
         int age; // State specific to this node
     };
 }
@@ -246,6 +246,7 @@ struct Bob
 // File: app/main.cpp
 import di;
 import app.forum;
+import app.traits;
 
 using namespace app;
 

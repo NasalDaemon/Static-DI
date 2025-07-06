@@ -15,8 +15,8 @@ module;
 
 export module {{ repr.exportModule }};
 
-{% for import, module in repr.importModules %}
-{{ import }} {{ module }};
+{% for import in repr.importModules %}
+{{ import }};
 {% endfor %}
 import di;
 #if DI_IMPORT_STD

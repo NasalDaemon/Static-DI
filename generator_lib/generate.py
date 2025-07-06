@@ -3,16 +3,16 @@
 import argparse
 import jinja2
 
-from lark import Lark, Tree, Token
+from lark import Lark, Tree, Token, UnexpectedInput
 # from lark.load_grammar import load_grammar
 from lark.visitors import Visitor_Recursive
 from lark.reconstruct import Reconstructor
 
 from functools import cached_property
 
-import os.path
+from pathlib import Path
 
-dirPath = os.path.dirname(os.path.realpath(__file__))
+dirPath = Path(__file__).resolve().parent
 
 argParser = argparse.ArgumentParser(
                     prog='Static-DI generator',
@@ -25,11 +25,12 @@ argParser.add_argument('-m', '--module', action='store_true')
 args = argParser.parse_args()
 
 inputFile: str = args.input
+inputPath = Path(inputFile).resolve()
 outputFile: str = args.output
 isModule: bool = args.module
-isEmbedded: bool = not inputFile.endswith('.dig')
+isEmbedded: bool = inputPath.suffixes[-1] != '.dig'
 
-grammarFile = os.path.join(dirPath, 'dig_module.lark' if isModule else 'dig_header.lark')
+grammarFile = dirPath.joinpath(dirPath, 'dig_module.lark' if isModule else 'dig_header.lark')
 digParser = Lark.open(grammarFile, maybe_placeholders=False, parser='lalr', cache=True)
 
 # Workaround until this PR is merged: https://github.com/lark-parser/lark/pull/1506
@@ -48,20 +49,37 @@ with open(inputFile, 'r') as file:
         while True:
             beginPos = text.find(begin)
             if beginPos == -1:
-                assert sections, f"'{begin}' not found in {inputFile}"
+                assert sections, f"'{begin}' not found in {inputPath}"
                 break
             beginPos += len(begin)
             endPos = text.find(end, beginPos)
-            assert endPos != -1, f"matching '{end}' not found in {inputFile}"
+            assert endPos != -1, f"matching '{end}' not found in {inputPath}"
 
             sections.append(text[beginPos:endPos])
             text = text[endPos + len(end):]
         text = "\n".join(sections)
 
-    parsed = digParser.parse(text)
+    def onParseError(e: UnexpectedInput) -> bool:
+        print(f"{inputPath}:{e.line}:{e.column} parse error:\n{e.get_context(text)}")
+        return False
+
+    parsed = digParser.parse(text, on_error=onParseError)
+
 
 def imported(larkRule: str):
     return f'dig__{larkRule}'
+
+
+def getPos(t: Tree | Token | None) -> str:
+    if t is None:
+        return str(inputPath)
+    if isinstance(t, Token):
+        return f"{inputPath}:{t.line}:{t.column}"
+    if isinstance(t, Tree):
+        return getPos(t.children[0])
+    else:
+        raise TypeError(f"Expected Tree or Token, got {type(t)}")
+
 
 class AddColonToRequiresStatements(Visitor_Recursive):
     def dig__cpp_requires_statement(self, tree):
@@ -69,6 +87,7 @@ class AddColonToRequiresStatements(Visitor_Recursive):
             tree.children.append(Token(imported('SEMICOLON'), ';'))
 
 addColonToRequiresStatements = AddColonToRequiresStatements()
+
 
 class CppType:
     def __init__(self, string: str, *, isAuto: bool = False, tree: Tree | None = None):
@@ -98,6 +117,7 @@ class CppType:
     def __lt__(self, other):
         return (self.str, self.pack) < (other.str, other.pack)
 
+
 class Repeater:
     def __init__(self, name: str, trait: str, id: int):
         if name == "..":
@@ -121,6 +141,7 @@ class Repeater:
         connection.trait = f"di::RepeaterTrait<{len(self.connections)}>"
         self.connections.append(connection)
 
+
 class Connection:
     def __init__(self, context, trait, toTrait: str | None = None, toRepeater: Repeater | None = None):
         self.context: str = context
@@ -134,8 +155,9 @@ class Connection:
     def isRenaming(self):
         return self.trait != self.toTrait
 
+
 class Node:
-    def __init__(self, name: str, impl: str, cluster: 'Cluster | Domain', isFirst: bool):
+    def __init__(self, name: str, tree: Tree | None, impl: str, cluster: 'Cluster | Domain', isFirst: bool):
         self.repeaters: list[Repeater] = []
         self.connections: list[Connection] = []
         self.clients: list[tuple[Node, str]] = []
@@ -152,12 +174,12 @@ class Node:
             self.hasState = name[0].isupper()
             self.context: str = name + '_'
             if self.isNexus and not self.isUnary:
-                raise SyntaxError(f"Nexus node '{name}' must be a unary node")
+                raise SyntaxError(f"{getPos(tree)} Nexus node '{name}' in '{cluster.fullName}' must be a unary node")
 
-    def addConnection(self, isOverride: bool, toNode: 'Node', trait: str, *, toTrait: str | None = None):
+    def addConnection(self, pos, isOverride: bool, toNode: 'Node', trait: str, *, toTrait: str | None = None):
         assert self.cluster == toNode.cluster
         if error := self.cluster.getConnectionError(self, toNode, isOverride):
-            raise SyntaxError(f"Cannot connect '{self.name}' to '{toNode.name}' in {self.cluster.clusterClass} '{self.cluster.name}': {error}")
+            raise SyntaxError(f"{pos} Cannot connect '{self.name}' to '{toNode.name}' in {self.cluster.clusterClass} '{self.cluster.fullName}': {error}")
 
         toNode.addClient(self, trait)
         connection = Connection(toNode.context, trait=trait, toTrait=toTrait)
@@ -178,14 +200,16 @@ class Node:
     def addClient(self, client, trait):
         self.clients.append((client, trait))
 
+
 class Cluster:
-    def __init__(self, name: str):
+    def __init__(self, name: str, namespace: "Namespace"):
         self.name = name
+        self.namespace = namespace
         self.templates: list[tuple[CppType, str]] = []
         self.contextName: str = "Context"
         self.rootName: str | None = None
         self.infoName: str | None = None
-        self.parentNode = Node("..", self.name, cluster=self, isFirst=False)
+        self.parentNode = Node("..", None, self.name, cluster=self, isFirst=False)
         self.userNodes: list[Node] = []
         self.repeaters: list[Repeater] = []
         self.nodes: list[Node | Repeater] = []
@@ -199,6 +223,13 @@ class Cluster:
     @property
     def clusterClass(self) -> str:
         return "cluster"
+
+    @property
+    def fullName(self) -> str:
+        if self.namespace.name:
+            return f"{self.namespace.name}::{self.name}"
+        else:
+            return self.name
 
     def predicates(self, node) -> list[str]:
         return []
@@ -223,7 +254,7 @@ class Cluster:
                 type = CppType.fromTree(c.children[0])
                 self.templates.append((type, c.children[1].value))
             else:
-                raise SyntaxError(f'Unknown cluster template: {c.data}')
+                raise SyntaxError(f'{getPos(c)} Unknown cluster template: {c.data}')
 
     def getConnectionError(self, lnode: Node, rnode: Node, isOverride: bool) -> None:
         return None
@@ -235,11 +266,8 @@ class Cluster:
         sign = self.arrowSign(arrow)
         chevrons = max(sign.count('<'), sign.count('>'))
         if chevrons > 1:
-            raise SyntaxError("Only one chevron is allowed per arrow in clusters.")
+            raise SyntaxError(f"{getPos(arrow)} Only one chevron is allowed per arrow in clusters.")
         return False
-
-    def finalize(self):
-        return
 
     def walk(self, children):
         aliases: dict[str, str] = {}
@@ -257,10 +285,11 @@ class Cluster:
                     elif ann.children[-1].value == "Info":
                         self.infoName = ann.children[0].value
                     else:
-                        raise SyntaxError(f"Unknown cluster annotation: {ann.children[0].value}")
+                        raise SyntaxError(f"{getPos(ann)} Unknown cluster annotation: {ann.children[0].value}")
             elif child.data == imported('node'):
                 name = child.children[0].value
-                assert name not in nodes, (name, nodes.keys())
+                if name in nodes:
+                    raise SyntaxError(f"{getPos(child)} Node '{name}' already defined in cluster '{self.fullName}'")
                 impl = reconstuctor.reconstruct(child.children[1])
                 if len(child.children) > 2:
                     for wrapper in child.children[2:]:
@@ -272,7 +301,7 @@ class Cluster:
                         else:
                             impl = f"{cls}<{impl}>"
                 isFirst = len(nodes) == 1
-                nodes[name] = Node(name, impl, cluster=self, isFirst=isFirst)
+                nodes[name] = Node(name, child, impl, cluster=self, isFirst=isFirst)
             elif child.data == imported('connection_block'):
                 for child in child.children:
                     if child.data == imported('connection_context'):
@@ -280,7 +309,8 @@ class Cluster:
                             alias, traitType = child.children
                             typeString = reconstuctor.reconstruct(traitType)
                             if alias in aliases:
-                                assert aliases.get(alias) == typeString, f"Alias '{alias}' changed from {aliases.get(alias)} to {typeString}"
+                                if aliases.get(alias) != typeString:
+                                    raise SyntaxError(f"{getPos(alias)} Alias '{alias}' changed from {aliases.get(alias)} to {typeString}")
                             else:
                                 aliases[alias] = typeString
                     elif child.data == imported('connection_trait'):
@@ -294,56 +324,57 @@ class Cluster:
                         for i in range(0, len(child.children) - 1, 2):
                             lnames, arrow, rnames = (child.children[i], child.children[i+1], child.children[i+2])
                             isOverride = self.validateArrow(arrow)
+                            pos = getPos(arrow)
                             lnodes = [nodes[name.value] for name in lnames.children]
                             rnodes = [nodes[name.value] for name in rnames.children]
 
                             lrnodes = ((lnode, rnode) for rnode in rnodes for lnode in lnodes)
                             if arrow.data == imported('left_arrow'):
                                 for lnode, rnode in lrnodes:
-                                    rnode.addConnection(isOverride, lnode, leftTrait)
+                                    rnode.addConnection(pos, isOverride, lnode, leftTrait)
                             elif arrow.data == imported('right_arrow'):
                                 for lnode, rnode in lrnodes:
-                                    lnode.addConnection(isOverride, rnode, rightTrait)
+                                    lnode.addConnection(pos, isOverride, rnode, rightTrait)
                             elif arrow.data == imported('bi_arrow'):
                                 for lnode, rnode in lrnodes:
-                                    rnode.addConnection(isOverride, lnode, leftTrait)
-                                    lnode.addConnection(isOverride, rnode, rightTrait)
+                                    rnode.addConnection(pos, isOverride, lnode, leftTrait)
+                                    lnode.addConnection(pos, isOverride, rnode, rightTrait)
                             elif arrow.data == imported('left_arrow_from'):
                                 fromTrait = reconstuctor.reconstruct(arrow.children[-1].children[0])
                                 toTrait = leftTrait
                                 for lnode, rnode in lrnodes:
-                                    rnode.addConnection(isOverride, lnode, fromTrait, toTrait=toTrait)
+                                    rnode.addConnection(pos, isOverride, lnode, fromTrait, toTrait=toTrait)
                             elif arrow.data == imported('right_arrow_from'):
                                 fromTrait = reconstuctor.reconstruct(arrow.children[0].children[0])
                                 toTrait = rightTrait
                                 for lnode, rnode in lrnodes:
-                                    lnode.addConnection(isOverride, rnode, fromTrait, toTrait=toTrait)
+                                    lnode.addConnection(pos, isOverride, rnode, fromTrait, toTrait=toTrait)
                             elif arrow.data == imported('left_arrow_to'):
                                 fromTrait = leftTrait
                                 toTrait = reconstuctor.reconstruct(arrow.children[0].children[0])
                                 for lnode, rnode in lrnodes:
-                                    rnode.addConnection(isOverride, lnode, fromTrait, toTrait=toTrait)
+                                    rnode.addConnection(pos, isOverride, lnode, fromTrait, toTrait=toTrait)
                             elif arrow.data == imported('right_arrow_to'):
                                 fromTrait = rightTrait
                                 toTrait = reconstuctor.reconstruct(arrow.children[-1].children[0])
                                 for lnode, rnode in lrnodes:
-                                    lnode.addConnection(isOverride, rnode, fromTrait, toTrait=toTrait)
+                                    lnode.addConnection(pos, isOverride, rnode, fromTrait, toTrait=toTrait)
                             elif arrow.data == imported('left_arrow_both'):
                                 toTrait = reconstuctor.reconstruct(arrow.children[0].children[0])
                                 fromTrait = reconstuctor.reconstruct(arrow.children[-1].children[0])
                                 for lnode, rnode in lrnodes:
-                                    rnode.addConnection(isOverride, lnode, fromTrait, toTrait=toTrait)
+                                    rnode.addConnection(pos, isOverride, lnode, fromTrait, toTrait=toTrait)
                             elif arrow.data == imported('right_arrow_both'):
                                 fromTrait = reconstuctor.reconstruct(arrow.children[0].children[0])
                                 toTrait = reconstuctor.reconstruct(arrow.children[-1].children[0])
                                 for lnode, rnode in lrnodes:
-                                    lnode.addConnection(isOverride, rnode, fromTrait, toTrait=toTrait)
+                                    lnode.addConnection(pos, isOverride, rnode, fromTrait, toTrait=toTrait)
                             else:
-                                raise SyntaxError(f'Unknown arrow: {arrow.data}')
+                                raise SyntaxError(f'{pos} Unknown arrow: {arrow.data}')
                     else:
-                        raise SyntaxError(f'Unknown connection section: {child.data}')
+                        raise SyntaxError(f'{getPos(child)} Unknown connection section: {child.data}')
             else:
-                raise SyntaxError(f'Unknown cluster section: {child.data}')
+                raise SyntaxError(f'{getPos(child)} Unknown cluster section: {child.data}')
 
         self.userNodes = [node for node in nodes.values() if node.name != '..']
         self.aliases = sorted(aliases.items())
@@ -358,9 +389,13 @@ class Cluster:
         self.dependencies = [aliases.get(trait, trait) for _, trait in self.parentNode.clients]
         self.dependencies.sort()
 
+    def finalize(self):
+        self.dependencies = [f"{dep}*" for dep in self.dependencies]
+
+
 class Domain(Cluster):
-    def __init__(self, name: str):
-        super().__init__(name)
+    def __init__(self, name: str, namespace: "Namespace"):
+        super().__init__(name, namespace)
         self.extraChevronsSeen = 0
         self.overridesAllowed = 0
         self.overridesSeen = 0
@@ -393,19 +428,19 @@ class Domain(Cluster):
         if lExtra > 0:
             isOverride = True
             if self.extraChevronsSeen and lExtra != self.extraChevronsSeen:
-                raise SyntaxError(f"Inconsistent number of extra chevrons in '{self.name}'")
+                raise SyntaxError(f"{getPos(arrow)} Inconsistent number of extra chevrons in '{self.fullName}'")
             self.extraChevronsSeen = lExtra
         if rExtra > 0:
             isOverride = True
             if self.extraChevronsSeen and rExtra != self.extraChevronsSeen:
-                raise SyntaxError(f"Inconsistent number of extra chevrons in '{self.name}'")
+                raise SyntaxError(f"{getPos(arrow)} Inconsistent number of extra chevrons in '{self.fullName}'")
             self.extraChevronsSeen = rExtra
 
         if self.extraChevronsSeen:
             if self.extraChevronsSeen < self.minExtraChevrons:
-                raise SyntaxError(f"Overrides must have at least {1+self.minExtraChevrons} chevrons")
+                raise SyntaxError(f"{getPos(arrow)} Overrides must have at least {1+self.minExtraChevrons} chevrons")
             if sign.count('-') - 1 < self.extraChevronsSeen:
-                raise SyntaxError("There must be at least as many dashes ('-') as chevrons ('<' or '>')")
+                raise SyntaxError(f"{getPos(arrow)} Overrides must have at least as many dashes ('-') as chevrons ('<' or '>')")
             self.overridesAllowed = self.overridesPerExtraChevron * self.extraChevronsSeen
 
         return isOverride
@@ -413,6 +448,8 @@ class Domain(Cluster):
     def getConnectionError(self, fromNode: Node, toNode: Node, isOverride: bool) -> str | None:
         # nexus can connect to anything in any direction
         if fromNode.isNexus or toNode.isNexus:
+            if isOverride:
+                return "No override is needed for this connection, but an override was specified"
             return None
 
         # non-nexus nodes may not connect to parent in any direction
@@ -421,21 +458,29 @@ class Domain(Cluster):
 
         # unary peers may not connect to anything
         if fromNode.isUnary or toNode.isUnary:
-            if isOverride and fromNode.isUnary == toNode.isUnary and self.overridesSeen < self.overridesAllowed:
-                self.overridesSeen += 1
-                return None
+            if isOverride and fromNode.isUnary and toNode.isUnary:
+                if self.overridesSeen < self.overridesAllowed:
+                    self.overridesSeen += 1
+                    return None
+                else:
+                    return (f"Too many unary-to-unary connections in '{self.name}' ({self.overridesAllowed} allowed) - "
+                            "use more chevrons to allow more overrides, or remove some connections")
             return ("Unary nodes may only be connected to the domain nexus. "
-                "To explicitly allow a unary-to-unary connection you can override with the appropriate extra chevrons ('<' and/or '>')")
+                "To explicitly allow a unary-to-unary connection you can override with extra chevrons in the arrow ('<' and/or '>')")
 
+        if isOverride:
+            return "No override is needed for this connection, but an override was specified"
         return None
 
     def finalize(self):
         minOverrides = self.minExtraChevrons * self.overridesPerExtraChevron
         if self.overridesAllowed > minOverrides and (self.overridesAllowed - self.overridesSeen) >= self.overridesPerExtraChevron:
             raise SyntaxError(
-                f"More extra chevrons used in '{self.name}' than is needed for the required number of overrides ({self.overridesSeen} required). "
+                f"{inputFile} "
+                f"More extra chevrons used in '{self.fullName}' than is needed for the required number of overrides ({self.overridesSeen} required). "
                 f"Each extra chevron allows you {self.overridesPerExtraChevron} more overrides in the domain, so only "
                 f"{1+max(self.minExtraChevrons, -(self.overridesSeen // -self.overridesPerExtraChevron))} chevrons are needed in total per override.")
+
 
 class Method:
     __reserved_names__ = ['apply', 'visit']
@@ -455,7 +500,7 @@ class Method:
                 type = CppType.fromTree(c.children[0])
                 self.templates.append((type, c.children[1].value))
             else:
-                raise SyntaxError(f'Unknown method template: {c.data}')
+                raise SyntaxError(f'{getPos(c)} Unknown method template: {c.data}')
 
     @cached_property
     def isTemplate(self):
@@ -479,7 +524,8 @@ class Method:
                 self.returnType = CppType.fromTree(c)
             elif c.data == imported('method_name'):
                 self.name = c.children[0].value
-                assert self.name not in self.__reserved_names__, f"'{self.name}' cannot be the name of a method, it is reserved for di::TraitView"
+                if self.name in self.__reserved_names__:
+                    raise SyntaxError(f"{getPos(c)} '{self.name}' cannot be the name of a method, it is reserved for di::TraitView")
             elif c.data == imported('cpp_func_params'):
                 for c in c.children:
                     type = CppType.fromTree(c.children[0])
@@ -488,7 +534,8 @@ class Method:
             elif c.data == imported('method_qualifier'):
                 self.isConst = True
             else:
-                raise SyntaxError(f'Unknown method entity: {c.data}')
+                raise SyntaxError(f'{getPos(c)} Unknown method entity: {c.data}')
+
 
 class Trait:
     def __init__(self, name: str):
@@ -514,7 +561,7 @@ class Trait:
                     elif ann.children[-1].value == "Info":
                         self.infoName =  ann.children[0].value
                     else:
-                        raise SyntaxError(f"Unknown trait annotation: {ann.children[0].value}")
+                        raise SyntaxError(f"{getPos(ann)} Unknown trait annotation: {ann.children[0].value}")
             elif c.data == imported('trait_body'):
                 c = c.children[0]
                 if c.data == imported('trait_type'):
@@ -548,11 +595,12 @@ class Trait:
                         requires += ';'
                     self.requires.append(requires)
             else:
-                raise SyntaxError(f'Unknown trait entity: {c.data}')
+                raise SyntaxError(f'{getPos(c)} Unknown trait entity: {c.data}')
         self.methods.sort(key = lambda v : (v.name, v.params))
         self.methodNames = sorted(set(method.name for method in self.methods))
         self.hasConstRequires = next((method.isConst for method in self.methods if method.isConst and not method.isTemplate), False)
         self.hasMutableRequires = next((not method.isConst for method in self.methods if not method.isConst and not method.isTemplate), False)
+
 
 class Namespace:
     def __init__(self, name: str, repr: 'Repr'):
@@ -573,30 +621,33 @@ class Namespace:
             elif c.data == imported('trait_alias'):
                 self.repr.visitTraitAlias(self.name, c)
             else:
-                raise SyntaxError(f'Unknown namespace entity: {c.data}')
+                raise SyntaxError(f'{getPos(c)} Unknown namespace entity: {c.data}')
 
-    def addCluster(self, name: str, isDomain: bool) -> Cluster | Domain:
-        assert name not in self.clusterNames, (name, self.clusterNames)
+    def addCluster(self, name: str, tree: Tree, isDomain: bool) -> Cluster | Domain:
+        if name in self.clusterNames:
+            raise SyntaxError(f"{getPos(tree)} cluster by name '{name}' already defined in namespace '{self.name}'")
         self.clusterNames.add(name)
-        cluster = Domain(name) if isDomain else Cluster(name)
+        cluster = Domain(name, self) if isDomain else Cluster(name, self)
         self.clusters.append(cluster)
         return cluster
 
-    def addTrait(self, name: str) -> Trait:
-        assert name not in self.traitNames, (name, self.traitNames)
+    def addTrait(self, name: str, tree: Tree) -> Trait:
+        if name in self.traitNames:
+            raise SyntaxError(f"{getPos(tree)} trait by name '{name}' already defined in namespace '{self.name}'")
         if not name[0].isupper():
-            raise SyntaxError(f'First character of trait name {name} is not Uppercase')
+            raise SyntaxError(f'{getPos(tree)} First character of trait name {name} is not Uppercase')
         self.traitNames.add(name)
         trait = Trait(name)
         self.traits.append(trait)
         return trait
 
-    def addTraitAlias(self, names: list[str]):
+    def addTraitAlias(self, names: list[str], tree: Tree):
         name = names[0]
-        assert name not in self.traitNames, (name, self.traitNames)
+        if name in self.traitNames:
+            raise SyntaxError(f"{getPos(tree)} trait by name '{name}' already defined in namespace '{self.name}'")
         self.traitNames.add(name)
         if not name[0].isupper():
-            raise SyntaxError(f'First character of trait name {name} is not Uppercase')
+            raise SyntaxError(f'{getPos(tree)} First character of trait name {name} is not Uppercase')
         self.traitAliases.append(names)
 
     def finalize(self):
@@ -604,6 +655,7 @@ class Namespace:
         for c in self.clusters:
             c.finalize()
         self.traits.sort(key = lambda v : v.name)
+
 
 class Repr:
     def __init__(self, parsed):
@@ -620,7 +672,7 @@ class Repr:
 
     def walk(self, parsed):
         includes: set[str] = set()
-        importModules: set[str] = set()
+        importModules: set[tuple[str, str]] = set()
         for t in parsed.children:
             if t.data == 'include':
                 includes.add(t.children[0].value)
@@ -641,38 +693,41 @@ class Repr:
             elif t.data == imported('trait_alias'):
                 self.visitTraitAlias("", t)
             else:
-                raise SyntaxError('Unknown token: %s' % t.data)
+                raise SyntaxError(f'{getPos(t)} Unknown token: {t.data}')
         self.includes = sorted(includes)
-        self.importModules = sorted(importModules)
+        self.importModules = [f"{impt} {name}" for impt, name in sorted(importModules, key=lambda v: v[1])]
 
     def visitCluster(self, sourceNs: str, tree: Tree):
         hasTemplate = not isinstance(tree.children[0], Token)
         typeIndex = 1 if hasTemplate else 0
         nameIndex = typeIndex + 1
-        name, namespace = self.splitNamespace(sourceNs, tree.children[nameIndex].value)
-        cluster = namespace.addCluster(name, isDomain=tree.children[typeIndex].value == "domain")
+        name, namespace = self.splitNamespace(tree, sourceNs, tree.children[nameIndex].value)
+        cluster = namespace.addCluster(name, tree.children[nameIndex], isDomain=tree.children[typeIndex].value == "domain")
         if hasTemplate:
             cluster.addTemplate(tree.children[0])
         cluster.walk(tree.children[(nameIndex+1):])
 
     def visitTraitDef(self, sourceNs: str, tree: Tree):
-        name, namespace = self.splitNamespace(sourceNs, tree.children[0].value)
-        trait = namespace.addTrait(name)
+        name, namespace = self.splitNamespace(tree, sourceNs, tree.children[0].value)
+        trait = namespace.addTrait(name, tree)
         trait.walk(tree.children[1:])
 
     def visitTraitAlias(self, sourceNs: str, tree: Tree):
-        name, namespace = self.splitNamespace(sourceNs, tree.children[0].value)
-        namespace.addTraitAlias([c.value for c in tree.children])
+        name, namespace = self.splitNamespace(tree, sourceNs, tree.children[0].value)
+        namespace.addTraitAlias([c.value for c in tree.children], tree)
 
-    def splitNamespace(self, sourceNs: str, fqName: str) -> tuple[str, Namespace]:
+    def splitNamespace(self, tree: Tree, sourceNs: str, fqName: str) -> tuple[str, Namespace]:
         pos = fqName.rfind("::")
         if pos == -1:
-            assert sourceNs, (f"trait/alias may not be defined in root namespace, please namespace-qualify {fqName} "
-                              f"as your::ns::{fqName} or wrap {fqName} in namespace your::ns {'{ ... }'}")
+            if not sourceNs:
+                raise SyntaxError(
+                    f"{getPos(tree)} trait/alias may not be defined in root namespace, please namespace-qualify {fqName} "
+                    f"as your::ns::{fqName} or wrap {fqName} in namespace your::ns {'{ ... }'}")
             return (fqName, self.getNamespace(sourceNs))
         else:
             namespace = fqName[0:pos]
-            assert not namespace.startswith("::"), f"trait/alias namespace-qualifier '{namespace}' may not reference the root namespace"
+            if namespace.startswith("::"):
+                raise SyntaxError(f"{getPos(tree)} trait/alias namespace-qualifier '{namespace}' may not reference the root namespace")
             if sourceNs:
                 namespace = sourceNs + "::" + namespace
             name = fqName[pos+2:]
@@ -689,6 +744,7 @@ class Repr:
             n.finalize()
         self.hasCluster = next((True for namespace in self.namespaces if len(namespace.clusters) != 0), False)
         self.hasTrait = next((True for namespace in self.namespaces if len(namespace.traits) != 0), False)
+
 
 templateLoader = jinja2.FileSystemLoader(searchpath=dirPath)
 templateEnv = jinja2.Environment(loader=templateLoader, trim_blocks=True, lstrip_blocks=True)
