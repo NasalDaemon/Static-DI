@@ -38,24 +38,24 @@ struct Alias<T, Key> final
     using Interface = Alias;
     using Traits = Impl::Traits;
 
-    constexpr Alias(auto& impl, Key key) : impl(impl), key(key) {}
+    constexpr Alias(auto& alias, Key key) : alias(alias), key(key) {}
 
     constexpr auto& get(this auto&& self) { return self; }
     constexpr auto* operator->(this auto&& self) { return std::addressof(self); }
 
-    DI_INLINE constexpr auto apply(this auto&& self, auto&&... args)
-        -> decltype(self.impl->applyWithKey(self.key, DI_FWD(args)...))
+    DI_INLINE constexpr auto impl(this auto&& self, auto&&... args)
+        -> decltype(self.alias->implWithKey(self.key, DI_FWD(args)...))
     {
-        return self.impl->applyWithKey(self.key, DI_FWD(args)...);
+        return self.alias->implWithKey(self.key, DI_FWD(args)...);
     }
 
     DI_INLINE constexpr decltype(auto) visit(this auto&& self, auto&& visitor)
     {
-        return self.impl->visit(DI_FWD(visitor));
+        return self.alias->visit(DI_FWD(visitor));
     }
 
 private:
-    Alias<Impl> impl;
+    Alias<Impl> alias;
     [[no_unique_address]] Key key{};
 };
 

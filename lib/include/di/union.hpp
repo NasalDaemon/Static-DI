@@ -190,12 +190,12 @@ template<class Key>
 struct Union<Options...>::Node<Context>::AsTrait<Trait>::WithKey : AsTrait
 {
     template<class Self, class... Args>
-    constexpr decltype(auto) applyWithKey(this Self& self, Key key, Args&&... args)
+    constexpr decltype(auto) implWithKey(this Self& self, Key key, Args&&... args)
     {
         using Environment = Self::Environment;
         return self.visit([&](auto& option) -> decltype(auto)
         {
-            return withEnv<Environment>(option).asTrait(Trait{}, key).apply(DI_FWD(Args, args)...);
+            return withEnv<Environment>(option).asTrait(Trait{}, key).impl(DI_FWD(Args, args)...);
         });
     }
 };

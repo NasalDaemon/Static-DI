@@ -130,7 +130,7 @@ struct ShopRestAPI
         using OrderRequest = Context::Root::OrderRequestType;
         using RequestId = std::size_t;
 
-        void apply(trait::ShopRequest::order, OrderRequest req)
+        void impl(trait::ShopRequest::order, OrderRequest req)
         {
             // Gateway coordinates the order flow by delegating to the other nodes
             newOrderFlows[req.id].req = std::move(req);
@@ -144,12 +144,12 @@ struct ShopRestAPI
             // ... logic to respond with timeout if not all subdomains respond in time
         }
 
-        void apply(trait::CustomerResponse::canAfford, RequestId reqId, bool canAfford)
+        void impl(trait::CustomerResponse::canAfford, RequestId reqId, bool canAfford)
         {
             updateFlow(reqId, &NewOrderFlow::canAfford, canAfford);
         }
 
-        void apply(trait::DeliveryResponse::canDeliver, RequestId reqId, bool canDeliver)
+        void impl(trait::DeliveryResponse::canDeliver, RequestId reqId, bool canDeliver)
         {
             updateFlow(reqId, &NewOrderFlow::canDeliver, canDeliver);
         }

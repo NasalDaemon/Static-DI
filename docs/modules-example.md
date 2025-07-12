@@ -197,9 +197,9 @@ export struct AuthService : di::Node
         using Token = my::Token;
     };
 
-    // Trait methods are to be implemented with the signature: apply(<Trait>::<method>, args...)
+    // Trait methods are to be implemented with the signature: impl(<Trait>::<method>, args...)
     template<class Self>
-    Task<bool> apply(
+    Task<bool> impl(
         this Self& self, // deducing-this deduces the node's context in the graph
         trait::AuthService::logIn,
         // take user+pass as owning strings as this is a coroutine (still meets trait requirement)
@@ -218,12 +218,12 @@ export struct AuthService : di::Node
             // In this example project, this is effectively equivalent to:
             // <my::Cluster>.sessions.asTrait(trait::tokenStore).store(user, PassHash(...), Token(...));
             // which directly calls
-            // <my::Cluster>.sessions.apply(trait::TokenStore::store{}, user, PassHash(...), Token(...));
+            // <my::Cluster>.sessions.impl(trait::TokenStore::store{}, user, PassHash(...), Token(...));
         }
         co_return success;
     }
 
-    Task<bool> apply(
+    Task<bool> impl(
         this auto& self,
         trait::AuthService::changePass,
         std::string user,
@@ -296,7 +296,7 @@ export struct Sessions
         // Resolves to `my::PassHash` in this example
         using PassHash = Context::Root::PassHash;
 
-        void apply(trait::TokenStore::store, std::string_view user, PassHash passHash, Token token)
+        void impl(trait::TokenStore::store, std::string_view user, PassHash passHash, Token token)
         {
             auto const [it, inserted] = userDetailsMap.try_emplace(user, std::move(passHash), std::move(token));
             if (not inserted)
@@ -306,12 +306,12 @@ export struct Sessions
             }
         }
 
-        void apply(trait::TokenStore::revoke, std::string_view user)
+        void impl(trait::TokenStore::revoke, std::string_view user)
         {
             userDetailsMap.erase(user);
         }
 
-        bool apply(trait::SessionManager::hasToken, std::string_view user) const
+        bool impl(trait::SessionManager::hasToken, std::string_view user) const
         {
             if (auto const userDetails = getUserDetails(user))
                 if (not userDetails->token.expired())
@@ -319,7 +319,7 @@ export struct Sessions
             return false;
         }
 
-        Task<std::optional<Token>> apply(
+        Task<std::optional<Token>> impl(
             trait::SessionManager::getToken,
             std::string_view user,
             std::string_view pass)
@@ -406,14 +406,14 @@ int main()
 
     auto sessionManager = graph.sessions.asTrait(trait::sessionManager);
     assert(not sessionManager.hasToken("user1")); // user1 not logged in yet
-    // same as sessionManager.apply(trait::SessionManager::hasToken{}, "user1")
-    // which directly calls graph.sessions.apply(trait::SessionManager::hasToken{}, "user1")
+    // same as sessionManager.impl(trait::SessionManager::hasToken{}, "user1")
+    // which directly calls graph.sessions.impl(trait::SessionManager::hasToken{}, "user1")
 
     // Note, the following do not compile (inaccessible) as they are not part of `trait::SessionManager`:
     // sessionManager.userDetails;
     // sessionManager.getUserDetails("user1");
     // sessionManager.getNode(trait::authService);
-    // sessionManager.apply(trait::TokenStore::store, "user1", Token{});
+    // sessionManager.impl(trait::TokenStore::store, "user1", Token{});
     // sessionManager.store("user1", Token{});
     // This ensures that the details of a node cannot leak from a trait, keeping the interface robust,
     // and absolves nodes of the responsibility to hide away their state and implementation details,
@@ -519,7 +519,7 @@ struct AuthServiceTestDouble : di::Node
 
     // NOTE: In a test context, is it not required for all of trait::AuthService to be implemented,
     // only those methods which are invoked from the node being tested
-    my::Task<bool> apply(this auto& self, trait::AuthService::logIn, std::string_view user, std::string_view pass)
+    my::Task<bool> impl(this auto& self, trait::AuthService::logIn, std::string_view user, std::string_view pass)
     {
         if (userPass[user] == pass)
         {

@@ -6,22 +6,22 @@
     template<class Context> \
     auto abc::Bob::Node<Context>
 
-BOB::apply(trait::Alice::get) const -> int
+BOB::impl(trait::Alice::get) const -> int
 {
     return getNode(trait::alice).get();
 }
 
-BOB::apply(trait::Bob::get) const -> int
+BOB::impl(trait::Bob::get) const -> int
 {
     return bob;
 }
 
-BOB::apply(trait::Bob::set, int value) -> void
+BOB::impl(trait::Bob::set, int value) -> void
 {
     bob = value;
 }
 
-BOB::apply(trait::Charlie::get) const -> int
+BOB::impl(trait::Charlie::get) const -> int
 {
     return getNode(trait::charlie).get();
 }

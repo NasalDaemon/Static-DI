@@ -27,7 +27,7 @@ struct Node : di::Node
 {
     using Traits = di::Traits<Node, Trait>;
 
-    int apply(this auto& self, Trait::get)
+    int impl(this auto& self, Trait::get)
     {
         return self.i + int(self.getNode(trait).get());
     }

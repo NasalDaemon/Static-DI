@@ -150,24 +150,6 @@ trait app::trait::Responder
 }
 ```
 ```cpp
-// File: app/forum.ixx.dig
-export module app.forum;
-
-import app.alice;
-import app.bob;
-import app.traits;
-
-cluster app::Forum
-{
-    alice = Alice
-    bob = Bob
-
-    [trait::Responder]
-    alice --> bob       // Can also simply be expressed as:
-    alice <-- bob       // alice <-> bob
-}
-```
-```cpp
 // File: app/alice.ixx
 export module app.alice;
 
@@ -186,7 +168,7 @@ struct Alice : di::Node
     // Traits that this node implements, and can provide to other nodes
     using Traits = di::Traits<Alice, trait::Greeter, trait::Responder>;
 
-    void apply(this auto& self, trait::Greeter::greet) const
+    void impl(this auto& self, trait::Greeter::greet) const
     {
         std::println("Hello from Alice! I am {} years old.", self.age);
         // Context injected via explicit object parameter `self` gives access to other nodes
@@ -194,12 +176,12 @@ struct Alice : di::Node
         // The line above can be inlined by the compiler, as getNode and respondTo are both direct calls
     }
 
-    void apply(trait::Responder::respondTo, std::string_view name) const
+    void impl(trait::Responder::respondTo, std::string_view name) const
     {
         std::println("Well met, {}. I am Alice of {} years!", name, age);
     }
 
-    Alice(int age) : age(age) {}
+    explicit Alice(int age) : age(age) {}
     int age; // State specific to this node
 };
 
@@ -224,7 +206,7 @@ struct Bob
         using Depends = di::Depends<trait::Responder>;
         using Traits = di::Traits<Node, trait::Greeter, trait::Responder>;
 
-        void apply(trait::Greeter::greet) const
+        void impl(trait::Greeter::greet) const
         {
             std::println("Hello from Bob!");
             // Can call getNode directly, as Context is already injected into the state
@@ -232,16 +214,36 @@ struct Bob
             // The line above can be inlined by the compiler
         }
 
-        void apply(trait::Responder::respondTo, std::string_view name) const
+        void impl(trait::Responder::respondTo, std::string_view name) const
         {
             std::println("Well met, {}. I am Bob of {} years!", name, age);
         }
 
-        Node(int age) : age(age) {}
+        explicit Node(int age) : age(age) {}
         int age; // State specific to this node
     };
 }
 
+}
+```
+```cpp
+// File: app/forum.ixx.dig
+export module app.forum;
+
+import app.alice;
+import app.bob;
+import app.traits;
+
+cluster app::Forum
+{
+    alice = Alice
+    bob = Bob
+
+    [trait::Responder]
+    alice --> bob  // alice depends on bob for trait::Responder
+    alice <-- bob  // bob depends on alice for trait::Responder
+    // Can also be expressed simply as:
+    // alice <-> bob
 }
 ```
 ```cpp

@@ -50,8 +50,8 @@ struct DetachedImpl : Interface, private Node
     using Node::asTrait;
     using Node::hasTrait;
 
-    // Use apply from the detached interface
-    using Interface::apply;
+    // Use impl from the detached interface
+    using Interface::impl;
 
     template<class Self>
     constexpr auto& getState(this Self& self)

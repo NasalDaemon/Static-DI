@@ -27,15 +27,15 @@ struct Bob
 
         void onGraphConstructed() { std::puts("Constructed Bob"); }
 
-        int apply(trait::Alice::get) const
+        int impl(trait::Alice::get) const
         {
             return getNode(trait::alice).get();
         }
 
-        int apply(trait::Bob::get) const { return bob; }
-        void apply(trait::Bob::set, int value) { bob = value; }
+        int impl(trait::Bob::get) const { return bob; }
+        void impl(trait::Bob::set, int value) { bob = value; }
 
-        int apply(trait::Charlie::get) const
+        int impl(trait::Charlie::get) const
         {
             return getNode(trait::charlie).get();
         }

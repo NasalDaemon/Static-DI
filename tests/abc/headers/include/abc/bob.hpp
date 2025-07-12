@@ -22,12 +22,12 @@ struct Bob
             , trait::Charlie
         >;
 
-        int apply(trait::Alice::get) const;
+        int impl(trait::Alice::get) const;
 
-        int apply(trait::Bob::get) const;
-        void apply(trait::Bob::set, int value);
+        int impl(trait::Bob::get) const;
+        void impl(trait::Bob::set, int value);
 
-        int apply(trait::Charlie::get) const;
+        int impl(trait::Charlie::get) const;
 
         struct Types
         {

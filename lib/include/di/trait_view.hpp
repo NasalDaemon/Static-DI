@@ -41,7 +41,7 @@ struct TraitMethodFunctor
 
     DI_INLINE constexpr decltype(auto) operator()(this auto&& self, auto&&... args)
     {
-        return self.impl->apply(Method{}, DI_FWD(args)...);
+        return self.impl->impl(Method{}, DI_FWD(args)...);
     }
 
 private:
@@ -76,7 +76,7 @@ struct AutoCompleteTraitView final : Trait::Meta::Methods
     };
 
     template<IsMethodOf<Trait> Method>
-    constexpr detail::Unknown apply(this auto&&, Method, auto&&...);
+    constexpr detail::Unknown impl(this auto&&, Method, auto&&...);
 
     constexpr detail::Unknown visit(this auto&& self, auto&& visitor);
 };
@@ -86,24 +86,23 @@ DI_MODULE_EXPORT
 template<IsTrait Trait, class ImplAlias, class Types_ = EmptyTypes>
 struct TraitView final : Trait::Meta::Methods
 {
-    constexpr TraitView(Trait, ImplAlias impl, std::type_identity<Types_>)
-        : impl(impl)
+    constexpr TraitView(Trait, ImplAlias alias, std::type_identity<Types_>)
+        : alias(alias)
     {
         static_assert(not IsTrait<TraitView>);
         DI_ASSERT_IMPLEMENTS(typename ImplAlias::Interface, Types, Trait);
-        if constexpr (not std::is_const_v<Impl>)
+        if constexpr (not std::is_const_v<typename ImplAlias::Impl>)
             DI_ASSERT_IMPLEMENTS(TraitView, Types, Trait);
     }
 
     static consteval std::true_type isTrait(MatchesTrait<Trait> auto) { return {}; }
     static consteval std::false_type isTrait(auto) { return {}; }
 
-    using Impl = ImplAlias::Impl;
     using Types = detail::Decompress<Types_>;
     struct Traits
     {
         template<std::same_as<TraitView> = TraitView>
-        using GetContext = ContextOf<Impl>;
+        using GetContext = ContextOf<typename ImplAlias::Impl>;
 
         template<std::same_as<Trait> T>
         using ResolveInterface = TraitView;
@@ -113,22 +112,22 @@ struct TraitView final : Trait::Meta::Methods
     };
 
     template<IsMethodOf<Trait> Method>
-    DI_INLINE constexpr decltype(auto) apply(this auto&& self, Method trait, auto&&... args)
+    DI_INLINE constexpr decltype(auto) impl(this auto&& self, Method trait, auto&&... args)
     {
-        return self.impl->apply(trait, DI_FWD(args)...);
+        return self.alias->impl(trait, DI_FWD(args)...);
     }
 
     template<IsMethodOf<Trait> Method>
-    DI_INLINE constexpr TraitMethodFunctor<Trait, Method, ImplAlias> apply(this auto&& self, Method, di::AsFunctor)
+    DI_INLINE constexpr TraitMethodFunctor<Trait, Method, ImplAlias> impl(this auto&& self, Method, di::AsFunctor)
     {
-        return TraitMethodFunctor<Trait, Method, ImplAlias>(self.impl);
+        return TraitMethodFunctor<Trait, Method, ImplAlias>(self.alias);
     }
 
     // Visit the TraitView of the concrete implementation (e.g. active node of union)
     template<class Visitor>
     constexpr decltype(auto) visit(this auto&& self, Visitor&& visitor)
     {
-        return self.impl->visit(
+        return self.alias->visit(
             [&](auto& impl) -> decltype(auto)
             {
                 return std::invoke(DI_FWD(Visitor, visitor), impl.asTrait(Trait{}));
@@ -136,7 +135,7 @@ struct TraitView final : Trait::Meta::Methods
     }
 
 private:
-    ImplAlias impl;
+    ImplAlias alias;
 };
 
 DI_MODULE_EXPORT

@@ -58,7 +58,7 @@ template<class Context>
 template<class Key>
 struct Repeater<Trait, Count>::Node<Context>::WithKey : Node
 {
-    constexpr void applyWithKey(this auto& self, Key const& key, auto&&... args)
+    constexpr void implWithKey(this auto& self, Key const& key, auto&&... args)
     {
         apply2(std::make_index_sequence<Count>{}, self, key, args...);
     }
@@ -72,7 +72,7 @@ private:
 
     static constexpr void apply3(auto target, auto& repeater, Key const& key, auto&... args)
     {
-        target.ptr->finalize(repeater, key)->apply(args...);
+        target.ptr->finalize(repeater, key)->impl(args...);
     }
 };
 

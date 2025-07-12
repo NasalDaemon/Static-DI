@@ -8,7 +8,7 @@
     template<class Context> \
     auto abc::Charlie::Node<Context>
 
-CHARLIE::Alice::apply(trait::Alice::get) const -> int
+CHARLIE::Alice::impl(trait::Alice::get) const -> int
 {
     static_assert(di::CanGetNode<Node, trait::AliceRead>);
     auto const value = getNode(trait::aliceRead).get();
@@ -19,13 +19,13 @@ CHARLIE::Alice::apply(trait::Alice::get) const -> int
         return value;
 };
 
-CHARLIE::Charlie::apply(trait::Charlie::get) const -> int
+CHARLIE::Charlie::impl(trait::Charlie::get) const -> int
 {
      return charlie;
 }
 
 
-CHARLIE::apply(trait::Visitable::count, int& counter) -> void
+CHARLIE::impl(trait::Visitable::count, int& counter) -> void
 {
     std::puts("trait::Visitable::count: Visited Charlie");
     counter++;

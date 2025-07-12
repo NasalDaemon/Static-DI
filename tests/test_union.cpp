@@ -27,7 +27,7 @@ namespace trait {
         template<class Self, class T, class Types>
         requires requires (T const c)
         {
-            { c.apply(get_c) } -> std::same_as<int>;
+            { c.impl(get_c) } -> std::same_as<int>;
         }
         using Implements = void;
     };
@@ -44,7 +44,7 @@ struct Cat : di::Node
         struct CatType;
     };
 
-    int apply(this auto& self, trait::Name::get)
+    int impl(this auto& self, trait::Name::get)
     {
         return self.getNode(trait::Name{}).get() + 99;
     }
@@ -62,7 +62,7 @@ struct Dog
 
         static_assert(std::is_same_v<MouseType, typename di::ResolveTypes<Node, trait::Name>::MouseType>);
 
-        int apply(trait::Name::get) const
+        int impl(trait::Name::get) const
         {
             return getNode(trait::Name{}).get();
         }
@@ -77,7 +77,7 @@ struct Mouse : di::Node
         using MouseType = union_::MouseType;
     };
 
-    int apply(trait::Name::get) const { return 42; }
+    int impl(trait::Name::get) const { return 42; }
 };
 
 template<class Context>

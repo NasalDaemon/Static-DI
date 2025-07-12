@@ -132,12 +132,12 @@ namespace key {
                     });
             }
 
-            constexpr decltype(auto) apply(this auto& self, auto&&... args)
+            constexpr decltype(auto) impl(this auto& self, auto&&... args)
             {
                 return Poster<CurrentThreadId, requiredThreadId>::post(
                     [&self, ...args = DI_FWD(args)]() mutable -> decltype(auto)
                     {
-                        return self.T::apply(std::move(args)...);
+                        return self.T::impl(std::move(args)...);
                     });
             }
 

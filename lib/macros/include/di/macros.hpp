@@ -161,14 +161,14 @@
     template<::di::IsTraitView Self> \
     DI_INLINE constexpr decltype(auto) method(this Self&& self, ::di::AsFunctor asFunctor) \
     { \
-        return self.apply(method ## _c, asFunctor); \
+        return self.impl(method ## _c, asFunctor); \
     }
 
 #define DI_DUCK_METHOD(method) \
     template<::di::IsTraitView Self> \
     DI_INLINE constexpr decltype(auto) method(this Self&& self, auto&&... args) \
     { \
-        return self.apply(method ## _c, DI_FWD(args)...); \
+        return self.impl(method ## _c, DI_FWD(args)...); \
     }
 
 // DI_LINK(TraitName, TargetContext, TargetTraitRename=<NoRename>)

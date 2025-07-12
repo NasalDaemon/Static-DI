@@ -8,11 +8,11 @@ export namespace di::tests::repeater {
 
 struct TestNode : di::Node
 {
-    void apply(trait::Trait::function, int& i) const
+    void impl(trait::Trait::function, int& i) const
     {
         i++;
     }
-    void apply(this auto const& self, trait::Trait::defer, int& i)
+    void impl(this auto const& self, trait::Trait::defer, int& i)
     {
         self.getNode(trait::trait).function(i);
     }

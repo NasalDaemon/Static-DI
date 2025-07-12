@@ -18,10 +18,10 @@ struct Alice
     {
         void onGraphConstructed();
 
-        int apply(trait::Alice::get) const;
-        void apply(trait::Alice::set, int value);
+        int impl(trait::Alice::get) const;
+        void impl(trait::Alice::set, int value);
 
-        void apply(trait::Visitable::count, int& counter);
+        void impl(trait::Visitable::count, int& counter);
 
         int alice = 92;
     };
@@ -50,12 +50,12 @@ struct Alice
         using AliceType = Types::AliceType;
         using BobType = Types::BobType;
 
-        using NodeBase::apply;
+        using NodeBase::impl;
 
-        int apply(trait::Bob::get) const;
-        void apply(trait::Bob::set, int);
+        int impl(trait::Bob::get) const;
+        void impl(trait::Bob::set, int);
 
-        int apply(trait::Charlie::get method) const;
+        int impl(trait::Charlie::get method) const;
 
         static_assert(std::is_same_v<decltype(NodeBase::alice), BobType>);
         static_assert(std::is_same_v<di::NullContext::Root, di::ResolveRoot<Context>>);

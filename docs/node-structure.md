@@ -31,7 +31,7 @@ There are two ways to define a node, each with different pros and cons:
          using Traits = di::Traits<PiCache, trait::Pi>;
 
          // Context can only be deduced in member functions via an explicit object parameter (deducing-this)
-         double apply(this auto& self, trait::Pi::calc)
+         double impl(this auto& self, trait::Pi::calc)
          {
             if (std::isnan(self.piValue)) [[unlikely]]
                self.piValue = self.getNode(trait::pi).calc();
@@ -60,7 +60,7 @@ There are two ways to define a node, each with different pros and cons:
             using Float = Context::Root::Float;
 
             // Context is available without needing to use an explicit object parameter
-            Float apply(trait::Pi::calc)
+            Float impl(trait::Pi::calc)
             {
                if (std::isnan(piValue)) [[unlikely]]
                   piValue = getNode(trait::pi).calc();
@@ -93,7 +93,7 @@ There are two ways to define a node, each with different pros and cons:
 
                using Float = Context::Root::Float;
 
-               Float apply(trait::Pi::calc);
+               Float impl(trait::Pi::calc);
 
                Float piValue = std::numeric_limits<Float>::quiet_NaN();
             };
@@ -104,7 +104,7 @@ There are two ways to define a node, each with different pros and cons:
          #include "pi_cache.hpp"
 
          template<class Context>
-         auto PiCache::Node<Context>::apply(trait::Pi::Calc) -> Float
+         auto PiCache::Node<Context>::impl(trait::Pi::Calc) -> Float
          {
             if (std::isnan(piValue)) [[unlikely]]
                piValue = getNode(trait::pi).calc();
@@ -210,7 +210,7 @@ struct FruitBasket
    {
       struct Apple; // detached interface
       struct BananaTypes;
-      struct Tangerine; // overrides Node::apply(trait::Orange::take)
+      struct Tangerine; // overrides Node::impl(trait::Orange::take)
       struct TangerineTypes; // overrides Types::Orange
 
       using Traits = di::Traits<Node
@@ -247,7 +247,7 @@ struct FruitBasket
          return taken;
       }
 
-      Types::Orange apply(trait::Orange::take, Types::Orange amount)
+      Types::Orange impl(trait::Orange::take, Types::Orange amount)
       {
          return take(oranges, amount);
       }
@@ -255,13 +255,13 @@ struct FruitBasket
       struct Apple : di::DetachedInterface
       {
          // Detached interface accesses state through explicit object paramater
-         Types::Apple apply(this auto& self, trait::Apple::take, Types::Apple amount)
+         Types::Apple impl(this auto& self, trait::Apple::take, Types::Apple amount)
          {
             return take(self->apples, amount);
          }
       };
 
-      BananaTypes::Banana apply(trait::Banana::take, BananaTypes::Banana amount)
+      BananaTypes::Banana impl(trait::Banana::take, BananaTypes::Banana amount)
       {
          return take(bananas, amount);
       }
@@ -272,8 +272,8 @@ struct FruitBasket
 template<class Context>
 struct FruitBasket::Node<Context>::Tangerine : Node
 {
-   // Overrides Node::apply(trait::Orange::take, int) for trait::Tangerine only
-   TangerineTypes::Orange apply(trait::Orange::take, TangerineTypes::Orange amount)
+   // Overrides Node::impl(trait::Orange::take, int) for trait::Tangerine only
+   TangerineTypes::Orange impl(trait::Orange::take, TangerineTypes::Orange amount)
    {
       return take(tangerines, amount);
    }
@@ -285,7 +285,7 @@ struct Guest : di::Node
    using Traits = di::Traits<Guest, trait::Guest>;
 
    template<class Self>
-   void apply(this Self& self, trait::Guest::eat)
+   void impl(this Self& self, trait::Guest::eat)
    {
       // FruitBasket::Node<...>::Types::Orange
       using Orange = di::ResolveTypes<Self, trait::Orange>::Orange;
@@ -296,13 +296,13 @@ struct Guest : di::Node
       // FruitBasket::Node<...>::TangerineTypes::Orange
       using Tangerine = di::ResolveTypes<Self, trait::Tangerine>::Orange;
 
-      // FruitBasket::Node<...>::apply(trait::Orange::take{}, 3)
+      // FruitBasket::Node<...>::impl(trait::Orange::take{}, 3)
       std::same_as<Orange> auto oranges = self.getNode(trait::orange).take(3);
-      // di::DetachedImpl<FruitBasket::Node<...>, FruitBasket::Node<...>::Apple>::apply(trait::Apple::take{}, 3)
+      // di::DetachedImpl<FruitBasket::Node<...>, FruitBasket::Node<...>::Apple>::impl(trait::Apple::take{}, 3)
       std::same_as<Apple> auto apples = self.getNode(trait::apple).take(3);
-      // FruitBasket::Node<...>::apply(trait::Banana::take{}, 3)
+      // FruitBasket::Node<...>::impl(trait::Banana::take{}, 3)
       std::same_as<Banana> auto bananas = self.getNode(trait::banana).take(3);
-      // FruitBasket::Node<...>::Tangerine::apply(trait::Orange::take{}, 3)
+      // FruitBasket::Node<...>::Tangerine::impl(trait::Orange::take{}, 3)
       std::same_as<Tangerine> auto tangerines = self.getNode(trait::tangerine).take(3);
 
       assert(apples == 2);

@@ -44,7 +44,7 @@ namespace {{ namespace.name }} {
                 {%- endfor -%}
             ){{ " -> " + method.returnType.str if method.returnType.str != "auto" else "" }}
             {
-                return self.apply({{ method.name }}_c
+                return self.impl({{ method.name }}_c
                     {%- for type, name in method.params -%}
                     , DI_FWD({{ name }}){{ type.pack }}
                     {%- endfor -%}
@@ -77,7 +77,7 @@ namespace {{ namespace.name }} {
         {% for method in trait.methods if not method.isTemplate %}
 
         {% macro requireInvoke() -%}
-            {{ "const_" if method.isConst else "impl_" }}.apply({{ method.name }}_c
+            {{ "const_" if method.isConst else "impl_" }}.impl({{ method.name }}_c
                 {%- for type, name in method.params -%}
                 , DI_FWD({{ name }})
                 {%- endfor -%}

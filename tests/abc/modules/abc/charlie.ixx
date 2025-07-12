@@ -48,7 +48,7 @@ struct Charlie
         struct Charlie : di::DetachedInterface
         {
             template<class Self>
-            int apply(this Self const& self, trait::Charlie::get)
+            int impl(this Self const& self, trait::Charlie::get)
             {
                 using AliceType = di::ResolveTypes<Self, trait::Alice>::AliceType;
                 static_assert(std::is_same_v<int, AliceType>);
@@ -58,7 +58,7 @@ struct Charlie
 
         struct Charlie2 : di::DetachedInterface
         {
-            int apply(this auto const& self, trait::Charlie::get)
+            int impl(this auto const& self, trait::Charlie::get)
             {
                 return -self.asTrait(trait::charlie).get();
             }
@@ -66,7 +66,7 @@ struct Charlie
 
         struct Charlie3 : di::DetachedInterface
         {
-            static int apply(trait::Charlie::get)
+            static int impl(trait::Charlie::get)
             {
                 return 15;
             }
@@ -77,7 +77,7 @@ struct Charlie
 
         void onGraphConstructed() { std::puts("Constructed Charlie"); }
 
-        void apply(trait::Visitable::count, int& counter)
+        void impl(trait::Visitable::count, int& counter)
         {
             std::puts("trait::Visitable::count: Visited Charlie");
             counter++;
@@ -93,7 +93,7 @@ struct Charlie
 template<class Context>
 struct Charlie::Node<Context>::Alice : Node
 {
-    int apply(trait::Alice::get) const
+    int impl(trait::Alice::get) const
     {
         static_assert(di::CanGetNode<Node, trait::AliceRead>);
         auto const value = getNode(trait::aliceRead).get();

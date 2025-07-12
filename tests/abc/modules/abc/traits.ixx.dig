@@ -6,7 +6,7 @@ trait AliceRead [Types]
 {
     get() const -> int
 
-    requires { const_.apply(get_c) } -> std::same_as<int>
+    requires { const_.impl(get_c) } -> std::same_as<int>
     requires typename Types::AliceType
 }
 
@@ -18,11 +18,11 @@ trait AliceWrite [Types, R = Root]
     //requires { const_.asdasd() }
     type AliceType
 
-    requires impl_.apply(set_c, std::declval<int>())
-    requires { impl_.apply(set_c, std::declval<int>()) } -> std::same_as<void>
+    requires impl_.impl(set_c, std::declval<int>())
+    requires { impl_.impl(set_c, std::declval<int>()) } -> std::same_as<void>
 
     requires (int i) {
-        { impl_.apply(set_c, i) } -> std::same_as<void>
+        { impl_.impl(set_c, i) } -> std::same_as<void>
     }
 }
 

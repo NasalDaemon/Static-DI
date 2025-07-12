@@ -15,7 +15,7 @@ struct AliceRead : di::Trait
     requires requires (T const c)
     {
         typename Types::AliceType;
-        { c.apply(get_c) } -> std::same_as<int>;
+        { c.impl(get_c) } -> std::same_as<int>;
     }
     using Implements = void;
 } inline constexpr aliceRead{};
@@ -31,7 +31,7 @@ struct AliceWrite : di::Trait
     requires requires (T t, int i)
     {
         typename Types::AliceType;
-        t.apply(set_c, i);
+        t.impl(set_c, i);
     }
     using Implements = void;
 } inline constexpr aliceWrite{};
@@ -48,7 +48,7 @@ struct Bob : di::Trait
     requires requires (T const c)
     {
         typename Types::BobType;
-        { c.apply(trait::Bob::get_c) } -> std::same_as<int>;
+        { c.impl(trait::Bob::get_c) } -> std::same_as<int>;
     }
     using Implements = void;
 } inline constexpr bob{};
@@ -64,7 +64,7 @@ struct Charlie : di::Trait
     requires requires (T const c)
     {
         typename Types::CharlieType;
-        { c.apply(trait::Charlie::get_c) } -> std::same_as<int>;
+        { c.impl(trait::Charlie::get_c) } -> std::same_as<int>;
         // c.getCharlies();
     }
     using Implements = void;
@@ -80,7 +80,7 @@ struct Ellie : di::Trait
     template<class Self, class T, class Types>
     requires requires (T const c)
     {
-        { c.apply(trait::Ellie::get_c) } -> std::same_as<int>;
+        { c.impl(trait::Ellie::get_c) } -> std::same_as<int>;
     }
     using Implements = void;
 } inline constexpr ellie{};

@@ -32,7 +32,7 @@ struct EmbeddedNode : di::Node
 {
     using Traits = di::Traits<EmbeddedNode, trait::Embedded>;
 
-    int apply(trait::Embedded::get) const { return 42; }
+    int impl(trait::Embedded::get) const { return 42; }
 };
 
 }

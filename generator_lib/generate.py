@@ -483,7 +483,7 @@ class Domain(Cluster):
 
 
 class Method:
-    __reserved_names__ = ['apply', 'visit']
+    __reserved_names__ = ['impl', 'visit']
 
     def __init__(self):
         self.name: str = "<unknown>"

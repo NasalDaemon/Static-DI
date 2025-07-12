@@ -10,4 +10,4 @@ import std;
 
 void abc::Ellie::onGraphConstructed() { std::puts("Constructed Ellie"); }
 
-int abc::Ellie::apply(trait::Ellie::get) const { return value; }
+int abc::Ellie::impl(trait::Ellie::get) const { return value; }

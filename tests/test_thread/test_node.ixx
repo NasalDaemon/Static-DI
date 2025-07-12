@@ -18,21 +18,21 @@ struct TestNode : di::Node
 {
     struct Interface : di::DetachedInterface
     {
-        int apply(this auto const& self, trait::Trait::getA)
+        int impl(this auto const& self, trait::Trait::getA)
         {
             if constexpr (std::is_same_v<Trait, trait::A>)
                 return self->i;
             else
                 return self.getNode(trait::a).getA();
         }
-        int apply(this auto const& self, trait::Trait::getB method)
+        int impl(this auto const& self, trait::Trait::getB method)
         {
             if constexpr (std::is_same_v<Trait, trait::B>)
                 return self->i;
             else
-                return self.getNode(trait::b, postTaskKey).apply(method);
+                return self.getNode(trait::b, postTaskKey).impl(method);
         }
-        int apply(this auto const& self, trait::Trait::getC)
+        int impl(this auto const& self, trait::Trait::getC)
         {
             if constexpr (std::is_same_v<Trait, trait::C>)
                 return self->i;

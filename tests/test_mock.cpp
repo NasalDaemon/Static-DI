@@ -105,16 +105,16 @@ TEST_CASE("di::test::Mock")
     {
     using enum di::Compiler::Kind;
     case GCC:
-        CHECK_THROWS_WITH(g.node->testNothing(), "Mock implementation not defined for apply(di::tests::mock::trait::Trait@di.tests.mock::takesNothing) const");
-        CHECK_THROWS_WITH(g.node->testInt(8), "Mock implementation not defined for apply(di::tests::mock::trait::Trait@di.tests.mock::takesInt, int)");
+        CHECK_THROWS_WITH(g.node->testNothing(), "Mock implementation not defined for impl(di::tests::mock::trait::Trait@di.tests.mock::takesNothing) const");
+        CHECK_THROWS_WITH(g.node->testInt(8), "Mock implementation not defined for impl(di::tests::mock::trait::Trait@di.tests.mock::takesInt, int)");
         break;
     case Clang:
-        CHECK_THROWS_WITH(g.node->testNothing(), "Mock implementation not defined for apply(di::tests::mock::trait::Trait::takesNothing) const");
-        CHECK_THROWS_WITH(g.node->testInt(8), "Mock implementation not defined for apply(di::tests::mock::trait::Trait::takesInt, int)");
+        CHECK_THROWS_WITH(g.node->testNothing(), "Mock implementation not defined for impl(di::tests::mock::trait::Trait::takesNothing) const");
+        CHECK_THROWS_WITH(g.node->testInt(8), "Mock implementation not defined for impl(di::tests::mock::trait::Trait::takesInt, int)");
         break;
     case MSVC:
-        CHECK_THROWS_WITH(g.node->testNothing(), "Mock implementation not defined for apply(struct di::tests::mock::trait::Trait::takesNothing) const");
-        CHECK_THROWS_WITH(g.node->testInt(8), "Mock implementation not defined for apply(struct di::tests::mock::trait::Trait::takesInt, int)");
+        CHECK_THROWS_WITH(g.node->testNothing(), "Mock implementation not defined for impl(struct di::tests::mock::trait::Trait::takesNothing) const");
+        CHECK_THROWS_WITH(g.node->testInt(8), "Mock implementation not defined for impl(struct di::tests::mock::trait::Trait::takesInt, int)");
         break;
     }
 
@@ -124,7 +124,7 @@ TEST_CASE("di::test::Mock")
     CHECK_THROWS_AS(g.node->testRef(), std::bad_any_cast);
 
     // Storing result allows conversion to reference
-    auto refResult = g.mocks->apply(trait::Trait::returnsRef{});
+    auto refResult = g.mocks->impl(trait::Trait::returnsRef{});
     int& ref1 = refResult;
     int& ref2 = refResult;
     CHECK(&ref1 == &ref2);

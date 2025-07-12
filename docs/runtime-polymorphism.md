@@ -59,7 +59,7 @@ struct Cow : di::Node
 {
     using Traits = di::Traits<Cow, trait::Animal>;
 
-    std::string apply(trait::Animal::speak) const { return happy ? "moo" : "mmmooooo!"; }
+    std::string impl(trait::Animal::speak) const { return happy ? "moo" : "mmmooooo!"; }
 
     explicit Cow(bool happy) : happy(happy) {}
     bool happy;
@@ -79,7 +79,7 @@ struct Sheep : di::Node
 {
     using Traits = di::Traits<Sheep, trait::Animal>;
 
-    std::string apply(trait::Animal::speak) const { return "baa!"; }
+    std::string impl(trait::Animal::speak) const { return "baa!"; }
 };
 
 }
@@ -185,8 +185,8 @@ struct IAnimal : di::INode
 {
     using Traits = di::Traits<IAnimal, trait::Animal>;
 
-    virtual std::string apply(trait::Animal::speak) const = 0;
-    virtual void apply(trait::Animal::evolve) const = 0;
+    virtual std::string impl(trait::Animal::speak) const = 0;
+    virtual void impl(trait::Animal::evolve) const = 0;
 };
 
 }
@@ -202,12 +202,12 @@ namespace app {
 
 struct Cow final : IAnimal
 {
-    std::string apply(trait::Animal::speak) const override
+    std::string impl(trait::Animal::speak) const override
     {
         return happy ? "moo" : "mmmooooo!";
     }
 
-    void apply(trait::Animal::evolve) override
+    void impl(trait::Animal::evolve) override
     {
         // Cows do not evolve
     }
@@ -230,12 +230,12 @@ namespace app {
 
 struct Sheep final : IAnimal
 {
-    std::string apply(trait::Animal::speak) const override
+    std::string impl(trait::Animal::speak) const override
     {
         return black ? "barbar" : "baa!";
     }
 
-    void apply(trait::Animal::evolve) override
+    void impl(trait::Animal::evolve) override
     {
         auto handle = exchangeImpl<Goat>();
 
@@ -266,9 +266,9 @@ namespace app {
 
 struct Goat final : IAnimal
 {
-    std::string apply(trait::Animal::speak) const override { return "meeh!"; }
+    std::string impl(trait::Animal::speak) const override { return "meeh!"; }
 
-    void apply(trait::Animal::evolve) override
+    void impl(trait::Animal::evolve) override
     {
         auto handle = exchangeImpl<Cow>(false);
 
@@ -297,9 +297,9 @@ struct Fox : di::Node
 {
     using Traits = di::Traits<Fox, trait::Animal>;
 
-    std::string apply(trait::Animal::speak) const override { return "yip"; }
+    std::string impl(trait::Animal::speak) const override { return "yip"; }
 
-    void apply(trait::Animal::evolve)
+    void impl(trait::Animal::evolve)
     {
         // static node can not swap itself out (alas, `evolve` shouldn't really be a method in the trait)
     }
@@ -317,13 +317,13 @@ namespace app {
 struct IAnimalFacade final : IAnimal
 {
     // Forward to adapted node
-    std::string apply(trait::Animal::speak) const override
+    std::string impl(trait::Animal::speak) const override
     {
         return getNode(trait::animal).speak();
     }
 
     // As a dynamic node, this facade can swap the implementation hosted by di::Virtal
-    void apply(trait::Animal::evolve) override
+    void impl(trait::Animal::evolve) override
     {
         auto handle = exchangeImpl<Cow>(true);
 

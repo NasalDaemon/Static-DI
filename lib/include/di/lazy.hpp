@@ -58,9 +58,9 @@ struct Lazy
     public:
         using Traits = di::TraitsTemplate<Node, TraitsTemplate>;
 
-        DI_INLINE constexpr decltype(auto) apply(this auto& self, auto&&... args)
+        DI_INLINE constexpr decltype(auto) impl(this auto& self, auto&&... args)
         {
-            return self.getState().apply(DI_FWD(args)...);
+            return self.getState().impl(DI_FWD(args)...);
         }
 
         template<class Self>

@@ -7,15 +7,15 @@ import abc.traits;
     template<class Context> \
     auto abc::Alice::Node<Context>
 
-ALICE::apply(trait::Bob::get) const -> int
+ALICE::impl(trait::Bob::get) const -> int
 {
     return getNode(trait::bob).get();
 }
-ALICE::apply(trait::Bob::set, int) -> void
+ALICE::impl(trait::Bob::set, int) -> void
 {
 }
 
-ALICE::apply(trait::Charlie::get method) const -> int
+ALICE::impl(trait::Charlie::get method) const -> int
 {
     return getNode(traitOf(method)).get();
 }

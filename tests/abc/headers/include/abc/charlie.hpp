@@ -44,7 +44,7 @@ struct Charlie
         using AliceType = AliceTypes::AliceType;
         using CharlieType = CharlieTypes::CharlieType;
 
-        void apply(trait::Visitable::count, int& counter);
+        void impl(trait::Visitable::count, int& counter);
 
     protected:
         AliceType charlie = 99;
@@ -54,19 +54,19 @@ struct Charlie
 template<class Context>
 struct Charlie::Node<Context>::Alice : Node
 {
-    int apply(trait::Alice::get) const;
+    int impl(trait::Alice::get) const;
 };
 
 template<class Context>
 struct Charlie::Node<Context>::Charlie : Node
 {
-    int apply(trait::Charlie::get) const;
+    int impl(trait::Charlie::get) const;
 };
 
 template<class Context>
 struct Charlie::Node<Context>::Charlie2 : Node
 {
-    int apply(trait::Charlie::get) const
+    int impl(trait::Charlie::get) const
     {
         return -asTrait(trait::charlie).get();
     }
@@ -75,7 +75,7 @@ struct Charlie::Node<Context>::Charlie2 : Node
 template<class Context>
 struct Charlie::Node<Context>::Charlie3 : Node
 {
-    static int apply(trait::Charlie::get)
+    static int impl(trait::Charlie::get)
     {
         return 15;
     }

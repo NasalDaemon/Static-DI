@@ -172,7 +172,7 @@ struct Mock
         }
 
         template<class Self, class Method, class... Args>
-        constexpr detail::MockReturn apply(this Self& self, Method, Args&&... args)
+        constexpr detail::MockReturn impl(this Self& self, Method, Args&&... args)
         {
             ArgTypes argTypes{
                 std::type_index{typeid(Method)},
@@ -279,7 +279,7 @@ struct Mock
         template<class Self, class Method, class... Args>
         static constexpr std::string notDefinedError()
         {
-            std::string error = "Mock implementation not defined for apply(";
+            std::string error = "Mock implementation not defined for impl(";
             error += di::detail::typeName<Method>();
             ((error += ", ", error += di::detail::typeName<Args>()), ...);
             if constexpr (std::is_const_v<Self>)

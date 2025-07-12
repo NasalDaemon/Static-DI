@@ -41,9 +41,9 @@ struct A : di::Node
 {
     using Traits = di::Traits<A, trait::A>;
 
-    int apply(trait::A::a) { return val; }
+    int impl(trait::A::a) { return val; }
 
-    int apply(this auto& self, trait::A::c)
+    int impl(this auto& self, trait::A::c)
     {
         return self.getNode(trait::c).c();
     }
@@ -55,9 +55,9 @@ struct B : di::Node
 {
     using Traits = di::Traits<B, trait::B>;
 
-    int apply(trait::B::b) { return val; }
+    int impl(trait::B::b) { return val; }
 
-    int apply(this auto& self, trait::B::c)
+    int impl(this auto& self, trait::B::c)
     {
         return self.getNode(trait::c).c();
     }
@@ -69,7 +69,7 @@ struct C : di::Node
 {
     using Traits = di::Traits<C, trait::C>;
 
-    int apply(trait::C::c) { return val; }
+    int impl(trait::C::c) { return val; }
 
     int val = 99;
 };

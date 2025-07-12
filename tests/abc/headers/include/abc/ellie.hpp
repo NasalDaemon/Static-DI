@@ -31,7 +31,7 @@ struct Ellie : di::Node
     struct Charlie2 : di::DetachedInterface
     {
         template<class Self>
-        int apply(this Self const& self, trait::Charlie::get)
+        int impl(this Self const& self, trait::Charlie::get)
         {
             using CharlieType = di::ResolveTypes<Self, trait::Charlie>::CharlieType;
             static_assert(std::is_same_v<int, CharlieType>);
@@ -53,7 +53,7 @@ struct Ellie : di::Node
 
     void onGraphConstructed();
 
-    int apply(trait::Ellie::get) const;
+    int impl(trait::Ellie::get) const;
 
     int value;
 };
@@ -61,7 +61,7 @@ struct Ellie : di::Node
 struct Ellie::Charlie : Ellie
 {
     template<class Self>
-    int apply(this Self const& self, trait::Charlie::get)
+    int impl(this Self const& self, trait::Charlie::get)
     {
         using CharlieType = di::ResolveTypes<Self, trait::Charlie>::CharlieType;
         static_assert(std::is_same_v<int, CharlieType>);

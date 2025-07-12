@@ -52,8 +52,8 @@ struct IApple : di::INode
     {
         using AppleType = virtual_::AppleType;
     };
-    virtual int apply(trait::Apple::seeds) const = 0;
-    virtual bool apply(trait::Apple::testExchange) = 0;
+    virtual int impl(trait::Apple::seeds) const = 0;
+    virtual bool impl(trait::Apple::testExchange) = 0;
 };
 struct IBread : di::INode
 {
@@ -62,12 +62,12 @@ struct IBread : di::INode
     {
         using BreadType = virtual_::BreadType;
     };
-    virtual int apply(trait::Bread::slices) const = 0;
+    virtual int impl(trait::Bread::slices) const = 0;
 };
 struct IEgg : di::INode
 {
     using Traits = di::Traits<IEgg, trait::Egg>;
-    virtual int apply(trait::Egg::yolks) const = 0;
+    virtual int impl(trait::Egg::yolks) const = 0;
 };
 
 struct AppleEgg
@@ -79,17 +79,17 @@ struct AppleEgg
 
         static_assert(std::is_same_v<BreadType, typename di::ResolveTypes<Node, trait::Bread>::BreadType>);
 
-        int apply(trait::Apple::seeds) const final
+        int impl(trait::Apple::seeds) const final
         {
             return seeds + getNode(trait::bread).slices();
         }
 
-        int apply(trait::Egg::yolks) const final
+        int impl(trait::Egg::yolks) const final
         {
             return yolks;
         }
 
-        bool apply(trait::Apple::testExchange) final
+        bool impl(trait::Apple::testExchange) final
         {
             if constexpr (di::IsVirtualContext<Context>)
             {
@@ -141,7 +141,7 @@ struct Bread
 
         static_assert(std::is_same_v<AppleType, typename di::ResolveTypes<Node, trait::Apple>::AppleType>);
 
-        int apply(trait::Bread::slices) const final
+        int impl(trait::Bread::slices) const final
         {
             return getNode(trait::egg).yolks() * slices;
         }
@@ -195,11 +195,11 @@ struct VirtualOnly
 {
     struct Leaf final : IEgg, IBread
     {
-        int apply(trait::Egg::yolks) const
+        int impl(trait::Egg::yolks) const
         {
             return yolks;
         }
-        int apply(trait::Bread::slices) const
+        int impl(trait::Bread::slices) const
         {
             return slices;
         }
@@ -236,7 +236,7 @@ struct StaticBread
     {
         using Traits = di::Traits<Node, trait::Bread>;
 
-        int apply(trait::Bread::slices) const
+        int impl(trait::Bread::slices) const
         {
             return slices + getNode(trait::egg).yolks();
         }
@@ -257,8 +257,8 @@ struct BreadFacade
             , trait::Bread*(IBread::Types)
         >;
 
-        int apply(trait::Apple::seeds) const { return 0; }
-        bool apply(trait::Apple::testExchange)
+        int impl(trait::Apple::seeds) const { return 0; }
+        bool impl(trait::Apple::testExchange)
         {
             if constexpr (di::IsVirtualContext<Context>)
             {
@@ -271,7 +271,7 @@ struct BreadFacade
             return false;
         }
 
-        int apply(trait::Bread::slices) const
+        int impl(trait::Bread::slices) const
         {
             return test + getNode(trait::bread).slices();
         }
@@ -289,7 +289,7 @@ struct EggDouble
     {
         using Traits = di::Traits<Node, trait::Egg>;
 
-        int apply(trait::Egg::yolks) const { return yolks; }
+        int impl(trait::Egg::yolks) const { return yolks; }
 
         explicit Node(int yolks = 1) : yolks(yolks) {}
         int yolks;
@@ -314,7 +314,7 @@ struct EggFacade
     {
         using Traits = di::Traits<Node, trait::Egg>;
 
-        int apply(trait::Egg::yolks) const
+        int impl(trait::Egg::yolks) const
         {
             return getNode(trait::egg).yolks();
         }
