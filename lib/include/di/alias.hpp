@@ -24,8 +24,8 @@ struct Alias final
     explicit constexpr Alias(Impl& impl, Key...) : impl(std::addressof(impl)) {}
 
     template<class Self>
-    constexpr auto& get(this Self&& self) { return std::forward_like<Self&>(*self.impl); }
-    constexpr auto* operator->(this auto&& self) { return std::addressof(self.get()); }
+    DI_INLINE constexpr auto& get(this Self&& self) { return std::forward_like<Self&>(*self.impl); }
+    DI_INLINE constexpr auto* operator->(this auto&& self) { return std::addressof(self.get()); }
 
 private:
     Impl* impl;
@@ -43,13 +43,13 @@ struct Alias<T, Key> final
     constexpr auto& get(this auto&& self) { return self; }
     constexpr auto* operator->(this auto&& self) { return std::addressof(self); }
 
-    constexpr auto apply(this auto&& self, auto&&... args)
+    DI_INLINE constexpr auto apply(this auto&& self, auto&&... args)
         -> decltype(self.impl->applyWithKey(self.key, DI_FWD(args)...))
     {
         return self.impl->applyWithKey(self.key, DI_FWD(args)...);
     }
 
-    constexpr decltype(auto) visit(this auto&& self, auto&& visitor)
+    DI_INLINE constexpr decltype(auto) visit(this auto&& self, auto&& visitor)
     {
         return self.impl->visit(DI_FWD(visitor));
     }

@@ -38,7 +38,7 @@ struct Cluster
 
     template<class Self>
     requires IsRootContext<ContextParameterOf<Self>>
-    void onConstructed(this Self& self)
+    DI_INLINE void onConstructed(this Self& self)
     {
         self.visit(detail::OnGraphConstructedVisitor{});
     }

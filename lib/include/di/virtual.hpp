@@ -304,7 +304,7 @@ template<class Interface>
 struct Virtual<Interfaces...>::Node<Context>::AsInterface : Node
 {
     template<class Self>
-    constexpr decltype(auto) apply(this Self& self, auto&&... args)
+    DI_INLINE constexpr decltype(auto) apply(this Self& self, auto&&... args)
     {
         return std::forward_like<Self&>(*get<Interface*>(self.interfaces)).apply(DI_FWD(args)...);
     }

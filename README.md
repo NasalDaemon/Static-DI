@@ -4,7 +4,7 @@
 
 ## Why Static-DI?
 
-- **True Zero Overhead:** Not only at graph construction, but also at resolution and invocation. There are no vtables, heap-allocations, runtime lookups, or hidden layers—just direct, inlinable calls.
+- **True Zero Overhead:** Not only at graph construction, but also at trait resolution and method invocation. There are no vtables, heap-allocations, runtime lookups, or hidden layers—just direct, inlinable calls.
 - **Blazing Build Speed:** Each node can compile independently (even when building with C++ modules), so you never pay for modularity with slow builds.
 - **Architecture as Code:** Declare your dependencies and boundaries using a readable DSL. Your system’s structure is explicit, enforced, and easy to understand.
 - **Testability by Default:** Swap in mocks or stubs anywhere, with full compile-time safety and zero runtime cost.
@@ -189,8 +189,9 @@ struct Alice : di::Node
     void apply(this auto& self, trait::Greeter::greet) const
     {
         std::println("Hello from Alice! I am {} years old.", self.age);
-        // Context injected via explicit object parameter `self`, gives access to other nodes
+        // Context injected via explicit object parameter `self` gives access to other nodes
         self.getNode(trait::responder).respondTo("Alice");
+        // The line above can be inlined by the compiler, as getNode and respondTo are both direct calls
     }
 
     void apply(trait::Responder::respondTo, std::string_view name) const
@@ -228,6 +229,7 @@ struct Bob
             std::println("Hello from Bob!");
             // Can call getNode directly, as Context is already injected into the state
             getNode(trait::responder).respondTo("Bob");
+            // The line above can be inlined by the compiler
         }
 
         void apply(trait::Responder::respondTo, std::string_view name) const

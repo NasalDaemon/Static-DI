@@ -13,7 +13,7 @@
 namespace di::detail {
 
 template<class Derived, class Base>
-constexpr Derived& downCast(Base& base)
+DI_INLINE constexpr Derived& downCast(Base& base)
 {
     static_assert(std::is_base_of_v<Base, Derived>);
     if constexpr (not isMsvc) // MSVC doesn't have proper EBO
@@ -22,7 +22,7 @@ constexpr Derived& downCast(Base& base)
 }
 
 template<class Derived, class Base>
-constexpr Derived const& downCast(Base const& base)
+DI_INLINE constexpr Derived const& downCast(Base const& base)
 {
     static_assert(std::is_base_of_v<Base, Derived>);
     if constexpr (not isMsvc) // MSVC doesn't have proper EBO
@@ -31,14 +31,14 @@ constexpr Derived const& downCast(Base const& base)
 }
 
 template<class Base, class Derived>
-constexpr Base& upCast(Derived& derived)
+DI_INLINE constexpr Base& upCast(Derived& derived)
 {
     static_assert(std::is_base_of_v<Base, Derived>);
     return *(Base*)std::addressof(derived);
 }
 
 template<class Base, class Derived>
-constexpr Base const& upCast(Derived const& derived)
+DI_INLINE constexpr Base const& upCast(Derived const& derived)
 {
     static_assert(std::is_base_of_v<Base, Derived>);
     return *(Base const*)std::addressof(derived);
@@ -47,13 +47,13 @@ constexpr Base const& upCast(Derived const& derived)
 using MemPtrInt = DI_IF_MSVC_ELSE(std::int32_t)(std::ptrdiff_t);
 
 template<class Class, class Member>
-MemPtrInt memPtrToInt(Member Class::* memPtr)
+DI_INLINE MemPtrInt memPtrToInt(Member Class::* memPtr)
 {
     return std::bit_cast<MemPtrInt>(memPtr);
 }
 
 template<class Class, class Member>
-Class Member::* reverseMemberPointer(Member Class::* memPtr)
+DI_INLINE Class Member::* reverseMemberPointer(Member Class::* memPtr)
 {
     // Not constexpr, but well defined (modulo implementation)
     return std::bit_cast<Class Member::*>(-memPtrToInt(memPtr));

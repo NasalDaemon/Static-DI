@@ -30,12 +30,12 @@ struct Node
     using Depends = detail::DependsImplicitly;
 
     template<class Self, std::invocable<Self&> Visitor>
-    constexpr decltype(auto) visit(this Self& self, Visitor&& visitor)
+    DI_INLINE constexpr decltype(auto) visit(this Self& self, Visitor&& visitor)
     {
         return std::invoke(DI_FWD(visitor), self);
     }
 
-    constexpr auto& getState(this auto& self) { return self; }
+    DI_INLINE constexpr auto& getState(this auto& self) { return self; }
 
 #if DI_AUTOCOMPLETE
     template<IsTrait Trait, class Key = key::Default>

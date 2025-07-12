@@ -109,6 +109,12 @@
 #   define DI_AUTOCOMPLETE 0
 #endif
 
+#if DI_COMPILER_MSVC
+#   define DI_INLINE [[msvc::forceinline]] inline
+#else
+#   define DI_INLINE [[gnu::always_inline, gnu::artificial]] inline
+#endif
+
 // Clang won't detail the failure in the build diagnostic when asserting the concept directly
 #if DI_COMPILER_CLANG
 #   define DI_ASSERT_IMPLEMENTS(Impl, Types, Trait) \
@@ -153,14 +159,14 @@
 
 #define DI_AS_FUNCTOR_METHOD(method) \
     template<::di::IsTraitView Self> \
-    constexpr decltype(auto) method(this Self&& self, ::di::AsFunctor asFunctor) \
+    DI_INLINE constexpr decltype(auto) method(this Self&& self, ::di::AsFunctor asFunctor) \
     { \
         return self.apply(method ## _c, asFunctor); \
     }
 
 #define DI_DUCK_METHOD(method) \
     template<::di::IsTraitView Self> \
-    constexpr decltype(auto) method(this Self&& self, auto&&... args) \
+    DI_INLINE constexpr decltype(auto) method(this Self&& self, auto&&... args) \
     { \
         return self.apply(method ## _c, DI_FWD(args)...); \
     }

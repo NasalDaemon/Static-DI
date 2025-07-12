@@ -38,7 +38,7 @@ namespace {{ namespace.name }} {
                 , class {{ trait.rootName }} = di::ResolveRoot<di::ContextOf<std::remove_cvref_t<Self>>>
                 {%- endif -%}
             >
-            constexpr auto {{ method.name }}(this Self{{ " const&" if method.isConst else "&&" }} self
+            DI_INLINE constexpr auto {{ method.name }}(this Self{{ " const&" if method.isConst else "&&" }} self
                 {%- for type, name in method.params -%}
                 , {{ type }}{{ type.pack }} {{ name }}
                 {%- endfor -%}

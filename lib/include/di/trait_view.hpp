@@ -39,7 +39,7 @@ struct TraitMethodFunctor
 {
     explicit constexpr TraitMethodFunctor(AliasImpl impl) : impl(impl) {}
 
-    constexpr decltype(auto) operator()(this auto&& self, auto&&... args)
+    DI_INLINE constexpr decltype(auto) operator()(this auto&& self, auto&&... args)
     {
         return self.impl->apply(Method{}, DI_FWD(args)...);
     }
@@ -113,13 +113,13 @@ struct TraitView final : Trait::Meta::Methods
     };
 
     template<IsMethodOf<Trait> Method>
-    constexpr decltype(auto) apply(this auto&& self, Method trait, auto&&... args)
+    DI_INLINE constexpr decltype(auto) apply(this auto&& self, Method trait, auto&&... args)
     {
         return self.impl->apply(trait, DI_FWD(args)...);
     }
 
     template<IsMethodOf<Trait> Method>
-    constexpr TraitMethodFunctor<Trait, Method, ImplAlias> apply(this auto&& self, Method, di::AsFunctor)
+    DI_INLINE constexpr TraitMethodFunctor<Trait, Method, ImplAlias> apply(this auto&& self, Method, di::AsFunctor)
     {
         return TraitMethodFunctor<Trait, Method, ImplAlias>(self.impl);
     }

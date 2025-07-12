@@ -45,7 +45,7 @@ namespace detail {
     struct OuterNodeProxy<OuterNode>::Node<Context>::WithTrait : Node
     {
         template<class Self>
-        constexpr decltype(auto) apply(this Self& self, auto&&... args)
+        DI_INLINE constexpr decltype(auto) apply(this Self& self, auto&&... args)
         {
             return std::forward_like<Self&>(*self.outerNode).getNode(Trait{}).apply(DI_FWD(args)...);
         }
