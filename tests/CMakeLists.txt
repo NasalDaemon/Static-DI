@@ -14,6 +14,7 @@ add_executable(di_tests_headers
 )
 add_executable(di_tests_module
     test_abc_module.cpp
+    test_collection.cpp
     test_embedded_modules.cpp
     test_node_count.cpp
     test_union.cpp
@@ -47,6 +48,7 @@ target_generate_di_modules(di_tests_module
         test_*
     EMBED
         test_embedded_modules.cpp
+        test_collection.cpp
         test_node_count.cpp
         test_virtual.cpp
 )

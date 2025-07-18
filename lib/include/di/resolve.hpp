@@ -10,6 +10,7 @@ namespace di {
 
 namespace detail {
 
+    // T has no link, so it is the target node
     template<class T, class Trait_>
     struct ResolveTrait
     {
@@ -17,10 +18,10 @@ namespace detail {
         using Node = T;
         using Trait = Trait_;
 
-        template<template<class, class> class Template>
-        using Apply = Template<Node, Trait>;
+        using Types = Node::Traits::template ResolveTypes<Trait>;
     };
 
+    // T is a context with a link to a sibling node's context
     template<class T, class Trait>
     requires HasLink<T, Trait>
     struct ResolveTrait<T, Trait>
@@ -29,7 +30,7 @@ namespace detail {
         using type = ResolveTrait<ContextToNode<typename Target::Context>, typename Target::Trait>::type;
     };
 
-    // Delegate resolution to the parent cluster's context
+    // T links to parent context
     template<class T, class Trait>
     requires LinksToParent<T, Trait>
     struct ResolveTrait<T, Trait>
@@ -43,7 +44,7 @@ namespace detail {
 DI_MODULE_EXPORT
 template<class Node, IsTrait Trait>
 requires detail::HasLink<ContextOf<Node>, Trait> and NodeDependencyAllowed<Node, Trait>
-using ResolveTypes = detail::ResolveTrait<ContextOf<Node>, Trait>::type::template Apply<NodeTypes>;
+using ResolveTypes = detail::ResolveTrait<ContextOf<Node>, Trait>::type::Types;
 
 DI_MODULE_EXPORT
 template<IsContext Context>

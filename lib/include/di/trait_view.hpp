@@ -101,6 +101,8 @@ struct TraitView final : Trait::Meta::Methods
     using Types = detail::Decompress<Types_>;
     struct Traits
     {
+        using Node = ImplAlias::Impl;
+
         template<std::same_as<TraitView> = TraitView>
         using GetContext = ContextOf<typename ImplAlias::Impl>;
 

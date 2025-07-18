@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.28)
+cmake_minimum_required(VERSION 3.31)
 
 if(CMAKE_CXX_MODULE_STD)
     # This specific value changes as experimental support evolves. See
@@ -15,10 +15,10 @@ endif()
 
 project(Static-DI VERSION 1.0 LANGUAGES CXX)
 
+option(DI_COMPRESS_TYPES "Compress recursive type names for Context, Impl, Type" FALSE)
 option(DI_BUILD_TESTS "Build tests for Static-DI" FALSE)
 option(DI_TESTS_LTO "Enable LTO when building tests" TRUE)
 option(DI_TESTS_DEBUG_SAN "Enable sanitisers when building tests in debug" TRUE)
-option(DI_COMPRESS_TYPES "Compress recursive type names for Context, Impl, Type" FALSE)
 
 if(DI_BUILD_TESTS)
     enable_testing()

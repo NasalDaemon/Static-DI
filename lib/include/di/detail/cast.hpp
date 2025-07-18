@@ -59,8 +59,21 @@ DI_INLINE Class Member::* reverseMemberPointer(Member Class::* memPtr)
     return std::bit_cast<Class Member::*>(-memPtrToInt(memPtr));
 }
 
+template<class OuterClass, class Class, class Member>
+DI_INLINE Member OuterClass::* combineMemberPointers(Class OuterClass::* outer, Member Class::* inner)
+{
+    return std::bit_cast<Member OuterClass::*>(memPtrToInt(outer) + memPtrToInt(inner));
+}
+
 template<class Class, class Member>
 Member getMemberType(Member Class::*);
+
+DI_INLINE auto& getParent(auto& node, auto memPtr)
+{
+    using StateType = decltype(getMemberType(memPtr));
+    auto& n = downCast<StateType>(node);
+    return n.*reverseMemberPointer(memPtr);
+}
 
 } // namespace di::detail
 

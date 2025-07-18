@@ -544,6 +544,8 @@ class Trait:
         self.typesName: str | None = None
         self.rootName: str | None = None
         self.infoName: str | None = None
+        self.implName: str = "Impl"
+        self.implNamed = False
         self.methods: list[Method] = []
         self.methodNames: list[str] = []
         self.requires: list[str] = []
@@ -560,6 +562,9 @@ class Trait:
                         self.rootName =  ann.children[0].value
                     elif ann.children[-1].value == "Info":
                         self.infoName =  ann.children[0].value
+                    elif ann.children[-1].value == "Impl":
+                        self.implName =  ann.children[0].value
+                        self.implNamed = True
                     else:
                         raise SyntaxError(f"{getPos(ann)} Unknown trait annotation: {ann.children[0].value}")
             elif c.data == imported('trait_body'):
@@ -749,7 +754,7 @@ class Repr:
 templateLoader = jinja2.FileSystemLoader(searchpath=dirPath)
 templateEnv = jinja2.Environment(loader=templateLoader, trim_blocks=True, lstrip_blocks=True)
 template = templateEnv.get_template(f"template.{'ixx' if isModule else 'hxx'}.jinja")
-outputText = template.render(repr=Repr(parsed), export="export " if isModule else "")
+outputText = template.render(repr=Repr(parsed), export="export " if isModule else "DI_MODULE_EXPORT\n")
 
 with open(outputFile, 'a+') as file:
     file.seek(0)

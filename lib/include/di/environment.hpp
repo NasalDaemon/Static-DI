@@ -12,8 +12,8 @@
 namespace di {
 
 DI_MODULE_EXPORT
-template<class E, class Tag>
-struct EnvironmentOverlay : Tag
+template<class E, class Target>
+struct EnvironmentOverlay : Target
 {
     using Environment = E;
 };

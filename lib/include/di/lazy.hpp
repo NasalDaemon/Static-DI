@@ -52,8 +52,8 @@ struct Lazy
         Variant mutable state;
 
         template<class Trait>
-        requires detail::TraitsHasTrait<typename NodeState::Traits, Trait>
-        using TraitsTemplate = di::ResolvedTrait<Node, typename NodeState::Types>;
+        requires HasTrait<NodeState, Trait>
+        using TraitsTemplate = di::ResolvedTrait<Node, typename detail::ResolveTrait<NodeState, Trait>::type::Types>;
 
     public:
         using Traits = di::TraitsTemplate<Node, TraitsTemplate>;

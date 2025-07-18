@@ -198,6 +198,9 @@
         return (__VA_ARGS__); \
     })
 
+#define DI_EMPLACE(...) \
+    ::di::Emplace([&](auto t) { return typename decltype(t)::type{__VA_ARGS__}; })
+
 #if DI_COMPILER_CLANG
 #pragma clang diagnostic pop
 #endif

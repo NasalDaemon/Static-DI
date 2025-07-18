@@ -2,6 +2,7 @@
 #define INCLUDE_DI_NODE_FWD_HPP
 
 #include "di/detail/concepts.hpp"
+#include "di/factory.hpp"
 #include "di/macros.hpp"
 #include "di/trait.hpp"
 
@@ -14,6 +15,12 @@ namespace di {
 
 DI_MODULE_EXPORT
 struct Node;
+
+DI_MODULE_EXPORT
+struct PeerNode;
+
+DI_MODULE_EXPORT
+struct PeerNodeOpen;
 
 DI_MODULE_EXPORT
 template<class T>
@@ -33,6 +40,12 @@ template<class Interface, class Context>
 struct WrappedImpl : Interface
 {
     using Interface::Interface;
+
+    template<class F>
+    explicit constexpr WrappedImpl(Emplace<F> const& f)
+        : Interface(f)
+    {}
+
     using Traits = WrapNode<typename Interface::Traits::Node>::template Traits<Context>;
 };
 
@@ -60,9 +73,23 @@ DI_MODULE_EXPORT
 template<IsNodeHandle T>
 using ToNodeWrapper = decltype(detail::toNodeWrapper<T>());
 
-DI_MODULE_EXPORT
-template<class Node, IsTrait Trait = di::Trait>
-using NodeTypes = std::remove_cvref_t<Node>::Traits::template ResolveTypes<Trait>;
+namespace detail {
+    template<IsNode Node>
+    struct NodeState;
+
+    template<IsNode T>
+    auto nodeState() -> NodeState<T>;
+    template<class T>
+    auto nodeState() -> T;
+
+    template<class T>
+    void isNodeState(NodeState<T> const&);
+    template<class T>
+    concept IsNodeState = requires { detail::isNodeState(std::declval<T const&>()); };
+
+    template<class T>
+    using ToNodeState = decltype(nodeState<T>());
+}
 
 DI_MODULE_EXPORT
 template<template<class> class NodeTmpl>

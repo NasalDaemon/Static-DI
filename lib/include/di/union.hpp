@@ -2,6 +2,7 @@
 #define INCLUDE_DI_UNION_HPP
 
 #include "di/detail/cast.hpp"
+#include "di/detail/concepts.hpp"
 #include "di/detail/select.hpp"
 #include "di/detail/type_at.hpp"
 #include "di/detail/with_index.hpp"
@@ -12,6 +13,7 @@
 #include "di/link.hpp"
 #include "di/macros.hpp"
 #include "di/node.hpp"
+#include "di/resolve.hpp"
 #include "di/traits.hpp"
 #include "di/trait_view.hpp"
 
@@ -47,10 +49,16 @@ struct Union
                 auto const nodePtr = std::bit_cast<Node OptionNode::*>(-detail::memPtrToInt(&Node::bytes));
                 return Context{}.getNode(detail::downCast<OptionNode>(option).*nodePtr, trait);
             }
+
+            template<class Self>
+            void getPeerMemPtr(this Self)
+            {
+                static_assert(detail::alwaysFalse<Self>, "May not access peers from within di::Union");
+            }
         };
 
         template<class Option>
-        using ToNode = ToNodeWrapper<Option>::template Node<detail::CompressContext<InnerContext>>;
+        using ToNode = detail::ToNodeState<typename ToNodeWrapper<Option>::template Node<detail::CompressContext<InnerContext>>>;
 
     public:
         template<std::size_t I>
@@ -59,7 +67,7 @@ struct Union
         static constexpr bool isUnary() { return (... and ToNode<Options>::isUnary()); }
 
         template<std::size_t I, class Trait>
-        struct TypesAtT : NodeTypes<NodeAt<I>, Trait>
+        struct TypesAtT : detail::ResolveTrait<NodeAt<I>, Trait>::type::Types
         {
             static constexpr std::size_t TypesCount = sizeof...(Options);
             template<std::size_t UnionIndex>
@@ -70,7 +78,7 @@ struct Union
         struct AsTrait;
 
         template<class Trait>
-        requires detail::TraitsHasTrait<typename NodeAt<0>::Traits, Trait>
+        requires HasTrait<NodeAt<0>, Trait>
         using TraitsTemplate = di::ResolvedTrait<AsTrait<Trait>, TypesAtT<0, Trait>>;
 
         using Traits = di::TraitsTemplate<Node, TraitsTemplate>;

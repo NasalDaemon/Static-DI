@@ -6,14 +6,16 @@
 
 #include "di/context_fwd.hpp"
 #include "di/depends.hpp"
+#include "di/empty_types.hpp"
 #include "di/environment.hpp"
+#include "di/factory.hpp"
 #include "di/key.hpp"
 #include "di/macros.hpp"
 #include "di/node_fwd.hpp"
+#include "di/peer.hxx"
 #include "di/trait.hpp"
 #include "di/trait_view.hpp"
 #include "di/traits_fwd.hpp"
-#include "di/empty_types.hpp"
 
 #if !DI_IMPORT_STD
 #include <functional>
@@ -103,6 +105,41 @@ struct Node
     }
 };
 
+struct PeerNode : Node
+{
+    template<class Self>
+    requires IsCollectionContext<ContextOf<Self>>
+    constexpr auto const& getPeerId(this Self& self)
+    {
+        using ThisNode = Self::Traits::Node;
+        auto& node = detail::upCast<ThisNode>(self);
+        return detail::getParent(node, ContextOf<Self>{}.getPeerMemPtr()).id;
+    }
+
+    template<class Self>
+    requires IsCollectionContext<ContextOf<Self>> and HasTrait<Self, trait::Peer>
+    constexpr auto getPeers(this Self& self)
+    {
+        using ThisNode = Self::Traits::Node;
+        auto& node = detail::upCast<ThisNode>(self);
+        auto memPtr = ContextOf<Self>{}.getPeerMemPtr();
+        return detail::getParent(node, memPtr).template getPeers<Self>(memPtr);
+    }
+
+    // Default impl of di::trait::Peer is to have no peers
+    constexpr std::false_type impl(this auto const&, trait::Peer::isPeerId) { return {}; }
+    template<class Self>
+    constexpr std::false_type impl(this Self const&, trait::Peer::isPeerInstance, Self const&) { return {}; }
+};
+
+struct PeerNodeOpen : PeerNode
+{
+    // Default impl of di::trait::Peer is to accept all peers
+    constexpr std::true_type impl(this auto const&, trait::Peer::isPeerId) { return {}; }
+    template<class Self>
+    constexpr std::true_type impl(this Self const&, trait::Peer::isPeerInstance, Self const&) { return {}; }
+};
+
 template<IsNode NodeT>
 struct WrapNode
 {
@@ -129,6 +166,45 @@ struct WrapNode
     template<class Context>
     using Traits = GetTraits<Context>::Traits;
 };
+
+namespace detail {
+
+    template<IsNode Node>
+    struct NodeState : private Node
+    {
+        using Node::Node;
+
+        template<class F>
+        explicit constexpr NodeState(Emplace<F> const& f)
+            : Node(f)
+        {}
+
+        // Expose utility functions from the underlying node
+        using Traits = Node::Traits;
+        using Depends = Node::Depends;
+        using Environment = Node::Environment;
+        using Node::isUnary;
+        using Node::getNode;
+        using Node::canGetNode;
+        using Node::asTrait;
+        using Node::hasTrait;
+
+        constexpr decltype(auto) visit(this auto& self, auto&& f)
+        {
+            return upCast<Node>(self).visit(DI_FWD(f));
+        }
+
+        template<class Self>
+        constexpr auto& getState(this Self& self)
+        {
+            ContextOf<Self>::Info::template assertAccessible<typename Self::Environment>();
+            return upCast<Node>(self).getState();
+        }
+
+        constexpr auto* operator->(this auto& self) { return std::addressof(self.getState()); }
+    };
+
+} // namespace detail
 
 } // namespace di
 

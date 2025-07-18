@@ -27,6 +27,10 @@ concept IsContext = std::is_base_of_v<detail::ContextBase, T> and std::is_empty_
     T::Depth;
 };
 
+DI_MODULE_EXPORT
+template<class Context>
+concept IsCollectionContext = IsContext<Context> and requires { typename Context::Info::CollectionContext; };
+
 namespace detail {
     template<template<class> class NodeTmpl, IsContext Context>
     constexpr Context getContextParameter(NodeTmpl<Context> const&)
@@ -54,24 +58,9 @@ DI_MODULE_EXPORT
 template<IsContext Context>
 using ContextToNode = Context::template NodeTmpl<Context>;
 
-namespace detail {
-    template<IsNode Node>
-    struct NodeState;
-
-    template<IsNode T>
-    auto nodeState() -> NodeState<T>;
-    template<class T>
-    auto nodeState() -> T;
-
-    template<class T>
-    void isNodeState(NodeState<T> const&);
-    template<class T>
-    concept IsNodeState = requires { detail::isNodeState(std::declval<T const&>()); };
-}
-
 DI_MODULE_EXPORT
 template<IsContext Context>
-using ContextToNodeState = decltype(detail::nodeState<ContextToNode<Context>>());
+using ContextToNodeState = detail::ToNodeState<ContextToNode<Context>>;
 
 DI_MODULE_EXPORT
 struct NullContext;

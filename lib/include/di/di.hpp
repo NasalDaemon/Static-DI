@@ -5,6 +5,7 @@
 
 #include "di/adapt.hpp"
 #include "di/box.hpp"
+#include "di/collection.hpp"
 #include "di/combine.hpp"
 #include "di/lazy.hpp"
 #include "di/mock.hpp"

@@ -3,6 +3,7 @@
 
 #include "di/detail/compress.hpp"
 #include "di/macros.hpp"
+#include "di/node_fwd.hpp"
 #include "di/empty_types.hpp"
 
 #if !DI_IMPORT_STD
@@ -16,6 +17,9 @@ DI_MODULE_EXPORT
 struct Node;
 DI_MODULE_EXPORT
 struct Cluster;
+DI_MODULE_EXPORT
+template<class ID, IsNodeHandle NodeHandle>
+struct Collection;
 
 namespace detail {
 
@@ -28,6 +32,9 @@ namespace detail {
         friend struct di::Node;
         friend struct di::Cluster;
         friend struct di::detail::ContextBase;
+        template<class ID, IsNodeHandle NodeHandle>
+        friend struct di::Collection;
+
         AsRef() = default;
     };
 

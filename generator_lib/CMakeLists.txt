@@ -263,7 +263,12 @@ function(target_generate_di_headers TARGET_NAME)
 
     add_dependencies(${TARGET_NAME} ${CUSTOM_TARGET})
 
-    target_include_directories(${TARGET_NAME} PUBLIC ${DI_GENERATOR_INCLUDE_DIR})
+    get_target_property(type ${TARGET_NAME} TYPE)
+    if (${type} STREQUAL "INTERFACE_LIBRARY")
+        target_include_directories(${TARGET_NAME} INTERFACE ${DI_GENERATOR_INCLUDE_DIR})
+    else()
+        target_include_directories(${TARGET_NAME} PUBLIC ${DI_GENERATOR_INCLUDE_DIR})
+    endif()
 
     list(APPEND INPUT_FILES ${arg_FILES})
     list(SORT INPUT_FILES)

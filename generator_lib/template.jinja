@@ -37,6 +37,12 @@ namespace {{ namespace.name }} {
                 {%- if trait.rootName -%}
                 , class {{ trait.rootName }} = di::ResolveRoot<di::ContextOf<std::remove_cvref_t<Self>>>
                 {%- endif -%}
+                {%- if trait.infoName -%}
+                , class {{ trait.infoName }} = di::ResolveInfo<di::ContextOf<std::remove_cvref_t<Self>>>
+                {%- endif -%}
+                {%- if trait.implNamed -%}
+                , class {{ trait.implName }} = std::remove_cvref_t<Self>::Traits::Node
+                {%- endif -%}
             >
             DI_INLINE constexpr auto {{ method.name }}(this Self{{ " const&" if method.isConst else "&&" }} self
                 {%- for type, name in method.params -%}
@@ -60,17 +66,17 @@ namespace {{ namespace.name }} {
         };
     };
 
-    template<class Self, class Impl, class {{ trait.typesName or "" }}
+    template<class Self, class {{ trait.implName }}, class {{ trait.typesName or "" }}
     {%- if trait.rootName -%}
-        , class {{ trait.rootName }} = di::ResolveRoot<di::ContextOf<Impl>>
+        , class {{ trait.rootName }} = di::ResolveRoot<di::ContextOf<{{ trait.implName }}>>
     {%- endif -%}
     {%- if trait.infoName -%}
-        , class {{ trait.infoName }} = di::ResolveInfo<di::ContextOf<Impl>>
+        , class {{ trait.infoName }} = di::ResolveInfo<di::ContextOf<{{ trait.implName }}>>
     {%- endif -%}
     >
-    requires requires (Impl impl_, Impl const const_)
+    requires requires ({{ trait.implName }} impl_, {{ trait.implName }} const const_)
     {
-        typename Impl::Traits;
+        typename {{ trait.implName }}::Traits;
         {% for require in trait.requires %}
         {{ require }}
         {% endfor %}

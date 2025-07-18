@@ -24,14 +24,15 @@ namespace di {
 namespace detail {
     struct ContextBase
     {
-        // Impl of sibling node
+        // Get sibling node
         template<IsContext Self_, IsTrait Trait>
         requires detail::HasLink<Self_, Trait>
         constexpr auto getNode(this Self_, auto& node, Trait)
         {
             using Self = detail::Decompress<Self_>;
             using Other = detail::ResolveLink<Self, Trait>;
-            auto& otherNode = getCluster<Self>(node).*getNodePointer(AdlTag<typename Other::Context>{});
+            auto memPtr = getNodePointer(AdlTag<Self>{});
+            auto& otherNode = getParent(node, memPtr).*getNodePointer(AdlTag<typename Other::Context>{});
             return otherNode.asTrait(detail::AsRef{}, typename Other::Trait{});
         }
 
@@ -41,48 +42,19 @@ namespace detail {
         constexpr auto getNode(this Self_, auto& node, Trait)
         {
             using Self = detail::Decompress<Self_>;
-            return getCluster<Self>(node).getNode(detail::AsRef{}, detail::ResolveLinkTrait<Self, Trait>{});
+            auto memPtr = getNodePointer(AdlTag<Self>{});
+            return typename Self::ParentContext{}.getNode(getParent(node, memPtr), detail::ResolveLinkTrait<Self, Trait>{});
         }
 
-    private:
-        template<class Self>
-        inline static auto& getCluster(auto& node)
+        // Get member pointer to this node from the hosting collection's element
+        template<IsCollectionContext Self_>
+        constexpr auto getPeerMemPtr(this Self_)
         {
-            DI_IF_NOT_MSVC(constexpr) auto memPtr = getNodePointer(AdlTag<Self>{});
-            using StateType = decltype(getMemberType(memPtr));
-            auto& n = downCast<StateType>(node);
-            return n.*reverseMemberPointer(memPtr);
+            using Self = detail::Decompress<Self_>;
+            auto parentMemPtr = typename Self::ParentContext{}.getPeerMemPtr();
+            auto memPtr = getNodePointer(AdlTag<Self>{});
+            return combineMemberPointers(parentMemPtr, memPtr);
         }
-    };
-
-    template<IsNode Node>
-    struct NodeState : private Node
-    {
-        using Node::Node;
-
-        // Expose utility functions from the underlying node
-        using Traits = Node::Traits;
-        using Depends = Node::Depends;
-        using Environment = Node::Environment;
-        using Node::isUnary;
-        using Node::getNode;
-        using Node::canGetNode;
-        using Node::asTrait;
-        using Node::hasTrait;
-
-        constexpr decltype(auto) visit(this auto& self, auto&& f)
-        {
-            return upCast<Node>(self).visit(DI_FWD(f));
-        }
-
-        template<class Self>
-        constexpr auto& getState(this Self& self)
-        {
-            ContextOf<Self>::Info::template assertAccessible<typename Self::Environment>();
-            return upCast<Node>(self).getState();
-        }
-
-        constexpr auto* operator->(this auto& self) { return std::addressof(self.getState()); }
     };
 }
 

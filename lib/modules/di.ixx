@@ -26,7 +26,7 @@ export namespace di {
     using di::args;
     using di::IsArgs;
     using di::IsArgsOf;
-    // box
+    // box.hpp
     using di::BoxWithRoot;
     using di::boxWithRoot;
     using di::Box;
@@ -36,6 +36,13 @@ export namespace di {
     using di::IsCluster;
     using di::Domain;
     using di::DomainParams;
+    // collection.hpp
+    namespace key {
+        using key::Element;
+        using key::Elements;
+        using key::allElements;
+    }
+    using di::Collection;
     // combine.hpp
     using di::Combine;
     // compiler.hpp
@@ -52,6 +59,7 @@ export namespace di {
     // context_fwd.hpp
     using di::Context;
     using di::IsContext;
+    using di::IsCollectionContext;
     using di::ContextParameterOf;
     using di::ContextOf;
     using di::ContextToNode;
@@ -95,6 +103,7 @@ export namespace di {
     using di::WithFactory;
     using di::withFactory;
     using di::Constructor;
+    using di::Emplace;
     // graph.hpp
     using di::InlineGraph;
     using di::Graph;
@@ -129,11 +138,16 @@ export namespace di {
     using di::IsWrappedImpl;
     using di::IsNodeHandle;
     using di::ToNodeWrapper;
-    using di::NodeTypes;
     using di::InlineNode;
     using di::NodeHasDepends;
     using di::NodeDependencyAllowed;
     using di::NodeDependenciesSatisfied;
+    using di::PeerNode;
+    using di::PeerNodeOpen;
+    // peer.hxx
+    namespace trait {
+        using trait::Peer;
+    }
     // repeater.hpp
     using di::Repeater;
     using di::RepeaterTrait;

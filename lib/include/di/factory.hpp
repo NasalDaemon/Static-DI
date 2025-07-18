@@ -3,6 +3,10 @@
 
 #include "di/macros.hpp"
 
+#if !DI_IMPORT_STD
+#include <concepts>
+#endif
+
 namespace di {
 
 DI_MODULE_EXPORT
@@ -21,6 +25,23 @@ struct Constructor
         return Type{DI_FWD(args)...};
     }
 };
+
+DI_MODULE_EXPORT
+template<class F>
+struct Emplace
+{
+    template<class Type>
+    explicit constexpr operator Type() const
+    {
+        std::same_as<Type> decltype(auto) result = factory(Constructor<Type>{});
+        return result;
+    }
+
+    [[no_unique_address]] F factory;
+};
+
+template<class F>
+Emplace(F) -> Emplace<F>;
 
 }
 

@@ -8,8 +8,12 @@ target_compile_features(di_lib INTERFACE cxx_std_23)
 target_compile_features(di_module_lib PUBLIC cxx_std_23)
 
 target_include_directories(di_lib INTERFACE include macros/include)
-# Do not expose the underlying di header library from the module lib
-target_include_directories(di_module_lib PRIVATE include PUBLIC macros/include)
+
+# Do not expose the underlying di header library from the module lib (apart from macros)
+target_link_libraries(di_module_lib PRIVATE di_lib)
+target_include_directories(di_module_lib PUBLIC macros/include)
+
+target_generate_di_headers(di_lib INCLUDE_DIR include)
 
 target_sources(di_module_lib
     PUBLIC FILE_SET CXX_MODULES FILES

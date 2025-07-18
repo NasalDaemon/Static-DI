@@ -131,6 +131,12 @@ struct Virtual
                 Node* virtualHost = Impl<ImplNode>::getVirtualHost(std::addressof(impl));
                 return virtualContext.getNode(std::forward_like<N&>(*virtualHost), trait);
             }
+
+            template<class Self>
+            void getPeerMemPtr(this Self)
+            {
+                static_assert(detail::alwaysFalse<Self>, "May not access peers from within di::Virtual");
+            }
         };
 
         template<IsNodeHandle T>

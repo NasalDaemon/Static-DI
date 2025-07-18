@@ -12,6 +12,8 @@
 {% if repr.hasTrait %}
 #include "di/manual/trait.hpp"
 
+#if !DI_IMPORT_STD
 #include <concepts>
+#endif
 {% endif %}
 {% extends "template.jinja" %}
