@@ -58,7 +58,7 @@ trait Ellie3 = Ellie
 
 trait Visitable
 {
-    count(int& counter) -> void
+    visit(int& counter) -> void
 }
 
 }

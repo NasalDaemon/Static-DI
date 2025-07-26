@@ -51,7 +51,7 @@ struct Cluster
             [&visitor]<IsNode Node>(Node& node)
             {
                 if constexpr (HasTrait<Node, Trait>)
-                    node.asTrait(Trait{}).visit(visitor);
+                    node.asTrait(Trait{})->visit(visitor);
             });
     }
 

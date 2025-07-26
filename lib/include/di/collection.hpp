@@ -2,6 +2,7 @@
 #include "di/detail/cast.hpp"
 
 #include "di/context_fwd.hpp"
+#include "di/detail/concepts.hpp"
 #include "di/empty_types.hpp"
 #include "di/key.hpp"
 #include "di/macros.hpp"
@@ -11,10 +12,12 @@
 
 #if !DI_IMPORT_STD
 #include <algorithm>
-#include <stdexcept>
-#include <vector>
+#include <iterator>
+#include <memory>
 #include <ranges>
+#include <stdexcept>
 #include <type_traits>
+#include <vector>
 #endif
 
 namespace di {
@@ -68,6 +71,17 @@ struct Collection
         struct ElementContext;
 
         using ElementNode = detail::ToNodeState<typename ToNodeWrapper<NodeHandle>::template Node<detail::CompressContext<ElementContext>>>;
+
+        struct Handle
+        {
+            Handle() = delete;
+            auto operator<=>(Handle const&) const = default;
+        private:
+            friend Node;
+            constexpr explicit Handle(std::size_t index) : index(index) {}
+            std::size_t index;
+        };
+
         struct Element
         {
             ID id;
@@ -100,6 +114,11 @@ struct Collection
                             return detail::downCast<Caller>(detail::upCast<CallerNode>(el.*elToNodeMemPtr));
                         });
             }
+
+            constexpr Handle getElementHandle() const
+            {
+                return Handle(this - std::to_address(collection->elements.begin()));
+            }
         };
 
         struct ElementContext : Context
@@ -124,14 +143,14 @@ struct Collection
             };
 
         private:
-            static constexpr auto const& getElement(auto& node)
+            static constexpr auto& getElement(auto& node)
             {
                 return detail::downCast<ElementNode>(node).*detail::reverseMemberPointer(&Element::node);
             }
             template<class InnerNode>
-            static constexpr auto const& getCollection(InnerNode& node)
+            static constexpr auto& getCollection(InnerNode& node)
             {
-                return *getElement(node).collection;
+                return std::forward_like<InnerNode&>(*getElement(node).collection);
             }
         };
 
@@ -143,6 +162,7 @@ struct Collection
         using TraitsTemplate = di::ResolvedTrait<AsTrait<Trait>, typename detail::ResolveTrait<ElementNode, Trait>::type::Types>;
 
         std::vector<Element> elements;
+        std::vector<ID> ids;
 
         constexpr void add(ID const& id, auto&&... args)
         {
@@ -151,6 +171,7 @@ struct Collection
                 throw std::length_error("Collection capacity exceeded");
             if (getId(id) != nullptr)
                 throw std::invalid_argument("ID already exists in collection");
+            ids.push_back(id);
             elements.emplace_back(id, this, DI_FWD(args)...);
         }
 
@@ -158,17 +179,20 @@ struct Collection
         constexpr explicit Node(std::size_t capacity, auto adder)
         {
             elements.reserve(capacity);
+            ids.reserve(capacity);
             adder([this](ID const& id, auto&&... args) { this->add(id, DI_FWD(args)...); });
         }
 
         constexpr Node(Node const& other)
             : elements(other.elements)
+            , ids(other.ids)
         {
             for (auto& element : elements)
                 element.collection = this;
         }
         constexpr Node(Node&& other)
             : elements(std::move(other.elements))
+            , ids(std::move(other.ids))
         {
             for (auto& element : elements)
                 element.collection = this;
@@ -178,12 +202,9 @@ struct Collection
 
         constexpr auto* getId(this auto& self, ID const& id)
         {
-            auto const it = std::find_if(
-                self.elements.begin(),
-                self.elements.end(),
-                [&](auto const& element) { return element.id == id; });
-            return it != self.elements.end()
-                ? std::addressof(it->node)
+            auto const it = std::find(self.ids.begin(), self.ids.end(), id);
+            return it != self.ids.end()
+                ? std::addressof(self.elements[std::distance(self.ids.begin(), it)].node)
                 : nullptr;
         }
     };
@@ -194,14 +215,26 @@ template<class Context>
 template<class Trait>
 struct Collection<ID, NodeHandle>::Node<Context>::AsTrait : Node
 {
-    template<class Source>
-    constexpr auto finalize(this auto& self, Source& source, key::Element<ID> key)
+    constexpr auto finalize(this auto& self, auto& source, key::Element<ID> key)
     {
         auto* const element = self.getId(key.id);
         if (element == nullptr) [[unlikely]]
             throw std::out_of_range("Element with given ID does not exist in collection");
         auto target = element->asTrait(detail::AsRef{}, Trait{});
         return target.ptr->finalize(source, key::Default{});
+    }
+
+    constexpr auto finalize(this auto& self, auto& source, key::Element<Handle> key)
+    {
+        auto& element = self.elements[key.id.index].node;
+        auto target = element.asTrait(detail::AsRef{}, Trait{});
+        return target.ptr->finalize(source, key::Default{});
+    }
+
+    template<class T>
+    constexpr auto finalize(this auto&, auto&, key::Element<T>)
+    {
+        static_assert(std::is_same_v<T, ID>, "T is not ID or Handle");
     }
 
     template<class Source, class P>

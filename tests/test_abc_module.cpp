@@ -62,6 +62,6 @@ TEST_CASE("abc module")
     CHECK(101 == e3.get());
 
     int visitableCounter = 0;
-    g.visitTrait(trait::visitable, [&](auto v) { v.count(visitableCounter); });
+    g.visitTrait(trait::visitable, [&](auto v) { v.visit(visitableCounter); });
     CHECK(visitableCounter == 2);
 }

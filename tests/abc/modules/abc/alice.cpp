@@ -13,9 +13,9 @@ void abc::Alice::NodeBase::onGraphConstructed()
     std::puts("Constructed Alice");
 }
 
-void abc::Alice::NodeBase::impl(trait::Visitable::count, int& counter)
+void abc::Alice::NodeBase::impl(trait::Visitable::visit, int& counter)
 {
-    std::puts("trait::Visitable::count: Visited Alice");
+    std::puts("trait::Visitable::visit: Visited Alice");
     counter++;
 }
 

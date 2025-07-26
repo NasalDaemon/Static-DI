@@ -58,6 +58,14 @@ namespace detail {
     };
 }
 
+struct AutoCompleteTraitNodeView
+{
+    DI_INLINE constexpr auto* operator->(this auto&& self) { return std::addressof(self); }
+
+    constexpr detail::Unknown visit(this auto&& self, auto&& visitor);
+    constexpr detail::Unknown getElementId() const;
+};
+
 DI_MODULE_EXPORT
 template<IsTrait Trait>
 struct AutoCompleteTraitView final : Trait::Meta::Methods
@@ -78,8 +86,44 @@ struct AutoCompleteTraitView final : Trait::Meta::Methods
     template<IsMethodOf<Trait> Method>
     constexpr detail::Unknown impl(this auto&&, Method, auto&&...);
 
-    constexpr detail::Unknown visit(this auto&& self, auto&& visitor);
+    constexpr AutoCompleteTraitNodeView operator->() const { return {}; }
 };
+
+template<IsTrait Trait, class ImplAlias>
+struct TraitNodeView final
+{
+    constexpr explicit TraitNodeView(Trait, ImplAlias alias) : alias(alias) {}
+
+    DI_INLINE constexpr auto* operator->(this auto&& self) { return std::addressof(self); }
+
+    // Visit the TraitView of the concrete implementation (e.g. active node of union)
+    template<class Visitor>
+    constexpr decltype(auto) visit(this auto&& self, Visitor&& visitor)
+    {
+        return self.alias->visit(
+            [&](auto& impl) -> decltype(auto)
+            {
+                return std::invoke(DI_FWD(Visitor, visitor), impl.asTrait(Trait{}));
+            });
+    }
+
+    DI_INLINE constexpr auto const& getElementId() const
+    {
+        return alias->getElementId();
+    }
+
+    DI_INLINE constexpr auto getElementHandle() const
+    {
+        return alias->getElementHandle();
+    }
+
+private:
+    ImplAlias alias;
+};
+
+// Preserve constness of ImplAlias when constructing from TraitView
+template<IsTrait Trait, class ImplAlias>
+TraitNodeView(Trait, ImplAlias&) -> TraitNodeView<Trait, ImplAlias>;
 
 // Presents a view over a trait implementation, where only the trait trait functions are accessible
 DI_MODULE_EXPORT
@@ -125,15 +169,9 @@ struct TraitView final : Trait::Meta::Methods
         return TraitMethodFunctor<Trait, Method, ImplAlias>(self.alias);
     }
 
-    // Visit the TraitView of the concrete implementation (e.g. active node of union)
-    template<class Visitor>
-    constexpr decltype(auto) visit(this auto&& self, Visitor&& visitor)
+    DI_INLINE auto operator->(this auto&& self)
     {
-        return self.alias->visit(
-            [&](auto& impl) -> decltype(auto)
-            {
-                return std::invoke(DI_FWD(Visitor, visitor), impl.asTrait(Trait{}));
-            });
+        return TraitNodeView(Trait{}, self.alias);
     }
 
 private:

@@ -121,6 +121,14 @@ struct ShopRestAPI
     template<class Context>
     struct Node : di::Node
     {
+        using Depends = di::Depends<
+              trait::ShopResponse
+            , trait::CustomerRequest
+            , trait::DeliveryRequest
+            , trait::OrderRequest
+            , trait::OrderCancel
+        >;
+
         using Traits = di::Traits<Node
             , trait::ShopRequest
             , trait::CustomerResponse
@@ -155,7 +163,7 @@ struct ShopRestAPI
         }
 
         template<class T>
-        void updateFlow(RequestId reqId, T::NewOrderFlow* memPtr, T const& value)
+        void updateFlow(RequestId reqId, T NewOrderFlow::* memPtr, auto const& value)
         {
             if (auto flowIt = newOrderFlows.find(reqId); it != newOrderFlows.end())
             {
@@ -174,12 +182,12 @@ struct ShopRestAPI
         void onResponseReady(NewOrderFlow const& flow)
         {
             ShopRespose res;
-            if (not *flow.canAfford)
+            if (not flow.canAfford.value_or(true))
             {
                 res.success = false;
                 res.failureReason = "Not enough funds";
             }
-            else if (not *flow.canDeliver)
+            else if (not flow.canDeliver.value_or(true))
             {
                 res.sucess = false;
                 res.failureReason = "Not enough stock";
@@ -208,7 +216,10 @@ struct ShopRestAPI
 
             bool readyToRespond() const
             {
-                return canAfford and (not *canAfford or canDeliver);
+                // We are ready to respond if we have received both canAfford and canDeliver responses
+                // or if one of them is false, indicating a failure condition
+                return canAfford.has_value() and canDeliver.has_value()
+                    or (not canAfford.value_or(true) or not canDeliver.value_or(true));
             }
         };
 

@@ -77,7 +77,7 @@ struct ElementNode : di::PeerNode
     template<class Self>
     bool impl(this Self const& self, di::trait::Peer::isPeerId, auto id)
     {
-        CHECK(id != self.getPeerId());
+        CHECK(id != self.getElementId());
         return true;
     }
 
@@ -104,7 +104,7 @@ struct OutsideNode
             return i;
         }
 
-        int getElement(int id) const
+        int getElement(auto id) const
         {
             return getNode(trait::element, key::Element(id)).get();
         }
@@ -128,10 +128,21 @@ TEST_CASE("di::Collection")
         }},
     };
 
+    CHECK(g.asTrait(trait::element, key::Element(0))->getElementId() == 0);
+    CHECK(g.asTrait(trait::element, key::Element(1))->getElementId() == 1);
+
     CHECK(g.asTrait(trait::element, key::Element(0)).get() == 10);
     CHECK(g.asTrait(trait::element, key::Element(1)).get() == 11);
     CHECK(g.outside->getElement(0) == 10);
     CHECK(g.outside->getElement(1) == 11);
+
+    auto handle0 = g.asTrait(trait::element, key::Element(0))->getElementHandle();
+    auto handle1 = g.asTrait(trait::element, key::Element(1))->getElementHandle();
+
+    CHECK(g.asTrait(trait::element, key::Element(handle0)).get() == 10);
+    CHECK(g.asTrait(trait::element, key::Element(handle1)).get() == 11);
+    CHECK(g.outside->getElement(handle0) == 10);
+    CHECK(g.outside->getElement(handle1) == 11);
 
     CHECK(g.collection->getId(0)->getNode(trait::outside).get() == 10);
 

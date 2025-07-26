@@ -263,12 +263,12 @@ int main()
     // Graph is a single object on the stack containing all nodes
     static_assert(sizeof(graph) == 2 * sizeof(int));
 
-    graph.alice.asTrait(trait::greeter).hello();
+    graph.alice.asTrait(trait::greeter).greet();
     // Output:
     // Hello from Alice! I am 29 years old.
     // Well met, Alice. I am Bob of 30 years!
 
-    graph.bob.asTrait(trait::greeter).hello();
+    graph.bob.asTrait(trait::greeter).greet();
     // Output:
     // Hello from Bob! I am 30 years old.
     // Well met, Bob. I am Alice of 29 years!

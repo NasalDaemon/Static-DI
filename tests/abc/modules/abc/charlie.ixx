@@ -77,9 +77,9 @@ struct Charlie
 
         void onGraphConstructed() { std::puts("Constructed Charlie"); }
 
-        void impl(trait::Visitable::count, int& counter)
+        void impl(trait::Visitable::visit, int& counter)
         {
-            std::puts("trait::Visitable::count: Visited Charlie");
+            std::puts("trait::Visitable::visit: Visited Charlie");
             counter++;
         }
 

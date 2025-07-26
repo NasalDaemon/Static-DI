@@ -142,6 +142,7 @@ export namespace di {
     using di::NodeHasDepends;
     using di::NodeDependencyAllowed;
     using di::NodeDependenciesSatisfied;
+    // peer_node.hpp
     using di::PeerNode;
     using di::PeerNodeOpen;
     // peer.hxx

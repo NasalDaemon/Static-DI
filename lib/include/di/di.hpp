@@ -10,6 +10,7 @@
 #include "di/lazy.hpp"
 #include "di/mock.hpp"
 #include "di/narrow.hpp"
+#include "di/peer_node.hpp"
 #include "di/test.hpp"
 #include "di/thread.hpp"
 #include "di/union.hpp"

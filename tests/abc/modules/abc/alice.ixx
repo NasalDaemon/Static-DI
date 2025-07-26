@@ -21,7 +21,7 @@ struct Alice
         int impl(trait::Alice::get) const;
         void impl(trait::Alice::set, int value);
 
-        void impl(trait::Visitable::count, int& counter);
+        void impl(trait::Visitable::visit, int& counter);
 
         int alice = 92;
     };

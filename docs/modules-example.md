@@ -524,7 +524,7 @@ struct AuthServiceTestDouble : di::Node
         if (userPass[user] == pass)
         {
             // Each generated token has unique id
-            Token token{.id = tokenId++, .expiry = time + 2, .time = &time};
+            Token token{.id = self.tokenId++, .expiry = self.time + 2, .time = &self.time};
             PassHash passHash{pass};
             self.getNode(trait::tokenStore).store(user, passHash, token);
             co_return true;

@@ -17,12 +17,6 @@ DI_MODULE_EXPORT
 struct Node;
 
 DI_MODULE_EXPORT
-struct PeerNode;
-
-DI_MODULE_EXPORT
-struct PeerNodeOpen;
-
-DI_MODULE_EXPORT
 template<class T>
 concept IsNode = std::derived_from<T, Node>;
 

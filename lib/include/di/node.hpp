@@ -12,7 +12,6 @@
 #include "di/key.hpp"
 #include "di/macros.hpp"
 #include "di/node_fwd.hpp"
-#include "di/peer.hxx"
 #include "di/trait.hpp"
 #include "di/trait_view.hpp"
 #include "di/traits_fwd.hpp"
@@ -31,6 +30,7 @@ struct Node
     using Environment = di::Environment<>;
     using Depends = detail::DependsImplicitly;
 
+    // Also exposed in TraitNodeView
     template<class Self, std::invocable<Self&> Visitor>
     DI_INLINE constexpr decltype(auto) visit(this Self& self, Visitor&& visitor)
     {
@@ -105,41 +105,6 @@ struct Node
     }
 };
 
-struct PeerNode : Node
-{
-    template<class Self>
-    requires IsCollectionContext<ContextOf<Self>>
-    constexpr auto const& getPeerId(this Self& self)
-    {
-        using ThisNode = Self::Traits::Node;
-        auto& node = detail::upCast<ThisNode>(self);
-        return detail::getParent(node, ContextOf<Self>{}.getPeerMemPtr()).id;
-    }
-
-    template<class Self>
-    requires IsCollectionContext<ContextOf<Self>> and HasTrait<Self, trait::Peer>
-    constexpr auto getPeers(this Self& self)
-    {
-        using ThisNode = Self::Traits::Node;
-        auto& node = detail::upCast<ThisNode>(self);
-        auto memPtr = ContextOf<Self>{}.getPeerMemPtr();
-        return detail::getParent(node, memPtr).template getPeers<Self>(memPtr);
-    }
-
-    // Default impl of di::trait::Peer is to have no peers
-    constexpr std::false_type impl(this auto const&, trait::Peer::isPeerId) { return {}; }
-    template<class Self>
-    constexpr std::false_type impl(this Self const&, trait::Peer::isPeerInstance, Self const&) { return {}; }
-};
-
-struct PeerNodeOpen : PeerNode
-{
-    // Default impl of di::trait::Peer is to accept all peers
-    constexpr std::true_type impl(this auto const&, trait::Peer::isPeerId) { return {}; }
-    template<class Self>
-    constexpr std::true_type impl(this Self const&, trait::Peer::isPeerInstance, Self const&) { return {}; }
-};
-
 template<IsNode NodeT>
 struct WrapNode
 {
@@ -189,13 +154,13 @@ namespace detail {
         using Node::asTrait;
         using Node::hasTrait;
 
-        constexpr decltype(auto) visit(this auto& self, auto&& f)
+        DI_INLINE constexpr decltype(auto) visit(this auto& self, auto&& f)
         {
             return upCast<Node>(self).visit(DI_FWD(f));
         }
 
         template<class Self>
-        constexpr auto& getState(this Self& self)
+        DI_INLINE constexpr auto& getState(this Self& self)
         {
             ContextOf<Self>::Info::template assertAccessible<typename Self::Environment>();
             return upCast<Node>(self).getState();

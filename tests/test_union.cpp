@@ -135,13 +135,13 @@ TEST_CASE("di::Union")
 
     CHECK(42 == dog.onion.asTrait(trait::Name{}).get());
 
-    CHECK(cat.mouse.asTrait(trait::Name{}).visit([]<class T>(T) { return requires { typename T::Types::MouseType; }; }));
+    CHECK(cat.mouse.asTrait(trait::Name{})->visit([]<class T>(T) { return requires { typename T::Types::MouseType; }; }));
 
-    CHECK(dog.mouse.asTrait(trait::Name{}).visit([]<class T>(T) { return requires { typename T::Types::MouseType; }; }));
+    CHECK(dog.mouse.asTrait(trait::Name{})->visit([]<class T>(T) { return requires { typename T::Types::MouseType; }; }));
 
-    CHECK(cat.onion.asTrait(trait::Name{}).visit([]<class T>(T) { return requires { typename T::Types::CatType; }; }));
+    CHECK(cat.onion.asTrait(trait::Name{})->visit([]<class T>(T) { return requires { typename T::Types::CatType; }; }));
 
-    CHECK(dog.onion.asTrait(trait::Name{}).visit([]<class T>(T) { return requires { typename T::Types::DogType; }; }));
+    CHECK(dog.onion.asTrait(trait::Name{})->visit([]<class T>(T) { return requires { typename T::Types::DogType; }; }));
 }
 
 } // di::tests::union_
