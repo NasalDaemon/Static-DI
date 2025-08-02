@@ -132,10 +132,11 @@ struct Virtual
                 return virtualContext.getNode(std::forward_like<N&>(*virtualHost), trait);
             }
 
-            template<class Self>
-            void getPeerMemPtr(this Self)
+            template<IsContext Parent>
+            constexpr auto getParentMemPtr()
             {
-                static_assert(detail::alwaysFalse<Self>, "May not access peers from within di::Virtual");
+                // Disable member pointer access to children as implementation can be swapped out at runtime
+                static_assert(detail::alwaysFalse<Parent>, "di::Virtual does not have a stable member pointer to its children");
             }
         };
 

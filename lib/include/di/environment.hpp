@@ -102,7 +102,7 @@ constexpr auto& withEnv(Target& t)
     if constexpr (Environment::IsEmpty)
         return t;
     else
-        return downCast<EnvironmentOverlay<Environment, std::remove_const_t<Target>>>(t);
+        return detail::downCast<EnvironmentOverlay<Environment, std::remove_const_t<Target>>>(t);
 }
 
 namespace detail {

@@ -7,13 +7,21 @@ namespace di::tests::thread {
 
 cluster Cluster
 {
-    a = TestNode<trait::A> : di::OnThread<0>
-    b = TestNode<trait::B> : di::OnThread<1>
-    c = TestNode<trait::C> : di::OnThread<2>
+    a = TestNode<trait::A> : di::OnThread<1>
+    b = TestNode<trait::B> : di::OnThread<2>
+    c = TestNode<trait::C> : di::OnThread<3>
+
+    dynA = TestNode<trait::A> : di::OnDynThread
+    dynB = TestNode<trait::B> : di::OnDynThread
+    dynC = TestNode<trait::C> : di::OnDynThread
 
     [trait::A] a <-- b, c
     [trait::B] b <-- a, c
     [trait::C] c <-- a, b
+
+    [trait::A] dynA <-- dynB, dynC
+    [trait::B] dynB <-- dynA, dynC
+    [trait::C] dynC <-- dynA, dynB
 }
 
 }

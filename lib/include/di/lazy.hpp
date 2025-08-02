@@ -53,7 +53,7 @@ struct Lazy
 
         template<class Trait>
         requires HasTrait<NodeState, Trait>
-        using TraitsTemplate = di::ResolvedTrait<Node, typename detail::ResolveTrait<NodeState, Trait>::type::Types>;
+        using TraitsTemplate = di::ResolvedTrait<Node, typename detail::ResolveTrait<NodeState, Trait>::Types>;
 
     public:
         using Traits = di::TraitsTemplate<Node, TraitsTemplate>;

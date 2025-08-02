@@ -7,6 +7,7 @@
 #include "di/compiler.hpp"
 #include "di/context.hpp"
 #include "di/count.hpp"
+#include "di/defer.hpp"
 #include "di/depends.hpp"
 #include "di/detached.hpp"
 #include "di/ensure.hpp"

@@ -38,7 +38,7 @@
 #define DI_MAKE_VERSION(...) DI_OVERLOAD(DI_MAKE_VERSION, __VA_ARGS__)(__VA_ARGS__)
 
 // MMM|NNN|PPPPP
-#define DI_MAKE_VERSION3(major, minor, patch) ((1'000ull * 100'000ull * (major)) + (100'000ull * (minor)) + (patch))
+#define DI_MAKE_VERSION3(major, minor, patch) ((1000ull * 100000ull * (major)) + (100000ull * (minor)) + (patch))
 #define DI_MAKE_VERSION2(major, minor)        DI_MAKE_VERSION3(major, minor, 0)
 #define DI_MAKE_VERSION1(major)               DI_MAKE_VERSION3(major, 0, 0)
 

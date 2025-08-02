@@ -12,9 +12,9 @@ namespace detail {
 
     // T has no link, so it is the target node
     template<class T, class Trait_>
-    struct ResolveTrait
+    struct ResolveTraitT
     {
-        using type = ResolveTrait;
+        using type = ResolveTraitT;
         using Node = T;
         using Trait = Trait_;
 
@@ -24,27 +24,30 @@ namespace detail {
     // T is a context with a link to a sibling node's context
     template<class T, class Trait>
     requires HasLink<T, Trait>
-    struct ResolveTrait<T, Trait>
+    struct ResolveTraitT<T, Trait>
     {
         using Target = ResolveLink<T, Trait>;
-        using type = ResolveTrait<ContextToNode<typename Target::Context>, typename Target::Trait>::type;
+        using type = ResolveTraitT<ContextToNode<typename Target::Context>, typename Target::Trait>::type;
     };
 
     // T links to parent context
     template<class T, class Trait>
     requires LinksToParent<T, Trait>
-    struct ResolveTrait<T, Trait>
+    struct ResolveTraitT<T, Trait>
     {
         using Target = ResolveLink<T, Trait>;
-        using type = ResolveTrait<typename Target::Context, typename Target::Trait>::type;
+        using type = ResolveTraitT<typename Target::Context, typename Target::Trait>::type;
     };
+
+    template<class T, class Trait>
+    using ResolveTrait = ResolveTraitT<T, Trait>::type;
 
 } // namespace detail
 
 DI_MODULE_EXPORT
 template<class Node, IsTrait Trait>
 requires detail::HasLink<ContextOf<Node>, Trait> and NodeDependencyAllowed<Node, Trait>
-using ResolveTypes = detail::ResolveTrait<ContextOf<Node>, Trait>::type::Types;
+using ResolveTypes = detail::ResolveTrait<ContextOf<Node>, Trait>::Types;
 
 DI_MODULE_EXPORT
 template<IsContext Context>

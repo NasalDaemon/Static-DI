@@ -16,7 +16,7 @@ namespace di {
 namespace detail {
     template<class Context, class Requirement, bool Transitive>
     requires HasLink<Context, Requirement>
-        and (not Transitive or detail::ResolveTrait<Context, Requirement>::type::Node::Traits::template HasTrait<Requirement>)
+        and (not Transitive or detail::ResolveTrait<Context, Requirement>::Node::Traits::template HasTrait<Requirement>)
     auto dependencySatisfied() -> void;
 
     // When dependency is a pointer, it is optional and not to be enforced

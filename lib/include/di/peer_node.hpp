@@ -23,7 +23,8 @@ struct PeerNode : Node
     {
         using ThisNode = Self::Traits::Node;
         auto& node = detail::upCast<ThisNode>(self);
-        return detail::getParent(node, ContextOf<Self>{}.getPeerMemPtr()).id;
+        using CollectionContext = ContextOf<Self>::Info::CollectionContext;
+        return detail::getParent(node, ContextOf<Self>{}.template getParentMemPtr<CollectionContext>()).id;
     }
 
     // Also exposed in TraitNodeView
@@ -33,7 +34,8 @@ struct PeerNode : Node
     {
         using ThisNode = Self::Traits::Node;
         auto& node = detail::upCast<ThisNode>(self);
-        return detail::getParent(node, ContextOf<Self>{}.getPeerMemPtr()).getElementHandle();
+        using CollectionContext = ContextOf<Self>::Info::CollectionContext;
+        return detail::getParent(node, ContextOf<Self>{}.template getParentMemPtr<CollectionContext>()).getElementHandle();
     }
 
     // Only available to the node itself
@@ -43,7 +45,8 @@ struct PeerNode : Node
     {
         using ThisNode = Self::Traits::Node;
         auto& node = detail::upCast<ThisNode>(self);
-        auto memPtr = ContextOf<Self>{}.getPeerMemPtr();
+        using CollectionContext = ContextOf<Self>::Info::CollectionContext;
+        auto memPtr = ContextOf<Self>{}.template getParentMemPtr<CollectionContext>();
         return detail::getParent(node, memPtr).template getPeers<Self>(memPtr);
     }
 

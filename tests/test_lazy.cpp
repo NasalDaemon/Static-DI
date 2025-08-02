@@ -9,9 +9,6 @@
 #endif
 
 import di;
-#if DI_IMPORT_STD
-import std;
-#endif
 
 namespace di::tests::lazy {
 

@@ -56,7 +56,7 @@ struct DetachedImpl : Interface, private Node
     template<class Self>
     constexpr auto& getState(this Self& self)
     {
-        ContextOf<Self>::Info::template assertAccessible<typename Self::Environment>();
+        ContextOf<Self>::Info::assertAccessible(self);
         return detail::upCast<Node>(self);
     }
 

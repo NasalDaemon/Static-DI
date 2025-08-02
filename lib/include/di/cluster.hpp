@@ -13,6 +13,7 @@
 
 #if !DI_IMPORT_STD
 #include <compare>
+#include <concepts>
 #include <type_traits>
 #endif
 
@@ -35,6 +36,11 @@ struct Cluster
     static constexpr bool isUnary() { return false; }
     using Environment = di::Environment<>;
     using Depends = detail::DependsImplicitly;
+
+    constexpr auto* operator->(this auto& self)
+    {
+        return std::addressof(self);
+    }
 
     template<class Self>
     requires IsRootContext<ContextParameterOf<Self>>
@@ -132,7 +138,9 @@ struct Domain : Cluster
 
 DI_MODULE_EXPORT
 template<class T>
-concept IsCluster = std::derived_from<T, Cluster>;
+concept IsCluster = std::derived_from<T, Cluster> and requires {
+    { T::isUnary() } -> std::convertible_to<bool>;
+};
 
 } // namespace di
 

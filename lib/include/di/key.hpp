@@ -32,10 +32,10 @@ struct Default
     template<class T, auto... Info>
     using Interface = T;
 
-    template<class Environment, auto... SourceInfo, class Target>
-    static constexpr Target& acquireAccess(Target& target)
+    template<class Source, class Target>
+    static constexpr Target& acquireAccess(Source&, Target& target)
     {
-        static_assert(di::detail::alwaysFalse<Environment>, "Access denied");
+        static_assert(di::detail::alwaysFalse<Source>, "Access denied");
         return target;
     }
 };

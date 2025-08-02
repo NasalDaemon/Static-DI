@@ -1,7 +1,9 @@
+#include "di/adapt.hpp"
 #include "di/detail/as_ref.hpp"
 #include "di/detail/cast.hpp"
 
 #include "di/context_fwd.hpp"
+#include "di/detail/compress.hpp"
 #include "di/detail/concepts.hpp"
 #include "di/empty_types.hpp"
 #include "di/key.hpp"
@@ -96,9 +98,11 @@ struct Collection
             constexpr auto getPeers(Target Element::* elToNodeMemPtr) const
             {
                 using CallerNode = Caller::Traits::Node;
+                using TargetNode = Target::Traits::Node;
+                static_assert(std::is_same_v<CallerNode, TargetNode>);
                 return std::as_const(collection->elements)
                     | std::views::filter(
-                        [=, this](auto const& el)
+                        [=, this](auto const& el) -> bool
                         {
                             if (&el == this)
                                 return false;
@@ -109,7 +113,7 @@ struct Collection
                             return peer.isPeerInstance(instance);
                         })
                     | std::views::transform(
-                        [=](auto const& el) -> auto const&
+                        [=](auto const& el) -> Caller const&
                         {
                             return detail::downCast<Caller>(detail::upCast<CallerNode>(el.*elToNodeMemPtr));
                         });
@@ -130,8 +134,10 @@ struct Collection
                 return Context{}.getNode(getCollection(node), detail::ResolveLinkTrait<Context, Trait>{});
             }
 
-            constexpr auto getPeerMemPtr()
+            template<IsContext Parent>
+            constexpr auto getParentMemPtr()
             {
+                static_assert(std::is_same_v<Parent, ElementContext>, "Parents of a di::Collection do not have a stable member pointer to its children");
                 return &Element::node;
             }
 
@@ -159,7 +165,7 @@ struct Collection
 
         template<class Trait>
         requires HasTrait<ElementNode, Trait>
-        using TraitsTemplate = di::ResolvedTrait<AsTrait<Trait>, typename detail::ResolveTrait<ElementNode, Trait>::type::Types>;
+        using TraitsTemplate = di::ResolvedTrait<AsTrait<Trait>, typename detail::ResolveTrait<ElementNode, Trait>::Types>;
 
         std::vector<Element> elements;
         std::vector<ID> ids;

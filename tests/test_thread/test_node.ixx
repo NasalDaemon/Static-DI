@@ -30,7 +30,7 @@ struct TestNode : di::Node
             if constexpr (std::is_same_v<Trait, trait::B>)
                 return self->i;
             else
-                return self.getNode(trait::b, postTaskKey).impl(method);
+                return self.getNode(trait::b, future).impl(method).get();
         }
         int impl(this auto const& self, trait::Trait::getC)
         {

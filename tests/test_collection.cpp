@@ -1,7 +1,8 @@
 #include <doctest/doctest.h>
 #include "di/macros.hpp"
 
-#if !DI_IMPORT_STD
+// Why do we need to include ranges again with GCC?
+#if !DI_IMPORT_STD or DI_COMPILER_GCC
 #include <ranges>
 #endif
 

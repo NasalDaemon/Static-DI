@@ -46,14 +46,21 @@ namespace detail {
             return typename Self::ParentContext{}.getNode(getParent(node, memPtr), detail::ResolveLinkTrait<Self, Trait>{});
         }
 
-        // Get member pointer to this node from the hosting collection's element
-        template<IsCollectionContext Self_>
-        constexpr auto getPeerMemPtr(this Self_)
+        // Get member pointer from the perspective of a parent to this node
+        template<IsContext Parent, IsContext Self_>
+        constexpr auto getParentMemPtr(this Self_)
         {
             using Self = detail::Decompress<Self_>;
-            auto parentMemPtr = typename Self::ParentContext{}.getPeerMemPtr();
             auto memPtr = getNodePointer(AdlTag<Self>{});
-            return combineMemberPointers(parentMemPtr, memPtr);
+            if constexpr (std::is_same_v<Self, detail::Decompress<Parent>>)
+            {
+                return memPtr;
+            }
+            else
+            {
+                auto parentMemPtr = typename Self::ParentContext{}.template getParentMemPtr<Parent>();
+                return combineMemberPointers(parentMemPtr, memPtr);
+            }
         }
     };
 }
@@ -76,8 +83,7 @@ struct NullContext : detail::ContextBase
             return makeAlias(detail::downCast<FinalInterface>(target));
         }
 
-        template<class Environment>
-        static consteval void assertAccessible() {}
+        static consteval void assertAccessible(auto&) {}
     };
 
     static constexpr std::size_t Depth = 0;

@@ -22,7 +22,7 @@
 
 ## Compiler Support
 - [x] Clang 20+
-- [x] GCC 14.2+ (15+ for `import std;`)
+- [x] GCC 15+ (14.2 without `import std;`)
 - [x] MSVC 19 (header only)
 - [ ] MSVC (modules)
 

@@ -82,6 +82,8 @@ export namespace di {
     using di::DetachedImpl;
     using di::IsDetachedImpl;
     using di::HasDetachedContext;
+    // defer.hpp
+    using di::Defer;
     // empty_types.hpp
     using di::EmptyTypes;
     // ensure.hpp
@@ -167,12 +169,15 @@ export namespace di {
         using test::Graph;
     }
     // thread.hpp
+    using di::Thread;
     using di::ThreadEnvironment;
     using di::OnThread;
     using di::AnyThread;
     using di::withThread;
+    using di::OnDynThread;
     namespace key {
         using key::ThreadPost;
+        using key::DynThreadAssert;
     }
     // trait_view.hpp
     using di::IsTraitView;

@@ -50,10 +50,11 @@ struct Union
                 return Context{}.getNode(detail::downCast<OptionNode>(option).*nodePtr, trait);
             }
 
-            template<class Self>
-            void getPeerMemPtr(this Self)
+            template<IsContext Parent>
+            constexpr auto getParentMemPtr()
             {
-                static_assert(detail::alwaysFalse<Self>, "May not access peers from within di::Union");
+                // Disable member pointer access to children as the implementation can be swapped out at runtime
+                static_assert(detail::alwaysFalse<Parent>, "di::Union does not have a stable member pointer to its children");
             }
         };
 
@@ -67,7 +68,7 @@ struct Union
         static constexpr bool isUnary() { return (... and ToNode<Options>::isUnary()); }
 
         template<std::size_t I, class Trait>
-        struct TypesAtT : detail::ResolveTrait<NodeAt<I>, Trait>::type::Types
+        struct TypesAtT : detail::ResolveTrait<NodeAt<I>, Trait>::Types
         {
             static constexpr std::size_t TypesCount = sizeof...(Options);
             template<std::size_t UnionIndex>

@@ -51,6 +51,7 @@ struct Node
             static_assert(NodeDependencyAllowed<Self, Trait>, "Requested trait not listed in node definition");
         using ThisNode = Self::Traits::Node;
         auto& node = detail::upCast<ThisNode>(self);
+        static_assert(detail::HasLink<ContextOf<Self>, Trait>, "Node is missing dependency");
         auto target = ContextOf<Self>{}.getNode(node, trait);
         return makeTraitView(self, target, trait, key);
     }
@@ -162,7 +163,7 @@ namespace detail {
         template<class Self>
         DI_INLINE constexpr auto& getState(this Self& self)
         {
-            ContextOf<Self>::Info::template assertAccessible<typename Self::Environment>();
+            ContextOf<Self>::Info::assertAccessible(self);
             return upCast<Node>(self).getState();
         }
 

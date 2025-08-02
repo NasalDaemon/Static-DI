@@ -4,7 +4,6 @@ import argparse
 import jinja2
 
 from lark import Lark, Tree, Token, UnexpectedInput
-# from lark.load_grammar import load_grammar
 from lark.visitors import Visitor_Recursive
 from lark.reconstruct import Reconstructor
 
@@ -32,11 +31,6 @@ isEmbedded: bool = inputPath.suffixes[-1] != '.dig'
 
 grammarFile = dirPath.joinpath(dirPath, 'dig_module.lark' if isModule else 'dig_header.lark')
 digParser = Lark.open(grammarFile, maybe_placeholders=False, parser='lalr', cache=True)
-
-# Workaround until this PR is merged: https://github.com/lark-parser/lark/pull/1506
-# if not hasattr(digParser, "grammar"):
-#     with open(grammarFile, 'r') as file:
-#         digParser.grammar, used_files = load_grammar(file.read(), file.name, digParser.options.import_paths, digParser.options.keep_all_tokens)
 
 reconstuctor = Reconstructor(digParser)
 
@@ -133,6 +127,10 @@ class Repeater:
         self.context = f'{name[0].upper()}{name[1:]}Repeater{id}_'
 
     @property
+    def isUserNode(self):
+        return False
+
+    @property
     def impl(self):
         return f'di::Repeater<{self.trait}, {len(self.connections)}>'
 
@@ -175,6 +173,10 @@ class Node:
             self.context: str = name + '_'
             if self.isNexus and not self.isUnary:
                 raise SyntaxError(f"{getPos(tree)} Nexus node '{name}' in '{cluster.fullName}' must be a unary node")
+
+    @property
+    def isUserNode(self):
+        return True
 
     def addConnection(self, pos, isOverride: bool, toNode: 'Node', trait: str, *, toTrait: str | None = None):
         assert self.cluster == toNode.cluster
@@ -411,6 +413,8 @@ class Domain(Cluster):
         return "domain"
 
     def predicates(self, node: Node | Repeater) -> list[str]:
+        if isinstance(node, Repeater):
+            return []
         preds = ["di::pred::HasDepends"]
         if not node.isUnary:
             preds.append("di::pred::NonUnary")

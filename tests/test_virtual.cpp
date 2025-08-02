@@ -9,9 +9,6 @@
 
 import di.tests.virtual_;
 import di;
-#if DI_IMPORT_STD
-import std;
-#endif
 
 
 /*
