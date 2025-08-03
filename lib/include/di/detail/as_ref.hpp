@@ -38,9 +38,10 @@ namespace detail {
         AsRef() = default;
     };
 
-    template<class Interface, class Types = EmptyTypes>
+    template<class Interface_, class Types = EmptyTypes>
     struct TargetRef
     {
+        using Interface = Interface_;
         explicit constexpr TargetRef(Interface& ref, std::type_identity<Types>) : ptr(std::addressof(ref)) {}
         Interface* ptr;
         static constexpr std::type_identity<CompressTypes<Types>> types() { return {}; };

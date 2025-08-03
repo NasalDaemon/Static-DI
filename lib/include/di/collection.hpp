@@ -6,6 +6,7 @@
 #include "di/detail/compress.hpp"
 #include "di/detail/concepts.hpp"
 #include "di/empty_types.hpp"
+#include "di/environment.hpp"
 #include "di/key.hpp"
 #include "di/macros.hpp"
 #include "di/node.hpp"
@@ -100,6 +101,8 @@ struct Collection
             {
                 using CallerNode = Caller::Traits::Node;
                 using TargetNode = Target::Traits::Node;
+                using Environment = Caller::Environment;
+                using NodeState = WithEnv<Environment, di::ContextToNodeState<detail::Decompress<ContextOf<Caller>>>>;
                 static_assert(std::is_same_v<CallerNode, TargetNode>);
                 return std::as_const(collection->elements)
                     | std::views::filter(
@@ -110,13 +113,13 @@ struct Collection
                             auto const peer = (el.*elToNodeMemPtr).asTrait(trait::peer);
                             if (not peer.isPeerId(id))
                                 return false;
-                            auto const& instance = detail::downCast<Caller>(detail::upCast<CallerNode>(this->*elToNodeMemPtr));
+                            auto const& instance = detail::downCast<NodeState>(detail::upCast<CallerNode>(this->*elToNodeMemPtr));
                             return peer.isPeerInstance(instance);
                         })
                     | std::views::transform(
-                        [=](auto const& el) -> Caller const&
+                        [=](auto const& el) -> NodeState const&
                         {
-                            return detail::downCast<Caller>(detail::upCast<CallerNode>(el.*elToNodeMemPtr));
+                            return detail::downCast<NodeState>(detail::upCast<CallerNode>(el.*elToNodeMemPtr));
                         });
             }
 

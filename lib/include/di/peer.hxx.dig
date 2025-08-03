@@ -1,7 +1,7 @@
-trait di::trait::Peer [Info, Impl]
+trait di::trait::Peer [Info]
 {
     info CollectionContext::IdType
 
     isPeerId(Info::CollectionContext::IdType const& id) const -> std::convertible_to<bool> auto
-    isPeerInstance(Impl const& impl) const -> std::convertible_to<bool> auto
+    isPeerInstance(auto const& peerState) const -> std::convertible_to<bool> auto
 }

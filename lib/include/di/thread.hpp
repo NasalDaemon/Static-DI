@@ -126,8 +126,8 @@ namespace detail {
                 return requiredThreadId;
         }
 
-        using ThreadContext = ContextOf<Target>::Info::ThreadContext;
-        auto parentMemPtr = ContextOf<Target>{}.template getParentMemPtr<ThreadContext>();
+        using DynThreadContext = ContextOf<Target>::Info::DynThreadContext;
+        auto parentMemPtr = ContextOf<Target>{}.template getParentMemPtr<DynThreadContext>();
         using TargetNode = Target::Traits::Node;
         return getParent(upCast<TargetNode>(target), parentMemPtr).threadId;
     }
@@ -202,8 +202,16 @@ namespace key {
         template<class Source, class Target>
         static constexpr Target& acquireAccess(Source&, Target& target)
         {
-            ContextOf<Target>::Info::assertAccessible(target);
-            return target;
+            using Env = Source::Environment;
+            using WithEnv = di::WithEnv<Env, Target>;
+            auto& targetWithEnv = detail::downCast<WithEnv>(target);
+
+            using STC = ContextOf<Source>::Info::DynThreadContext;
+            using TTC = ContextOf<Target>::Info::DynThreadContext;
+            if constexpr (IsCluster<Source> or detail::IsNodeState<Source> or not std::is_same_v<STC, TTC>)
+                ContextOf<Target>::Info::assertAccessible(targetWithEnv);
+
+            return targetWithEnv;
         }
     } inline constexpr dynThreadAssert{};
 }
@@ -229,7 +237,7 @@ struct OnDynThread
             {
                 using DefaultKey = key::DynThreadAssert;
 
-                using ThreadContext = Inner;
+                using DynThreadContext = Inner;
                 static constexpr std::size_t RequiredThreadId = ThreadEnvironment::DynamicThreadId;
 
                 template<class Target>

@@ -135,7 +135,7 @@ namespace di::tests::thread {
     struct FireAndForget
     {
         template<class Task>
-        static constexpr bool post(std::size_t requiredThreadId, Task task)
+        [[nodiscard]] static constexpr bool post(std::size_t requiredThreadId, Task task)
         {
             if constexpr (CurrentThreadId == ThreadEnvironment::DynamicThreadId
                        or RequiredThreadId == ThreadEnvironment::DynamicThreadId
@@ -161,7 +161,7 @@ namespace di::tests::thread {
     struct Future
     {
         template<std::invocable Task>
-        static constexpr std::future<std::invoke_result_t<Task>> post(std::size_t requiredThreadId, Task&& task)
+        [[nodiscard]] static constexpr std::future<std::invoke_result_t<Task>> post(std::size_t requiredThreadId, Task&& task)
         {
             using R = std::invoke_result_t<Task>;
 

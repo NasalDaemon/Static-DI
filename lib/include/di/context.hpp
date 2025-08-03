@@ -31,6 +31,16 @@ namespace detail {
         {
             using Self = detail::Decompress<Self_>;
             using Other = detail::ResolveLink<Self, Trait>;
+            // Explicitly disallow "hairpin bend" dependencies, as it could subvert dynamic access controls
+            // via re-entry into the same protected context region hosted in a different instance.
+            // As a runtime optimisation, context regions with dynamic access enforcement elide access checks
+            // on getNode calls accessing the same protected context region. However, if the same region can be
+            // re-entered in a single getNode call via a hairpin dependency which at some point leaves the region,
+            // then the static context region being identical does not necessarily mean that the dynamic context is,
+            // and so checks cannot be elided.
+            // There is no legitimate reason for a node to depend on oneself, asTrait is available instead.
+            // Disallowing depending on oneself allows for the runtime optimisation to exist.
+            static_assert(not std::is_same_v<typename Other::Context, Self>, "Dependency on self not allowed");
             auto memPtr = getNodePointer(AdlTag<Self>{});
             auto& otherNode = getParent(node, memPtr).*getNodePointer(AdlTag<typename Other::Context>{});
             return otherNode.asTrait(detail::AsRef{}, typename Other::Trait{});

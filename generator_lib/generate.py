@@ -1,15 +1,14 @@
 #!/usr/bin/python3
 
 import argparse
+from bisect import bisect_right
+from functools import cached_property
 import jinja2
-
 from lark import Lark, Tree, Token, UnexpectedInput
 from lark.visitors import Visitor_Recursive
 from lark.reconstruct import Reconstructor
-
-from functools import cached_property
-
 from pathlib import Path
+
 
 dirPath = Path(__file__).resolve().parent
 
@@ -33,15 +32,20 @@ grammarFile = dirPath.joinpath(dirPath, 'dig_module.lark' if isModule else 'dig_
 digParser = Lark.open(grammarFile, maybe_placeholders=False, parser='lalr', cache=True)
 
 reconstuctor = Reconstructor(digParser)
+sectionLines: list[tuple[int, int]] = []
 
 with open(inputFile, 'r') as file:
     text = file.read()
     if isEmbedded:
         sections = []
+        outerLineCount = 0
+        innerLineCount = 0
         begin = 'di-embed-begin'
         end = 'di-embed-end'
         while True:
             beginPos = text.find(begin)
+            outerLineCount += len(text[:beginPos].splitlines()) - 1
+            sectionLines.append((innerLineCount, outerLineCount))
             if beginPos == -1:
                 assert sections, f"'{begin}' not found in {inputPath}"
                 break
@@ -49,7 +53,11 @@ with open(inputFile, 'r') as file:
             endPos = text.find(end, beginPos)
             assert endPos != -1, f"matching '{end}' not found in {inputPath}"
 
-            sections.append(text[beginPos:endPos])
+            section = text[beginPos:endPos]
+            sectionLineCount = len(section.splitlines())
+            innerLineCount += sectionLineCount - 1
+            outerLineCount += sectionLineCount - 2
+            sections.append(section)
             text = text[endPos + len(end):]
         text = "\n".join(sections)
 
@@ -64,11 +72,19 @@ def imported(larkRule: str):
     return f'dig__{larkRule}'
 
 
+def getLine(line: int) -> int:
+    if not isEmbedded:
+        return line
+    sourceLines = [s for s, o in sectionLines]
+    index = bisect_right(sourceLines, line) - 1
+    return line - sectionLines[index][0] + sectionLines[index][1]
+
+
 def getPos(t: Tree | Token | None) -> str:
     if t is None:
         return str(inputPath)
     if isinstance(t, Token):
-        return f"{inputPath}:{t.line}:{t.column}"
+        return f"{inputPath}:{getLine(t.line)}:{t.column}"
     if isinstance(t, Tree):
         return getPos(t.children[0])
     else:
@@ -180,6 +196,8 @@ class Node:
 
     def addConnection(self, pos, isOverride: bool, toNode: 'Node', trait: str, *, toTrait: str | None = None):
         assert self.cluster == toNode.cluster
+        if toNode == self:
+            raise SyntaxError(f"{pos} cannot connect '{self.name}' to itself")
         if error := self.cluster.getConnectionError(self, toNode, isOverride):
             raise SyntaxError(f"{pos} Cannot connect '{self.name}' to '{toNode.name}' in {self.cluster.clusterClass} '{self.cluster.fullName}': {error}")
 

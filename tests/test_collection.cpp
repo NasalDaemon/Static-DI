@@ -64,7 +64,7 @@ struct ElementNode : di::PeerNode
         for (auto& peer : self.getPeers())
         {
             peerCount++;
-            CHECK(self.i != peer.i);
+            CHECK(self.i != peer->i);
         }
         CHECK(peerCount > 0);
         return self.getNode(trait::outside).get() + self.i;
@@ -82,10 +82,9 @@ struct ElementNode : di::PeerNode
         return true;
     }
 
-    template<class Self>
-    bool impl(this Self const& self, di::trait::Peer::isPeerInstance, Self const& other)
+    bool impl(this auto const& self, di::trait::Peer::isPeerInstance, auto const& other)
     {
-        CHECK(&self != &other);
+        CHECK(&self.getState() != &other.getState());
         return true;
     }
 
