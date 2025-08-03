@@ -5,11 +5,14 @@ module;
 #include <atomic>
 #include <concepts>
 #include <cstddef>
+#include <exception>
+#include <format>
 #include <functional>
 #include <future>
 #include <latch>
 #include <memory>
 #include <mutex>
+#include <stdexcept>
 #include <thread>
 #include <type_traits>
 #include <utility>
@@ -132,7 +135,7 @@ namespace di::tests::thread {
     struct FireAndForget
     {
         template<class Task>
-        static constexpr decltype(auto) post(std::size_t requiredThreadId, Task task)
+        static constexpr bool post(std::size_t requiredThreadId, Task task)
         {
             if constexpr (CurrentThreadId == ThreadEnvironment::DynamicThreadId
                        or RequiredThreadId == ThreadEnvironment::DynamicThreadId
@@ -140,12 +143,14 @@ namespace di::tests::thread {
             {
                 if (auto ts = Scheduler::get().lock()) [[likely]]
                     if (ts->postTask(requiredThreadId, std::move(task))) [[likely]]
-                        return;
-                task();
+                        return true;
+                return false;
             }
             else
             {
-                return task();
+                // Already statically known to be on correct thread
+                task();
+                return true;
             }
         }
     };
@@ -159,18 +164,37 @@ namespace di::tests::thread {
         static constexpr std::future<std::invoke_result_t<Task>> post(std::size_t requiredThreadId, Task&& task)
         {
             using R = std::invoke_result_t<Task>;
-            auto package = std::packaged_task<R()>(DI_FWD(task));
-            auto future = package.get_future();
+
             if constexpr (CurrentThreadId == ThreadEnvironment::DynamicThreadId
                        or RequiredThreadId == ThreadEnvironment::DynamicThreadId
                        or CurrentThreadId != RequiredThreadId)
             {
                 if (auto ts = Scheduler::get().lock()) [[likely]]
+                {
+                    auto package = std::packaged_task<R()>(DI_FWD(task));
+                    auto future = package.get_future();
                     if (ts->postTask(requiredThreadId, std::move(package))) [[likely]]
                         return future;
+                }
+                if (Thread::getId() != requiredThreadId)
+                {
+                    std::promise<R> promise;
+                    promise.set_exception(std::make_exception_ptr(
+                        std::runtime_error(std::format("Unable to post task to thread {}", requiredThreadId))));
+                    return promise.get_future();
+                }
             }
-            package();
-            return future;
+            // Already known to be on correct thread
+            std::promise<R> promise;
+            try
+            {
+                promise.set_value(std::invoke(task));
+            }
+            catch (...)
+            {
+                promise.set_exception(std::current_exception());
+            }
+            return promise.get_future();
         }
     };
 

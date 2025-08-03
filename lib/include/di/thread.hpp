@@ -51,7 +51,7 @@ struct Thread
     static constexpr std::size_t Unassigned = -1;
 
     static bool hasMainThread() { return MainThread != nullptr; }
-    static bool isMainThread() { return CurrentId == 0; }
+    static bool isMainThread() { return CurrentId == 0 and MainThread == &CurrentId; }
 
     static void setMainThread()
     {
@@ -97,7 +97,7 @@ struct Thread
 
 private:
     inline static thread_local std::size_t CurrentId = Unassigned;
-    inline static std::size_t* MainThread = nullptr;
+    inline static void* MainThread = nullptr;
 };
 
 namespace detail {
@@ -167,8 +167,8 @@ struct RequireThread
             }
         }
 
-        template<class Source, class Target, class Key>
-        static constexpr auto finalize(Source& source, Target& target, Key)
+        template<class Source, class Target, class Key = ContextOf<Source>::Info::DefaultKey>
+        static constexpr auto finalize(Source& source, Target& target, Key const& key = {}, auto const&... keys)
         {
             constexpr auto currentThreadId = detail::getSourceStaticThread<Source>();
             if constexpr (anyThreadId() or currentThreadId == RequiredThreadId)
@@ -176,11 +176,11 @@ struct RequireThread
                 using Env = Source::Environment::template InsertOrReplace<ThreadEnvironment::WithId<currentThreadId>>;
                 using WithEnv = di::WithEnv<Env, Target>;
                 using Interface = Key::template Interface<WithEnv, currentThreadId>;
-                return makeAlias(detail::downCast<Interface>(target));
+                return makeAlias(detail::downCast<Interface>(target), keys...);
             }
             else
             {
-                return makeAlias(Key::acquireAccess(source, target));
+                return makeAlias(key.acquireAccess(source, target), keys...);
             }
         }
     };
@@ -248,10 +248,10 @@ struct OnDynThread
                     #endif
                 }
 
-                template<class Source, class Target, class Key>
-                static constexpr auto finalize(Source& source, Target& target, Key)
+                template<class Source, class Target, class Key = ContextOf<Source>::Info::DefaultKey>
+                static constexpr auto finalize(Source& source, Target& target, Key const& key = {}, auto const&... keys)
                 {
-                    return makeAlias(Key::acquireAccess(source, target));
+                    return makeAlias(key.acquireAccess(source, target), keys...);
                 }
             };
         };

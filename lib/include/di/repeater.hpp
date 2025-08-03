@@ -2,6 +2,7 @@
 #define INCLUDE_DI_REPEATER_HPP
 
 #include "di/alias.hpp"
+#include "di/context_fwd.hpp"
 #include "di/environment.hpp"
 #include "di/node.hpp"
 #include "di/macros.hpp"
@@ -11,6 +12,7 @@
 
 #if !DI_IMPORT_STD
 #include <cstddef>
+#include <utility>
 #endif
 
 namespace di {
@@ -43,11 +45,11 @@ struct Repeater
 
         using Types = TypesAtT<0>;
 
-        template<class Source, class Key>
-        constexpr auto finalize(this auto& self, Source&, Key key)
+        template<class Source, class Key = ContextOf<Source>::Info::DefaultKey>
+        constexpr auto finalize(this auto& self, Source&, Key const& key = {}, auto const&... keys)
         {
             using Environment = Source::Environment;
-            return makeAlias(withEnv<Environment>(detail::downCast<WithKey<Key>>(self)), key);
+            return makeAlias(withEnv<Environment>(detail::downCast<WithKey<Key>>(self)), key, keys...);
         }
     };
 };
@@ -58,21 +60,27 @@ template<class Context>
 template<class Key>
 struct Repeater<Trait, Count>::Node<Context>::WithKey : Node
 {
-    constexpr void implWithKey(this auto& self, Key const& key, auto&&... args)
+    template<class... Keys>
+    constexpr void implWithKey(this auto& self, Key const& key, auto const& keys, auto&&... args)
     {
-        apply2(std::make_index_sequence<Count>{}, self, key, args...);
+        apply2(std::make_index_sequence<Count>{}, self, key, keys, args...);
     }
 
 private:
     template<std::size_t... Is>
-    static constexpr void apply2(std::index_sequence<Is...>, auto& repeater, Key const& key, auto&... args)
+    static constexpr void apply2(std::index_sequence<Is...>, auto& repeater, Key const& key, auto const& keys, auto&... args)
     {
-        (apply3(Context{}.getNode(detail::upCast<Node>(repeater), RepeaterTrait<Is>{}), repeater, key, args...), ...);
+        (apply3(Context{}.getNode(detail::upCast<Node>(repeater), RepeaterTrait<Is>{}), repeater, key, keys, args...), ...);
     }
 
-    static constexpr void apply3(auto target, auto& repeater, Key const& key, auto&... args)
+    static constexpr void apply3(auto target, auto& repeater, Key const& key, auto const& keys, auto&... args)
     {
-        target.ptr->finalize(repeater, key)->impl(args...);
+        std::apply(
+            [&](auto const&... keys)
+            {
+                target.ptr->finalize(repeater, key, keys...)->impl(args...);
+            },
+            keys);
     }
 };
 

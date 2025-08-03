@@ -184,11 +184,11 @@ struct Union<Options...>::Node<Context>::AsTrait : Node
     template<class Key>
     struct WithKey;
 
-    template<class Source, class Key>
-    constexpr auto finalize(this auto& self, Source&, Key key)
+    template<class Source, class Key = ContextOf<Source>::Info::DefaultKey>
+    constexpr auto finalize(this auto& self, Source&, Key const& key = {}, auto const&... keys)
     {
         using Environment = Source::Environment;
-        return makeAlias(withEnv<Environment>(detail::downCast<WithKey<Key>>(self)), key);
+        return makeAlias(withEnv<Environment>(detail::downCast<WithKey<Key>>(self)), key, keys...);
     }
 };
 
@@ -198,14 +198,20 @@ template<class Trait>
 template<class Key>
 struct Union<Options...>::Node<Context>::AsTrait<Trait>::WithKey : AsTrait
 {
-    template<class Self, class... Args>
-    constexpr decltype(auto) implWithKey(this Self& self, Key key, Args&&... args)
+    template<class Self, class... Keys, class... Args>
+    constexpr decltype(auto) implWithKey(this Self& self, Key key, auto const& keys, Args&&... args)
     {
         using Environment = Self::Environment;
-        return self.visit([&](auto& option) -> decltype(auto)
-        {
-            return withEnv<Environment>(option).asTrait(Trait{}, key).impl(DI_FWD(Args, args)...);
-        });
+        return self.visit(
+            [&](auto& option) -> decltype(auto)
+            {
+                return std::apply(
+                    [&](auto const&... keys) -> decltype(auto)
+                    {
+                        return withEnv<Environment>(option).asTrait(Trait{}, key, keys...).impl(DI_FWD(Args, args)...);
+                    },
+                    keys);
+            });
     }
 };
 

@@ -62,10 +62,10 @@ struct Cluster
     }
 
     template<class Self, IsTrait Trait, class Key = ContextParameterOf<Self>::Info::DefaultKey>
-    constexpr IsTraitViewOf<Trait, Key> auto getNode(this Self& cluster, Trait trait, Key key = {})
+    constexpr IsTraitViewOf<Trait, Key> auto getNode(this Self& cluster, Trait trait, Key key = {}, auto const&... keys)
     {
         auto target = cluster.getNode(detail::AsRef{}, trait);
-        return makeTraitView(cluster, target, trait, key);
+        return makeTraitView(cluster, target, trait, key, keys...);
     }
 
     template<class Self, IsTrait Trait>
@@ -86,10 +86,10 @@ struct Cluster
 
     template<class Self, IsTrait Trait, class Key = ContextParameterOf<Self>::Info::DefaultKey>
     requires detail::HasLink<Self, Trait>
-    constexpr IsTraitViewOf<Trait, Key> auto asTrait(this Self& self, Trait trait, Key key = {})
+    constexpr IsTraitViewOf<Trait, Key> auto asTrait(this Self& self, Trait trait, Key key = {}, auto const&... keys)
     {
         auto target = self.asTrait(detail::AsRef{}, trait);
-        return makeTraitView(self, target, trait, key);
+        return makeTraitView(self, target, trait, key, keys...);
     }
 
     template<class Self, IsTrait Trait>

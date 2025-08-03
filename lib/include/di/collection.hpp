@@ -19,6 +19,7 @@
 #include <ranges>
 #include <stdexcept>
 #include <type_traits>
+#include <utility>
 #include <vector>
 #endif
 
@@ -221,47 +222,52 @@ template<class Context>
 template<class Trait>
 struct Collection<ID, NodeHandle>::Node<Context>::AsTrait : Node
 {
-    constexpr auto finalize(this auto& self, auto& source, key::Element<ID> key)
+    constexpr auto finalize(this auto& self, auto& source, key::Element<ID> const& key, auto const&... keys)
     {
         auto* const element = self.getId(key.id);
         if (element == nullptr) [[unlikely]]
             throw std::out_of_range("Element with given ID does not exist in collection");
         auto target = element->asTrait(detail::AsRef{}, Trait{});
-        return target.ptr->finalize(source, key::Default{});
+        return target.ptr->finalize(source, keys...);
     }
 
-    constexpr auto finalize(this auto& self, auto& source, key::Element<Handle> key)
+    constexpr auto finalize(this auto& self, auto& source, key::Element<Handle> const& key, auto const&... keys)
     {
         auto& element = self.elements[key.id.index].node;
         auto target = element.asTrait(detail::AsRef{}, Trait{});
-        return target.ptr->finalize(source, key::Default{});
+        return target.ptr->finalize(source, keys...);
     }
 
     template<class T>
-    constexpr auto finalize(this auto&, auto&, key::Element<T>)
+    constexpr auto finalize(this auto&, auto&, key::Element<T>, auto const&...)
     {
-        static_assert(std::is_same_v<T, ID>, "T is not ID or Handle");
+        static_assert(std::is_same_v<T, ID>, "T is not ID or Handle type");
     }
 
     template<class Source, class P>
-    constexpr auto finalize(this auto& self, Source&, key::Elements<P> const& key)
+    constexpr auto finalize(this auto& self, Source&, key::Elements<P> const& key, auto const&... keys)
     {
         using Environment = Source::Environment;
-        return makeAlias(withEnv<Environment>(detail::downCast<WithPred<P>>(detail::upCast<Node>(self))), key.pred);
+        return makeAlias(withEnv<Environment>(detail::downCast<WithPred<P>>(detail::upCast<Node>(self))), key.pred, keys...);
     }
 
     template<class Pred>
     struct WithPred : Node
     {
-        template<class Self, class... Args>
-        constexpr void implWithKey(this Self& self, Pred const& pred, Args&&... args)
+        template<class Self, class... Keys, class... Args>
+        constexpr void implWithKey(this Self& self, Pred const& pred, auto const& keys, Args&&... args)
         {
             for (auto& el : self.elements)
             {
                 if (pred(std::as_const(el.id)))
                 {
-                    auto target = el.node.asTrait(detail::AsRef{}, Trait{});
-                    target.ptr->finalize(self, key::Default{})->impl(DI_FWD(args)...);
+                    std::apply(
+                        [&](auto const&... keys)
+                        {
+                            auto target = el.node.asTrait(detail::AsRef{}, Trait{});
+                            target.ptr->finalize(self, keys...)->impl(DI_FWD(args)...);
+                        },
+                        keys);
                 }
             }
         }

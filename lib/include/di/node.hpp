@@ -41,10 +41,10 @@ struct Node
 
 #if DI_AUTOCOMPLETE
     template<IsTrait Trait, class Key = key::Default>
-    static constexpr AutoCompleteTraitView<key::Trait<Key, Trait>> getNode(Trait trait, Key key = {});
+    static constexpr AutoCompleteTraitView<key::Trait<Key, Trait>> getNode(Trait trait, Key const& key = {}, auto const&... keys);
 #else
     template<class Self, IsTrait Trait, class Key = ContextOf<Self>::Info::DefaultKey>
-    constexpr IsTraitViewOf<Trait, Key> auto getNode(this Self& self, Trait trait, Key key = {})
+    constexpr IsTraitViewOf<Trait, Key> auto getNode(this Self& self, Trait trait, Key const& key = {}, auto const&... keys)
     {
         assertNodeDependencies<Self>();
         if constexpr (not detail::IsNodeState<Self>)
@@ -53,7 +53,7 @@ struct Node
         auto& node = detail::upCast<ThisNode>(self);
         static_assert(detail::HasLink<ContextOf<Self>, Trait>, "Node is missing dependency");
         auto target = ContextOf<Self>{}.getNode(node, trait);
-        return makeTraitView(self, target, trait, key);
+        return makeTraitView(self, target, trait, key, keys...);
     }
 #endif
 
@@ -68,10 +68,10 @@ struct Node
     }
 
     template<class Self, IsTrait Trait, class Key = ContextOf<Self>::Info::DefaultKey>
-    constexpr IsTraitViewOf<Trait, Key> auto asTrait(this Self& self, Trait trait, Key key = {})
+    constexpr IsTraitViewOf<Trait, Key> auto asTrait(this Self& self, Trait trait, Key const& key = {}, auto const&... keys)
     {
         auto impl = self.asTrait(detail::AsRef{}, trait);
-        return makeTraitView(self, impl, trait, key);
+        return makeTraitView(self, impl, trait, key, keys...);
     }
 
     template<class Self, IsTrait Trait>
@@ -93,10 +93,10 @@ struct Node
         return {};
     }
 
-    template<class Self>
-    constexpr auto finalize(this Self& self, auto& source, auto key)
+    template<class Self, class Key = ContextOf<Self>::Info::DefaultKey>
+    constexpr auto finalize(this Self& self, auto& source, Key const& key = {}, auto const&... keys)
     {
-        return ContextOf<Self>::Info::finalize(source, self, key);
+        return ContextOf<Self>::Info::finalize(source, self, key, keys...);
     }
 
     template<class Self>

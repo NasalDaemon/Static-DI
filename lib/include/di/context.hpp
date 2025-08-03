@@ -74,13 +74,13 @@ struct NullContext : detail::ContextBase
     {
         using DefaultKey = key::Default;
 
-        template<class Source, class Target, class Key>
-        static constexpr auto finalize(Source&, Target& target, Key)
+        template<class Source, class Target, class Key = ContextOf<Source>::Info::DefaultKey>
+        static constexpr auto finalize(Source&, Target& target, Key const& = {}, auto const&... keys)
         {
             using Env = Source::Environment;
             using WithEnv = di::WithEnv<Env, Target>;
             using FinalInterface = Key::template Interface<WithEnv>;
-            return makeAlias(detail::downCast<FinalInterface>(target));
+            return makeAlias(detail::downCast<FinalInterface>(target), keys...);
         }
 
         static constexpr void assertAccessible(auto&) {}
