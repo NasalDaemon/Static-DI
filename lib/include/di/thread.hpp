@@ -156,7 +156,7 @@ struct RequireThread
         static constexpr std::size_t RequiredThreadId = ThreadId;
 
         template<class Target>
-        static consteval void assertAccessible(Target&)
+        static constexpr void assertAccessible(Target&)
         {
             if constexpr (not anyThreadId())
             {

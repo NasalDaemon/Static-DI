@@ -83,7 +83,7 @@ struct NullContext : detail::ContextBase
             return makeAlias(detail::downCast<FinalInterface>(target));
         }
 
-        static consteval void assertAccessible(auto&) {}
+        static constexpr void assertAccessible(auto&) {}
     };
 
     static constexpr std::size_t Depth = 0;

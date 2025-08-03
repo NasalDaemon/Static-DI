@@ -14,6 +14,9 @@ jobs:
     # permissions:
     #   pull-requests: write
 
+    container:
+      image: ${{ matrix.compiler.container }}
+
     strategy:
       fail-fast: true
       matrix:
@@ -22,14 +25,16 @@ jobs:
           - name: gcc
             version: 14
             os: ubuntu-latest
-          # Add back when gcc-15 can be used on ubuntu-latest or mac-os
-          # - name: gcc
-          #   version: 15
-          #   os: macos-15
-          # - name: gcc
-          #   version: 15
-          #   std_module: std-module
-          #   os: macos-15
+          - name: gcc
+            version: 15
+            os: ubuntu-latest
+            container: ghcr.io/mattkretz/cplusplus-ci/gcc15
+          - name: gcc
+            version: 15
+            std_module: std-module
+            os: ubuntu-latest
+            container: ghcr.io/mattkretz/cplusplus-ci/gcc15
+
           - name: clang
             version: 20
             os: ubuntu-latest
@@ -37,6 +42,7 @@ jobs:
             version: 20
             std_module: std-module
             os: ubuntu-latest
+
           - name: cl
             header_only: header-only
             os: windows-latest
@@ -46,27 +52,24 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Set up Conan
-      if: runner.os != 'macos'
+      if: matrix.compiler.container == ''
       uses: turtlebrowser/get-conan@main
+
+    - name: Set up Conan/CMake on custom container
+      if: matrix.compiler.container != ''
+      run: |
+        echo /github/home/.local/bin >> $GITHUB_PATH
+        echo /opt/cmake-latest/bin >> $GITHUB_PATH
+        pipx install conan
 
     - name: Set up Mold linker on linux
       if: runner.os == 'linux'
       uses: rui314/setup-mold@v1
 
-    - name: Set up Conan and GCC on mac
-      if: runner.os == 'macos' && matrix.compiler.name == 'gcc'
-      run: |
-        brew install conan
-        wget https://github.com/macports/macports-base/releases/download/v2.10.7/MacPorts-2.10.7-15-Sequoia.pkg
-        sudo installer -pkg ./MacPorts-2.10.7-15-Sequoia.pkg -target /
-        export PATH=$PATH:/opt/local/bin
-        sudo port install gcc-devel
-        g++ --version
-
-    - name: Set up GCC on linux
-      if: runner.os == 'linux' && matrix.compiler.name == 'gcc'
+    - name: Set up GCC
+      if: matrix.compiler.name == 'gcc' && matrix.compiler.container == ''
       env:
-          GCC_VER: ${{ matrix.compiler.version }}
+        GCC_VER: ${{ matrix.compiler.version }}
       run: |
         sudo apt install -y gcc-${GCC_VER} g++-${GCC_VER}
         sudo update-alternatives --install /usr/bin/cc cc /usr/bin/gcc-${GCC_VER} 100
