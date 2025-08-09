@@ -40,7 +40,10 @@ TEST_CASE("TestThread")
             g.a.asTrait(trait::a, fireAndForget).getB();
             CHECK(2 == g.a.asTrait(trait::a, future).getB().get());
 
-            CHECK_THROWS_WITH(g.dynA.node.asTrait(trait::a), "Access denied to node with thread affinity 1 from current thread 0");
+            // Getting a detached node on the wrong thread should now throw
+            auto aOnThread0 = g.dynA.node.asTrait(trait::a);
+            // Accessing the state will throw an exception
+            CHECK_THROWS_WITH(aOnThread0.getA(), "Access denied to node with thread affinity 1 from current thread 0");
             CHECK(5 == g.dynA.node.asTrait(trait::a, future).getB().get());
 
             scheduler->stopAll();

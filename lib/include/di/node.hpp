@@ -104,6 +104,10 @@ struct Node
     {
         static_assert(NodeDependenciesSatisfied<Self, true>, "Listed node dependencies are not satisfied transitively.");
     }
+
+    static void getElementId() = delete;
+    static void getElementHandle() = delete;
+    static void getPeers() = delete;
 };
 
 template<IsNode NodeT>
@@ -154,6 +158,10 @@ namespace detail {
         using Node::canGetNode;
         using Node::asTrait;
         using Node::hasTrait;
+
+        // Expose peer node functions
+        using Node::getElementId;
+        using Node::getElementHandle;
 
         DI_INLINE constexpr decltype(auto) visit(this auto& self, auto&& f)
         {

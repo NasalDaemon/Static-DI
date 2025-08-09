@@ -33,16 +33,16 @@ namespace di::tests::thread {
         Function() = default;
 
         template<std::invocable<Args...> F>
-        Function(F&& f)
+        constexpr Function(F&& f)
             : callable{makeCallable(DI_FWD(f))}
         {}
 
-        R operator()(auto&&... args) const
+        constexpr R operator()(auto&&... args) const
         {
             return callable->fptr(callable.get(), DI_FWD(args)...);
         }
 
-        operator bool() const { return callable; }
+        constexpr operator bool() const { return callable; }
 
     private:
         struct CallableBase
@@ -63,7 +63,7 @@ namespace di::tests::thread {
         };
 
         template<class F>
-        static CallableBase* makeCallable(F&& f)
+        static constexpr CallableBase* makeCallable(F&& f)
         {
             using T = Callable<std::remove_cvref_t<F>>;
             return new T{
@@ -123,80 +123,71 @@ namespace di::tests::thread {
 
         ~Scheduler()
         {
+            auto g = di::Defer([] { Thread::resetMainThread(); });
             stopAll();
             run();
-            Thread::resetMainThread();
         }
     };
 
     export [[nodiscard]] bool postTask(std::weak_ptr<Scheduler::ThreadContext> h, Function<void()> f);
 
-    template<std::size_t CurrentThreadId, std::size_t RequiredThreadId>
-    struct FireAndForget
+    struct FireAndForget : di::key::ThreadPost<FireAndForget>
     {
-        template<class Task>
+        template<std::size_t CurrentThreadId, std::size_t RequiredThreadId, class Task>
         [[nodiscard]] static constexpr bool post(std::size_t requiredThreadId, Task task)
         {
             if constexpr (CurrentThreadId == ThreadEnvironment::DynamicThreadId
                        or RequiredThreadId == ThreadEnvironment::DynamicThreadId
                        or CurrentThreadId != RequiredThreadId)
             {
-                if (auto ts = Scheduler::get().lock()) [[likely]]
-                    if (ts->postTask(requiredThreadId, std::move(task))) [[likely]]
-                        return true;
-                return false;
+                if (Thread::getId() != requiredThreadId)
+                {
+                    if (auto ts = Scheduler::get().lock()) [[likely]]
+                        if (ts->postTask(requiredThreadId, std::move(task))) [[likely]]
+                            return true;
+                    return false;
+                }
             }
-            else
-            {
-                // Already statically known to be on correct thread
-                task();
-                return true;
-            }
+            // Already known to be on correct thread
+            task();
+            return true;
         }
     };
 
-    export inline constexpr di::key::ThreadPost<FireAndForget> fireAndForget{};
+    export inline constexpr FireAndForget fireAndForget{};
 
-    template<std::size_t CurrentThreadId, std::size_t RequiredThreadId>
-    struct Future
+    struct Future : di::key::ThreadPost<Future>
     {
-        template<std::invocable Task>
-        [[nodiscard]] static constexpr std::future<std::invoke_result_t<Task>> post(std::size_t requiredThreadId, Task&& task)
+        template<std::size_t CurrentThreadId, std::size_t RequiredThreadId, std::invocable Task>
+        [[nodiscard]] static constexpr auto post(std::size_t requiredThreadId, Task&& task)
+            -> std::future<std::invoke_result_t<std::remove_cvref_t<Task>>>
         {
-            using R = std::invoke_result_t<Task>;
+            using R = std::invoke_result_t<std::remove_cvref_t<Task>>;
+            auto package = std::packaged_task<R()>(DI_FWD(task));
+            auto future = package.get_future();
 
             if constexpr (CurrentThreadId == ThreadEnvironment::DynamicThreadId
                        or RequiredThreadId == ThreadEnvironment::DynamicThreadId
                        or CurrentThreadId != RequiredThreadId)
             {
-                if (auto ts = Scheduler::get().lock()) [[likely]]
-                {
-                    auto package = std::packaged_task<R()>(DI_FWD(task));
-                    auto future = package.get_future();
-                    if (ts->postTask(requiredThreadId, std::move(package))) [[likely]]
-                        return future;
-                }
                 if (Thread::getId() != requiredThreadId)
                 {
+                    if (auto ts = Scheduler::get().lock()) [[likely]]
+                        if (ts->postTask(requiredThreadId, std::move(package))) [[likely]]
+                            return future;
+
                     std::promise<R> promise;
                     promise.set_exception(std::make_exception_ptr(
                         std::runtime_error(std::format("Unable to post task to thread {}", requiredThreadId))));
-                    return promise.get_future();
+                    future = promise.get_future();
+                    return future;
                 }
             }
             // Already known to be on correct thread
-            std::promise<R> promise;
-            try
-            {
-                promise.set_value(std::invoke(task));
-            }
-            catch (...)
-            {
-                promise.set_exception(std::current_exception());
-            }
-            return promise.get_future();
+            package();
+            return future;
         }
     };
 
-    export inline constexpr di::key::ThreadPost<Future> future{};
+    export inline constexpr Future future{};
 }

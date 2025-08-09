@@ -206,10 +206,14 @@ namespace key {
             using WithEnv = di::WithEnv<Env, Target>;
             auto& targetWithEnv = detail::downCast<WithEnv>(target);
 
-            using STC = ContextOf<Source>::Info::DynThreadContext;
-            using TTC = ContextOf<Target>::Info::DynThreadContext;
-            if constexpr (IsCluster<Source> or detail::IsNodeState<Source> or not std::is_same_v<STC, TTC>)
-                ContextOf<Target>::Info::assertAccessible(targetWithEnv);
+            // Don't assert on detached nodes, as they are not bound to any thread until they access the node's state
+            if constexpr (not IsDetachedImpl<Target>)
+            {
+                using STC = ContextOf<Source>::Info::DynThreadContext;
+                using TTC = ContextOf<Target>::Info::DynThreadContext;
+                if constexpr (IsCluster<Source> or detail::IsNodeState<Source> or not std::is_same_v<STC, TTC>)
+                    ContextOf<Target>::Info::assertAccessible(targetWithEnv);
+            }
 
             return targetWithEnv;
         }
@@ -296,7 +300,7 @@ constexpr auto& withThread(auto& t)
 namespace key {
 
     DI_MODULE_EXPORT
-    template<template<std::size_t, std::size_t> class Poster>
+    template<class Poster>
     struct ThreadPost
     {
         template<class T>
@@ -305,12 +309,13 @@ namespace key {
         template<class T, std::size_t CurrentThreadId>
         struct Interface : T
         {
+            static_assert(std::derived_from<Poster, ThreadPost>);
             constexpr decltype(auto) visit(this auto& self, auto&& visitor)
             {
                 std::size_t dynamicRequiredThreadId = requiredThreadId;
                 if constexpr (requiredThreadId == ThreadEnvironment::DynamicThreadId)
                     dynamicRequiredThreadId = detail::getTargetDynamicRequiredThread(self);
-                return Poster<CurrentThreadId, requiredThreadId>::post(
+                return Poster::template post<CurrentThreadId, requiredThreadId>(
                     dynamicRequiredThreadId,
                     [&, visitor = DI_FWD(visitor)](this auto&&) -> decltype(auto)
                     {
@@ -323,7 +328,7 @@ namespace key {
                 std::size_t dynamicRequiredThreadId = requiredThreadId;
                 if constexpr (requiredThreadId == ThreadEnvironment::DynamicThreadId)
                     dynamicRequiredThreadId = detail::getTargetDynamicRequiredThread(self);
-                return Poster<CurrentThreadId, requiredThreadId>::post(
+                return Poster::template post<CurrentThreadId, requiredThreadId>(
                     dynamicRequiredThreadId,
                     [&self, ...args = DI_FWD(args)](this auto&&) -> decltype(auto)
                     {
@@ -347,6 +352,10 @@ namespace key {
             using WithEnv = di::WithEnv<Env, Target>;
             return detail::downCast<Interface<WithEnv, currentThreadId>>(target);
         }
+
+        // To be overridden in Poster
+        template<std::size_t CurrentThreadId, std::size_t RequiredThreadId>
+        static constexpr void post(std::size_t requiredThreadId, auto&& task) = delete;
     };
 
 } // namespace key

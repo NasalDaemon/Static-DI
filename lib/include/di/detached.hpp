@@ -50,6 +50,10 @@ struct DetachedImpl : Interface, private Node
     using Node::asTrait;
     using Node::hasTrait;
 
+    // Expose peer node functions
+    using Node::getElementId;
+    using Node::getElementHandle;
+
     // Use impl from the detached interface
     using Interface::impl;
 

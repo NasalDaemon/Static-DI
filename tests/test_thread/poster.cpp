@@ -35,13 +35,19 @@ struct Scheduler::ThreadContext
         Thread::setId(threadId);
     }
 
-    void postTask(auto&& task)
+    bool postTask(auto&& task)
     {
         {
             auto lk = std::lock_guard(mtx);
+            if (stop_on_empty) [[unlikely]]
+            {
+                std::println("Thread {} is stopping, cannot post task", threadId);
+                return false;
+            }
             tasks.push(DI_FWD(task));
         }
         cv.notify_one();
+        return true;
     }
 
     std::size_t getThreadId() const { return threadId; }
@@ -98,10 +104,8 @@ private:
 bool postTask(std::weak_ptr<Scheduler::ThreadContext> h, Function<void()> f)
 {
     if (auto ctx = h.lock()) [[likely]]
-    {
-        ctx->postTask(std::move(f));
-        return true;
-    }
+        return ctx->postTask(std::move(f));
+
     return false;
 }
 
@@ -113,7 +117,6 @@ std::shared_ptr<Scheduler> Scheduler::make()
         return current;
     auto main = std::make_shared<Scheduler>(Private());
     main->mainThreadContext = std::make_shared<ThreadContext>(0);
-    // main->mainThreadContext->stop_on_empty = true;
     main->threadContexts.push_back(main->mainThreadContext);
     s_current = main;
     signal(SIGINT, [](int)
@@ -214,11 +217,8 @@ void Scheduler::run()
     std::latch latch(threads.size());
     stop_latch.store(&latch, std::memory_order_release);
     stop_latch.notify_all();
-    while (not latch.try_wait())
-    {
-        mainThreadContext->run();
-        std::this_thread::yield();
-    }
+    mainThreadContext->run();
+    latch.wait();
     threads.clear();
     threadContexts.clear();
 }

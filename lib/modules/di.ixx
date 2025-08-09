@@ -146,7 +146,8 @@ export namespace di {
     using di::NodeDependenciesSatisfied;
     // peer_node.hpp
     using di::PeerNode;
-    using di::PeerNodeOpen;
+    using di::PeerDetached;
+    using di::PeerDetachedOpen;
     // peer.hxx
     namespace trait {
         using trait::Peer;

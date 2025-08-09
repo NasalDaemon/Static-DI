@@ -1,6 +1,7 @@
 #ifndef INCLUDE_DI_PEER_NODE_HPP
 #define INCLUDE_DI_PEER_NODE_HPP
 
+#include "di/detached.hpp"
 #include "di/detail/cast.hpp"
 #include "di/context_fwd.hpp"
 #include "di/macros.hpp"
@@ -51,18 +52,24 @@ struct PeerNode : Node
     }
 
     // Default impl of di::trait::Peer is to have no peers
-    constexpr std::false_type impl(this auto const&, trait::Peer::isPeerId) { return {}; }
-    template<class Self>
-    constexpr std::false_type impl(this Self const&, trait::Peer::isPeerInstance, Self const&) { return {}; }
+    constexpr std::false_type impl(this auto const&, trait::Peer::isPeerId, auto const&) { return {}; }
+    constexpr std::false_type impl(this auto const&, trait::Peer::isPeerInstance, auto const&) { return {}; }
 };
 
 DI_MODULE_EXPORT
-struct PeerNodeOpen : PeerNode
+struct PeerDetached : DetachedInterface
+{
+    // Default impl of di::trait::Peer is to accept no peers
+    constexpr std::false_type impl(this auto const&, trait::Peer::isPeerId, auto const&) { return {}; }
+    constexpr std::false_type impl(this auto const&, trait::Peer::isPeerInstance, auto const&) { return {}; }
+};
+
+DI_MODULE_EXPORT
+struct PeerDetachedOpen : DetachedInterface
 {
     // Default impl of di::trait::Peer is to accept all peers
-    constexpr std::true_type impl(this auto const&, trait::Peer::isPeerId) { return {}; }
-    template<class Self>
-    constexpr std::true_type impl(this Self const&, trait::Peer::isPeerInstance, Self const&) { return {}; }
+    constexpr std::true_type impl(this auto const&, trait::Peer::isPeerId, auto const&) { return {}; }
+    constexpr std::true_type impl(this auto const&, trait::Peer::isPeerInstance, auto const&) { return {}; }
 };
 
 }

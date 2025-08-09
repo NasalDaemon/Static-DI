@@ -210,12 +210,21 @@ struct Collection
 
         using Traits = di::TraitsTemplate<Node, TraitsTemplate>;
 
-        constexpr auto* getId(this auto& self, ID const& id)
+        [[nodiscard]] constexpr auto* getId(this auto& self, ID const& id)
         {
             auto const it = std::find(self.ids.begin(), self.ids.end(), id);
             return it != self.ids.end()
                 ? std::addressof(self.elements[std::distance(self.ids.begin(), it)].node)
                 : nullptr;
+        }
+
+        // Throws if ID does not exist in collection
+        [[nodiscard]] constexpr auto& atId(this auto& self, ID const& id)
+        {
+            auto const it = std::find(self.ids.begin(), self.ids.end(), id);
+            if (it == self.ids.end()) [[unlikely]]
+                throw std::out_of_range("Element with given ID does not exist in collection");
+            return self.elements[std::distance(self.ids.begin(), it)].node;
         }
     };
 };

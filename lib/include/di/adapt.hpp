@@ -44,7 +44,7 @@ struct Adapt
             requires (not std::is_const_v<N>)
             static constexpr auto exchangeImpl(N& facade, auto&&... args)
             {
-                Node& cluster = facade.*detail::reverseMemberPointer(&Node::facade);
+                auto& cluster = facade.*detail::reverseMemberPointer(&Node::facade);
                 return Context::template exchangeImpl<T>(cluster, DI_FWD(args)...);
             }
         };
