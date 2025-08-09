@@ -2,7 +2,7 @@
 
 ## Header includes and module imports
 
-At the top of `.hxx.dig` header files, one should include the necessary header includes at the top of the file. No include guard is necessary.
+At the top of `.hxx.dig` header files, include the necessary headers. No include guard is necessary.
 
 ```cpp
 // fruit.hxx.dig
@@ -14,7 +14,7 @@ namespace my {
 }
 ```
 
-At the top of `.ixx.dig` module files, one should specify all module imports at the top of the file, as well as including any necessary headers in the global module fragment.
+At the top of `.ixx.dig` module files, specify all module imports at the top of the file, as well as including any necessary headers in the global module fragment.
 
 ```cpp
 // fruit.ixx.dig

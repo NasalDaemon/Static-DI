@@ -5,8 +5,8 @@ namespace {{ namespace.name }} {
 
 {{ export }}struct {{ trait.name }} : di::Trait
 {
-    {% for methodName in trait.methodNames %}
-    DI_METHOD_TAG({{ methodName }})
+    {% for method_name in trait.method_names %}
+    DI_METHOD_TAG({{ method_name }})
     {% endfor %}
 
     template<di::IsMethodOf<{{ trait.name }}> Tag>
@@ -16,14 +16,14 @@ namespace {{ namespace.name }} {
     {
         struct Applicable
         {
-            {% for methodName in trait.methodNames %}
-            DI_METHOD_TAG_APPLICABLE({{ methodName }})
+            {% for method_name in trait.method_names %}
+            DI_METHOD_TAG_APPLICABLE({{ method_name }})
             {% endfor %}
         };
         struct Methods
         {
-            {% for methodName in trait.methodNames %}
-            DI_AS_FUNCTOR_METHOD({{ methodName }})
+            {% for method_name in trait.method_names %}
+            DI_AS_FUNCTOR_METHOD({{ method_name }})
             {% endfor %}
 
             {% for method in trait.methods %}
@@ -31,24 +31,24 @@ namespace {{ namespace.name }} {
                 {%- for prefix, name in method.templates -%}
                 , {{ prefix }}{{ prefix.pack }} {{ name }}
                 {%- endfor -%}
-                {%- if trait.typesName -%}
-                , class {{ trait.typesName }} = std::remove_cvref_t<Self>::Types
+                {%- if trait.types_name -%}
+                , class {{ trait.types_name }} = std::remove_cvref_t<Self>::Types
                 {%- endif -%}
-                {%- if trait.rootName -%}
-                , class {{ trait.rootName }} = di::ResolveRoot<di::ContextOf<std::remove_cvref_t<Self>>>
+                {%- if trait.root_name -%}
+                , class {{ trait.root_name }} = di::ResolveRoot<di::ContextOf<std::remove_cvref_t<Self>>>
                 {%- endif -%}
-                {%- if trait.infoName -%}
-                , class {{ trait.infoName }} = di::ResolveInfo<di::ContextOf<std::remove_cvref_t<Self>>>
+                {%- if trait.info_name -%}
+                , class {{ trait.info_name }} = di::ResolveInfo<di::ContextOf<std::remove_cvref_t<Self>>>
                 {%- endif -%}
-                {%- if trait.implNamed -%}
-                , class {{ trait.implName }} = std::remove_cvref_t<Self>::Traits::Node
+                {%- if trait.impl_named -%}
+                , class {{ trait.impl_name }} = std::remove_cvref_t<Self>::Traits::Node
                 {%- endif -%}
             >
-            DI_INLINE constexpr auto {{ method.name }}(this Self{{ " const&" if method.isConst else "&&" }} self
+            DI_INLINE constexpr auto {{ method.name }}(this Self{{ " const&" if method.is_const else "&&" }} self
                 {%- for type, name in method.params -%}
                 , {{ type }}{{ type.pack }} {{ name }}
                 {%- endfor -%}
-            ){{ " -> " + method.returnType.str if method.returnType.str != "auto" else "" }}
+            ){{ " -> " + method.return_type.str if method.return_type.str != "auto" else "" }}
             {
                 return self.impl({{ method.name }}_c
                     {%- for type, name in method.params -%}
@@ -60,30 +60,30 @@ namespace {{ namespace.name }} {
         };
         struct DuckMethods
         {
-            {% for methodName in trait.methodNames %}
-            DI_DUCK_METHOD({{ methodName }})
+            {% for method_name in trait.method_names %}
+            DI_DUCK_METHOD({{ method_name }})
             {% endfor %}
         };
     };
 
-    template<class Self, class {{ trait.implName }}, class {{ trait.typesName or "" }}
-    {%- if trait.rootName -%}
-        , class {{ trait.rootName }} = di::ResolveRoot<di::ContextOf<{{ trait.implName }}>>
+    template<class Self, class {{ trait.impl_name }}, class {{ trait.types_name or "" }}
+    {%- if trait.root_name -%}
+        , class {{ trait.root_name }} = di::ResolveRoot<di::ContextOf<{{ trait.impl_name }}>>
     {%- endif -%}
-    {%- if trait.infoName -%}
-        , class {{ trait.infoName }} = di::ResolveInfo<di::ContextOf<{{ trait.implName }}>>
+    {%- if trait.info_name -%}
+        , class {{ trait.info_name }} = di::ResolveInfo<di::ContextOf<{{ trait.impl_name }}>>
     {%- endif -%}
     >
-    requires requires ({{ trait.implName }} impl_, {{ trait.implName }} const const_)
+    requires requires ({{ trait.impl_name }} impl_, {{ trait.impl_name }} const const_)
     {
-        typename {{ trait.implName }}::Traits;
+        typename {{ trait.impl_name }}::Traits;
         {% for require in trait.requires %}
         {{ require }}
         {% endfor %}
-        {% for method in trait.methods if not method.isTemplate %}
+        {% for method in trait.methods if not method.is_template %}
 
-        {% macro requireInvoke() -%}
-            {{ "const_" if method.isConst else "impl_" }}.impl({{ method.name }}_c
+        {% macro require_invoke() -%}
+            {{ "const_" if method.is_const else "impl_" }}.impl({{ method.name }}_c
                 {%- for type, name in method.params -%}
                 , DI_FWD({{ name }})
                 {%- endfor -%}
@@ -94,16 +94,16 @@ namespace {{ namespace.name }} {
             {%- for type, name in method.params -%}
             {{ comma() }}{{ type }} {{ name }}
             {%- endfor -%}
-            {%- if not method.isUnconstrainedReturn and not method.isAutoReturn -%}
-            {{ comma() }}{{ method.returnType }} _returnType_
+            {%- if not method.is_unconstrained_return and not method.is_auto_return -%}
+            {{ comma() }}{{ method.return_type }} _return_type_
             {%- endif -%}
             ) {
-        {% if method.isUnconstrainedReturn %}
-            {{ requireInvoke() }};
-        {% elif method.isAutoReturn %}
-            { {{ requireInvoke() }} } -> {{ method.returnType.str.removesuffix("auto") }};
+        {% if method.is_unconstrained_return %}
+            {{ require_invoke() }};
+        {% elif method.is_auto_return %}
+            { {{ require_invoke() }} } -> {{ method.return_type.str.removesuffix("auto") }};
         {% else %}
-            { {{ requireInvoke() }} } -> std::convertible_to<decltype(_returnType_)>;
+            { {{ require_invoke() }} } -> std::convertible_to<decltype(_return_type_)>;
         {% endif %}
         };
         {% endfor %}
@@ -111,7 +111,7 @@ namespace {{ namespace.name }} {
     using Implements = void;
 } inline constexpr {{ trait.variable }}{};
 {% endfor %}
-{% for alias in namespace.traitAliases %}
+{% for alias in namespace.trait_aliases %}
 
 {% if alias | count == 2 %}
 {{ export }}using {{ alias[0] }} = di::AltTrait<{{ alias[1] }}, struct {{ alias[0] }}_Tag>;
@@ -124,8 +124,8 @@ namespace {{ namespace.name }} {
 
 {% if not cluster.templates %}
 template<class Context>
-struct {{ cluster.nodeName() }};
-{{ export }}using {{ cluster.name }} = di::InlineNode<{{ cluster.nodeName() }}>;
+struct {{ cluster.node_name() }};
+{{ export }}using {{ cluster.name }} = di::InlineNode<{{ cluster.node_name() }}>;
 {% else %}
 {{ export }}template<
     {%- set comma = joiner(", ") -%}
@@ -136,7 +136,7 @@ struct {{ cluster.nodeName() }};
 struct {{ cluster.name }}
 {
     template<class Context>
-    struct {{ cluster.nodeName() }};
+    struct {{ cluster.node_name() }};
 };
 {% endif %}
 {% endfor %}
@@ -155,16 +155,16 @@ template<
     {{ comma() }}{{ prefix }}{{ prefix.pack }} {{ name }}
     {%- endfor -%}
 >
-template<class {{ cluster.contextName }}>
+template<class {{ cluster.context_name }}>
 struct {{ cluster.name }}<
     {%- set comma = joiner(", ") -%}
     {%- for prefix, name in cluster.templates -%}
     {{ comma() }}{{ name }}{{ prefix.pack }}
     {%- endfor -%}
->::Node : {{ cluster.clusterType }}
+>::Node : {{ cluster.cluster_type }}
 {% else %}
-template<class {{ cluster.contextName }}>
-struct {{ cluster.nodeName() }} : {{ cluster.clusterType }}
+template<class {{ cluster.context_name }}>
+struct {{ cluster.node_name() }} : {{ cluster.cluster_type }}
 {% endif %}
 {
     using Depends = di::Depends<{{ cluster.dependencies | join(", ") }}>;
@@ -176,11 +176,11 @@ struct {{ cluster.nodeName() }} : {{ cluster.clusterType }}
     }
 
     {% endif %}
-    {% if cluster.rootName %}
-    using {{ cluster.rootName }} = di::ResolveRoot<{{ cluster.contextName }}>;
+    {% if cluster.root_name %}
+    using {{ cluster.root_name }} = di::ResolveRoot<{{ cluster.context_name }}>;
     {% endif %}
-    {% if cluster.infoName %}
-    using {{ cluster.infoName }} = di::ResolveInfo<{{ cluster.contextName }}>;
+    {% if cluster.info_name %}
+    using {{ cluster.info_name }} = di::ResolveInfo<{{ cluster.context_name }}>;
     {% endif %}
     {% for node in cluster.nodes %}
     struct {{ node.context }};
@@ -191,11 +191,11 @@ struct {{ cluster.nodeName() }} : {{ cluster.clusterType }}
     using {{ alias }} = {{ type }};
     {% endfor %}
     {% endif %}
-    {% if cluster.parentNode.connections %}
+    {% if cluster.parent_node.connections %}
 
-    {% for connection in cluster.parentNode.connections %}
-    {% if connection.isRenaming() %}
-    DI_LINK(({{ connection.trait }}), {{ connection.context }}, ({{ connection.toTrait }}))
+    {% for connection in cluster.parent_node.connections %}
+    {% if connection.is_renaming() %}
+    DI_LINK(({{ connection.trait }}), {{ connection.context }}, ({{ connection.to_trait }}))
     {% else %}
     DI_LINK(({{ connection.trait }}), {{ connection.context }})
     {% endif %}
@@ -204,11 +204,11 @@ struct {{ cluster.nodeName() }} : {{ cluster.clusterType }}
 
     {% for node in cluster.nodes %}
     using {{ node.context }}Node_ = {{ node.impl }};
-    struct {{ node.context }} : di::Context<{{ cluster.nodeName() }}, {{ node.context }}Node_>
+    struct {{ node.context }} : di::Context<{{ cluster.node_name() }}, {{ node.context }}Node_>
     {
         {% for connection in node.connections %}
-        {% if connection.isRenaming() %}
-        DI_LINK(({{ connection.trait }}), {{ connection.context }}, ({{ connection.toTrait }}))
+        {% if connection.is_renaming() %}
+        DI_LINK(({{ connection.trait }}), {{ connection.context }}, ({{ connection.to_trait }}))
         {% else %}
         DI_LINK(({{ connection.trait }}), {{ connection.context }})
         {% endif %}
@@ -217,15 +217,15 @@ struct {{ cluster.nodeName() }} : {{ cluster.clusterType }}
     {% endfor %}
 
     {% for node in cluster.nodes %}
-    DI_NODE({{ node.context }}, {{ node.name }}{{ cluster.predicatesStr(node) }})
+    DI_NODE({{ node.context }}, {{ node.name }}{{ cluster.predicates_str(node) }})
     {% endfor %}
 
     constexpr void visit(this auto& self, auto&& visitor)
     {
-        {% if 1 == cluster.userNodes | length %}
-        self.{{ cluster.userNodes.0.name }}.visit(DI_FWD(visitor));
+        {% if 1 == cluster.user_nodes | length %}
+        self.{{ cluster.user_nodes.0.name }}.visit(DI_FWD(visitor));
         {% else %}
-        {% for node in cluster.userNodes %}
+        {% for node in cluster.user_nodes %}
         self.{{ node.name }}.visit(visitor);
         {% endfor %}
         {% endif %}

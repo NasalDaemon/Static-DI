@@ -386,7 +386,7 @@ int main()
         .authService{"super token secret", std::chrono::seconds{600}}
     };
     // `di::Graph<my::Cluster, Root>` is an alias to `my::Cluster<di::RootContext<Root>>`, which is roughly:
-    //  struct my::PsuedoGeneratedCluster
+    //  struct my::PseudoGeneratedCluster
     //  {
     //      struct SessionsContext { ... };
     //      struct AuthServiceContext { ... };

@@ -211,7 +211,7 @@ namespace key {
             {
                 using STC = ContextOf<Source>::Info::DynThreadContext;
                 using TTC = ContextOf<Target>::Info::DynThreadContext;
-                if constexpr (IsCluster<Source> or detail::IsNodeState<Source> or not std::is_same_v<STC, TTC>)
+                if constexpr (not std::is_same_v<STC, TTC> or IsCluster<Source> or detail::IsNodeState<Source>)
                     ContextOf<Target>::Info::assertAccessible(targetWithEnv);
             }
 

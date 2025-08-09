@@ -20,6 +20,7 @@ trait Inner
 {
     get() const -> int
     getPeer(int index) const -> int
+    getInner() const -> int
 }
 
 trait Outer
@@ -31,9 +32,19 @@ trait Outer
 
 namespace di::tests::thread {
 
+cluster Inner [R = Root]
+{
+    node1 = R::Inner
+    node2 = R::Inner
+
+    [trait::Outer <-> trait::Inner]
+    .. <-> node1 --> node2
+    .. <------------ node2
+}
+
 cluster CollectionCluster [R = Root]
 {
-    collection = di::Collection<int, di::OnDynThread<typename R::Inner>>
+    collection = di::Collection<int, di::OnDynThread<Inner>>
     outer = di::OnDynThread<typename R::Outer>
 
     [trait::Inner <-> trait::Outer]
@@ -57,7 +68,7 @@ struct InnerNode : di::PeerNode
         , trait::Outer(OuterDetached)
         , di::trait::Peer(di::PeerDetachedOpen)
     >;
-    using Depends = di::Depends<trait::Outer>;
+    using Depends = di::Depends<trait::Outer, trait::Inner*>;
 
     explicit InnerNode(int i) : i(i) {}
 
@@ -78,6 +89,11 @@ struct InnerNode : di::PeerNode
             }
         }
         throw std::out_of_range("No peer with the given index found");
+    }
+
+    int impl(this auto const& self, trait::Inner::getInner)
+    {
+        return self.getNode(trait::inner).get();
     }
 
     struct OuterDetached : di::DetachedInterface
@@ -123,15 +139,24 @@ TEST_CASE("di::Collection using threads")
             [](auto add)
             {
                 add(0, DI_EMPLACE(
-                    .node{314},
+                    .node{
+                        .node1{314},
+                        .node2{314},
+                    },
                     .threadId = 0,
                 ));
                 add(1, DI_EMPLACE(
-                    .node{42},
+                    .node{
+                        .node1{42},
+                        .node2{42},
+                    },
                     .threadId = 1,
                 ));
                 add(2, DI_EMPLACE(
-                    .node{99},
+                    .node{
+                        .node1{99},
+                        .node2{99},
+                    },
                     .threadId = 2,
                 ));
             }},
@@ -149,24 +174,32 @@ TEST_CASE("di::Collection using threads")
 
     auto mainTask = [&]
     {
-        CHECK(graph.collection->atId(0)->asTrait(trait::inner).get() == 314);
-        CHECK_THROWS(graph.collection->atId(1)->asTrait(trait::inner).get());
-        CHECK_THROWS(graph.collection->atId(2)->asTrait(trait::inner).get());
+        auto& at0 = graph.collection->atId(0);
+        auto& at1 = graph.collection->atId(1);
+        auto& at2 = graph.collection->atId(2);
+
+        CHECK(at0->asTrait(trait::inner).get() == 314);
+        CHECK_THROWS(at1->asTrait(trait::inner).get());
+        CHECK_THROWS(at2->asTrait(trait::inner).get());
 
         CHECK(graph.collection->getId(0)->asTrait(trait::inner, future).get().get() == 314);
         CHECK(graph.collection->getId(1)->asTrait(trait::inner, future).get().get() == 42);
         CHECK(graph.collection->getId(2)->asTrait(trait::inner, future).get().get() == 99);
 
         CHECK(graph.outer.asTrait(trait::outer, future).get().get() == 101);
-        CHECK(graph.collection->atId(0)->asTrait(trait::outer).get() == 101);
-        CHECK(graph.collection->atId(1).node.asTrait(trait::outer).get() == 101);
-        CHECK(graph.collection->atId(2).node.asTrait(trait::outer).get() == 101);
+        CHECK(at0->node1.asTrait(trait::outer).get() == 101);
+        CHECK(at1->node1.asTrait(trait::outer).get() == 101);
+        CHECK(at2->node1.asTrait(trait::outer).get() == 101);
 
         // Cannot get self as peer node
-        CHECK_THROWS_WITH(graph.collection->atId(0).node.asTrait(trait::inner, future).getPeer(0).get(),
+        CHECK_THROWS_WITH(at0.node.asTrait(trait::inner, future).getPeer(0).get(),
             "No peer with the given index found");
-        CHECK(graph.collection->atId(0).node.asTrait(trait::inner, future).getPeer(1).get() == 42);
-        CHECK(graph.collection->atId(0).node.asTrait(trait::inner, future).getPeer(2).get() == 99);
+        CHECK(at0->asTrait(trait::inner, future).getPeer(1).get() == 42);
+        CHECK(at0->asTrait(trait::inner, future).getPeer(2).get() == 99);
+
+        CHECK(at0->asTrait(trait::inner).getInner() == 314);
+        CHECK(at1->asTrait(trait::inner, future).getInner().get() == 42);
+        CHECK(at2->asTrait(trait::inner, future).getInner().get() == 99);
 
         sch->stopAll();
     };

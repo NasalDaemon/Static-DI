@@ -18,40 +18,40 @@ Domains in Static-DI are special `cluster`s with extra restrictions. If you are 
 
 ## Principal motivation
 
-When a project grows in size, the structure of the dependency graph itself increasingly has an impact on the maintainability and simplicity of the codebase. Dependency graphs often become more complex when there are longer chains of dependencies, cyclic dependencies, and deeper nesting of clusters. Greater complexity often makes it more difficult to add new functionality, maintain the existing functionality, and generally reason about the code and explain its behaviour.
+As a project grows, the structure of the dependency graph increasingly impacts maintainability and simplicity. Dependency graphs often become more complex with longer chains of dependencies, cyclic dependencies, and deeper nesting of clusters. Greater complexity makes it more difficult to add new functionality, maintain existing functionality, and generally reason about the code and explain its behaviour.
 
-A `domain` in Static-DI is a special kind of `cluster` which when utilised throughout the entire graph encourages a flatter and shallower graph shape overall, with looser coupling between nodes. It demands thoughtful design in terms of delegation of responsibility into logical domains with clear boundaries. This is acheived by preferring certain kinds of dependencies and by making explicit the statefulness and arity of sub-nodes (i.e. whether a sub-node is unary or a cluster/domain).
+A `domain` in Static-DI is a special kind of `cluster` that, when used throughout the entire graph, encourages a flatter and shallower graph shape overall, with looser coupling between nodes. It demands thoughtful design in terms of delegation of responsibility into logical domains with clear boundaries. This is achieved by preferring certain kinds of dependencies and by making explicit the statefulness and arity of sub-nodes (i.e., whether a sub-node is unary or a cluster/domain).
 
-**NOTE:** `domain`s will not solve all architectural problems. They encourage a graph shape that will generally result in a simpler composition. It does this by restriciting or highlighting particular dependency anti-patterns to prevent them from pervading the graph and the wider codebase, but there may be situations when the less restrictive `cluster` is preferable.
+**Note:** `domain`s will not solve all architectural problems. They encourage a graph shape that generally results in a simpler composition. They do this by restricting or highlighting particular dependency anti-patterns to prevent them from pervading the graph and the wider codebase, but there may be situations when the less restrictive `cluster` is preferable.
 
 ### Scale-free networks
-In graph theory, the [scale-free](https://en.wikipedia.org/wiki/Scale-free_network) topology describes graphs with a degree distribution (distribution of number of connections per node) that follows a power-law. Below is a visual example representing a scale-free topology:
+In graph theory, the [scale-free](https://en.wikipedia.org/wiki/Scale-free_network) topology describes graphs with a degree distribution (distribution of number of connections per node) that follows a power law. Below is a visual example representing a scale-free topology:
 
 [<img src="https://github.com/user-attachments/assets/7ba75f9c-02da-49ce-91a3-89be1ed98651" style="background-color:lightblue;" />](https://www.researchgate.net/publication/263268796_A_complex_network_approach_to_supply_chain_network_theory)
 
 [Scale-free clustering (wikipedia):](https://en.wikipedia.org/wiki/Scale-free_network#Clustering):
 > Another important characteristic of scale-free networks is the clustering coefficient distribution, which decreases as the node degree increases. This distribution also follows a power law. This implies that the low-degree nodes belong to very dense sub-graphs and those sub-graphs are connected to each other through hubs. Consider a social network in which nodes are people and links are acquaintance relationships between people. It is easy to see that people tend to form communities, i.e., small groups in which everyone knows everyone (one can think of such community as a complete graph). In addition, the members of a community also have a few acquaintance relationships to people outside that community. Some people, however, are connected to a large number of communities (e.g., celebrities, politicians). Those people may be considered the hubs responsible for the small-world phenomenon.
 
-Complex networks tend to evolve towards a highly resilient scale-free topology to adapt to sporadic change and growth. For example: the shape of the internet is approximately scale-free. Online services organically become significant hubs when they not only provide high value, but are also resilient enough to meet increasing demand as the number of clients inevitably grows. In order for the hub to remain highly available to clients, it internally delegates units of work to a small cluster of workers. Clients in turn are able to extract maximal value from the hubs without affecting the stability of the whole network. Ideally, codebases should likewise remain robust in the face of inevitable change and growth in scope, where bugs are rarely introduced as code is added or refactored.
+Complex networks tend to evolve towards a highly resilient scale-free topology to adapt to sporadic change and growth. For example, the shape of the internet is approximately scale-free. Online services organically become significant hubs when they not only provide high value, but are also resilient enough to meet increasing demand as the number of clients inevitably grows. For the hub to remain highly available to clients, it internally delegates units of work to a small cluster of workers. Clients in turn are able to extract maximal value from the hubs without affecting the stability of the whole network. Ideally, codebases should likewise remain robust in the face of inevitable change and growth in scope, where bugs are rarely introduced as code is added or refactored.
 
-The fact that social networks are approximately scale-free in shape also suggests that it is a suitable topology to aspire to in the dependency graph of a large project developed by multiple teams. One can conceive of the responsibility of `clusters` and `domain`s mapping fairly neatly onto the responsibility of teams, and vice-versa. The dependencies between teams would then be expressed explicitly in the Static-DI DIG. By clarifying coupling between teams, cross-team dependencies can be optimised to improve each team's velocity in the project without compromising the overall project's stability.
+The fact that social networks are approximately scale-free in shape also suggests that it is a suitable topology to aspire to in the dependency graph of a large project developed by multiple teams. One can conceive of the responsibility of `clusters` and `domain`s mapping fairly neatly onto the responsibility of teams, and vice versa. The dependencies between teams would then be expressed explicitly in the Static-DI DIG. By clarifying coupling between teams, cross-team dependencies can be optimised to improve each team's velocity in the project without compromising the overall project's stability.
 
 ## Emergence of good topology
 
-According to various studies in the literature, iteratively growing networks tend to become scale-free when new nodes preferentially connect to existing nodes with a higher degree (i.e. hubs connected to many other nodes). Static-DI `domains` aim to encourage the emergence of approximately scale-free depedency graphs through the following:
+According to various studies, iteratively growing networks tend to become scale-free when new nodes preferentially connect to existing nodes with a higher degree (i.e., hubs connected to many other nodes). Static-DI `domains` aim to encourage the emergence of approximately scale-free dependency graphs through the following:
 
-* Every `domain` must have a _single_ unary nexus-node which acts as the central hub, or coordinator for the `domain`
+* Every `domain` must have a _single_ unary nexus-node which acts as the central hub or coordinator for the `domain`
 * Sub-`cluster`s or sub-`domain`s must have names in ALL_CAPS
-* Unary nodes (including the nexus) in the `domain` that have state must have names starting with a capital letter (e.g. CamelCase), and stateless nodes must have names starting with lowercase letter (e.g. pascalCase)
+* Unary nodes (including the nexus) in the `domain` that have state must have names starting with a capital letter (e.g., CamelCase), and stateless nodes must have names starting with a lowercase letter (e.g., pascalCase)
 * The nexus-node is the only node allowed any connection to or from the parent `..` of the `domain`
   * In general, the nexus-node has no restrictions on which nodes it is connected to
 * Sub-`clusters` and sub-`domain`s may connect directly to each other
   * sub-`domain`-to-sub-`domain` connections are effectively indirect nexus-to-nexus connections hosted in the greater `domain`
 * Unary sub-nodes may not be connected to or from non-unary nodes such as sub-`domain`s or sub-`cluster`s
   * The only nexus-node that a unary sub-node may be connected to is the nexus-node of its own `domain`
-  * Any other unary-to-unary connection must use strong arrows (`--->>>`) which get progressively uglier (`---->>>>`) as the total number of unary-to-unary connections in the domain increases
-    * Discourages unary-to-unary sub-node connections
-    * Encourages tightly-coupled unary sub-nodes to be either merged into one sub-node, or put into a sub-`domain`
+* Any unary-to-unary connection must use strong arrows (`--->>>`) which get progressively uglier (`---->>>>`) as the total number of unary-to-unary connections in the domain increases
+  * This discourages unary-to-unary sub-node connections
+  * It encourages tightly-coupled unary sub-nodes to be either merged into one sub-node or put into a sub-`domain`
 * All sub-nodes must have their dependencies specified via a `di::Depends` list in the node definition, even if the list is empty
   * In clusters, this is optional, but in domains it is mandatory to ensure that nodes are held to the higher standards of the domain
 
@@ -61,11 +61,11 @@ The domain syntax is identical to the cluster syntax, with a few key differences
 
 * The `domain` keyword is used instead of `cluster` to introduce a `domain` block
 * The first node named is the nexus-node, which will be made to conform to the responsibilities of the nexus
-* Node names must be spelt correctly to represent the following properties, which are enforced in the C++ build step once all the types are known:
+* Node names must be spelled correctly to represent the following properties, which are enforced in the C++ build step once all the types are known:
     * Stateless unary: pascalCase
     * Stateful unary: CamelCase
     * Non-unary (sub-domain or sub-cluster): ALL_CAPS
-* unary-to-unary sub-node connections must use strong arrows `--->>>`, all of which will be made to get stronger as the total number of these connections increases
+* Unary-to-unary sub-node connections must use strong arrows `--->>>`, all of which will be made to get stronger as the total number of these connections increases
 
 ## Example
 ```
@@ -111,7 +111,7 @@ domain CustomerDomain
 }
 ```
 
-Below is an example of the nexus-node for `ShopDomain`. In handwritten C++ code, it explicitly orchestrates multiple sub-`domain`s in order to complete an `OrderRequest`. This is much desirable compared to the alternative pipeline approach, i.e. using a chain of nodes, each of which would take responsibility for completing a part of the request. By spreading out the responsibility across multiple nodes, a chain of nodes makes it fundamentally unclear which node has ownership of: (1) completing the request and (2) producing the response. Pipelines tend to be difficult to test for correctness, as one often needs to construct large sections of the pipeline, if not the whole thing, to get meaningful behaviour worth testing. This tight coupling necessitates integration-style testing of the pipeline, and prohibits granular unit testing.
+Below is an example of the nexus-node for `ShopDomain`. In handwritten C++ code, it explicitly orchestrates multiple sub-`domain`s in order to complete an `OrderRequest`. This is much more desirable compared to the alternative pipeline approach, i.e., using a chain of nodes, each of which would take responsibility for completing a part of the request. By spreading out the responsibility across multiple nodes, a chain of nodes makes it fundamentally unclear which node has ownership of: (1) completing the request and (2) producing the response. Pipelines tend to be difficult to test for correctness, as one often needs to construct large sections of the pipeline, if not the whole thing, to get meaningful behaviour worth testing. This tight coupling necessitates integration-style testing of the pipeline and prohibits granular unit testing.
 
 Instead, `ShopRestAPI` takes ownership of the entire flow of the order, delegating the responsibility for the smaller self-contained units of work to sub-nodes which take no responsibility for completing the overall `OrderRequest`. This looser form of coupling also allows for finer-grained testing, as each testable unit of behaviour is isolated within fewer sub-`domain`s and sub-nodes.
 
@@ -147,7 +147,7 @@ struct ShopRestAPI
             getNode(trait::deliveryRequest).canDeliver(req.id, req.productId, req.quantity);
         }
 
-        void sheduleTimeout(RequestId reqId)
+        void scheduleTimeout(RequestId reqId)
         {
             // ... logic to respond with timeout if not all subdomains respond in time
         }
@@ -189,7 +189,7 @@ struct ShopRestAPI
             }
             else if (not flow.canDeliver.value_or(true))
             {
-                res.sucess = false;
+                res.success = false;
                 res.failureReason = "Not enough stock";
             }
             else

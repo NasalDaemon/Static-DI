@@ -1,20 +1,20 @@
 # Cluster syntax
 
-Clusters are the backbone of Static-DI: without them, nodes cannot have their dependencies on other nodes satisfied. They are classes which hold the state of a set of nodes, while describing their dependencies on each other. A cluster in turn forms a greater "node", or component, composed of its constituent nodes.
+Clusters are the backbone of Static-DI: without them, nodes cannot have their dependencies satisfied. They are classes that hold the state of a set of nodes and describe their dependencies on each other. A cluster forms a greater "node" or component, composed of its constituent nodes.
 
-With Static-DI, one can use a special DSL (Domain Specific Language) called "dig", to define clusters (and [traits](trait-syntax.md)). Dig is designed to help visualise the graph of dependencies between nodes better than a purely textual code-based description could. The clusters are to be defined in separate files next to your other source files with the extension `.ixx.dig` (module) or `.hxx.dig` (header).
+With Static-DI, you can use a special DSL (Domain Specific Language) called "dig" to define clusters (and [traits](trait-syntax.md)). Dig helps visualize the graph of dependencies between nodes better than a purely textual code-based description. Clusters are defined in separate files next to your other source files with the extension `.ixx.dig` (module) or `.hxx.dig` (header).
 
-The provided CMake functions `target_generate_di_modules()` and `target_generate_di_headers()` automatically generate `.ixx` or `.hxx` files from the `.ixx.dig` and `.hxx.dig` files, found recursively in the source directory, and adds them to the target. In the case of a generated `.hxx` file, each resulting include path is identical to the include path of the respective `.hxx.dig` file.
+The provided CMake functions `target_generate_di_modules()` and `target_generate_di_headers()` automatically generate `.ixx` or `.hxx` files from the `.ixx.dig` and `.hxx.dig` files found recursively in the source directory, and add them to the target. For generated `.hxx` files, each resulting include path matches the include path of the respective `.hxx.dig` file.
 
 ## Cluster `.dig` file template
 
 ### Header includes and module imports
 
-Header includes and module imports should be listed at the top of the file, [see here](dig-files.md) for further information.
+Header includes and module imports should be listed at the top of the file. [See here](dig-files.md) for further information.
 
 ### Defining a cluster
 
-NOTE: when defining a cluster, it must either be wrapped in a namespace, which cannot be anonymous, or given a qualified name including the namespace. Clusters take the following form (simplified):
+**Note:** When defining a cluster, it must either be wrapped in a namespace (which cannot be anonymous) or given a qualified name including the namespace. Clusters take the following form (simplified):
 
 ```
 namespace <fully-qualified-namespace> {
@@ -40,7 +40,7 @@ cluster <cluster-name> [<cluster-annotations>...]
 }
 ```
 
-Which is exemplified in a concrete way by the following cluster `my::name_space::FruitSalad`, which implements `my::trait::FruitSalad` and `my::trait::ChopFruit`:
+Which is exemplified by the following cluster `my::name_space::FruitSalad`, which implements `my::trait::FruitSalad` and `my::trait::ChopFruit`:
 ```cpp
 namespace my::name_space {
 
@@ -144,12 +144,12 @@ cluster FruitSalad
 
 ### Qualifying cluster namespace inline
 
-It is possible to avoid wrapping the cluster in a namespace, like:
+You can avoid wrapping the cluster in a namespace, like:
 ```cpp
 cluster my::name_space::FruitSalad { /* ... */ }
 ```
 
-**NOTE:** namespaces are not elided when defining a cluster. The combination of a wrapping namespace and a qualified cluster name always results in appending the namespace of the qualified cluster to the wrapping namespace. For example:
+**Note:** Namespaces are not elided when defining a cluster. The combination of a wrapping namespace and a qualified cluster name always results in appending the namespace of the qualified cluster to the wrapping namespace. For example:
 ```cpp
 namespace first::second {
 
@@ -157,11 +157,11 @@ cluster second::third::Cluster { /* ...*/ }
 
 }
 ```
-Results in `first::second::second::third::Cluster`, **not** `first::second::third::Cluster`.
+This results in `first::second::second::third::Cluster`, **not** `first::second::third::Cluster`.
 
 ### Cluster type annotations
 
-To make use of the `Context`/`Root`/`Info` types inside a cluster, the optional type annotations should be listed after the cluster name with square-brackets:
+To use the `Context`/`Root`/`Info` types inside a cluster, optional type annotations should be listed after the cluster name in square brackets:
 ```cpp
 cluster ClusterWithTypes [Context, Root, Info]
 {
