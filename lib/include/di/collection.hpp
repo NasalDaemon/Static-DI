@@ -179,7 +179,7 @@ struct Collection
             // Nodes must not be invalidated by insertions, so the vector must not be resized.
             if (elements.capacity() == elements.size())
                 throw std::length_error("Collection capacity exceeded");
-            if (getId(id) != nullptr)
+            if (hasId(id))
                 throw std::invalid_argument("ID already exists in collection");
             ids.push_back(id);
             elements.emplace_back(id, this, DI_FWD(args)...);
@@ -209,6 +209,11 @@ struct Collection
         }
 
         using Traits = di::TraitsTemplate<Node, TraitsTemplate>;
+
+        [[nodiscard]] constexpr bool hasId(ID const& id) const
+        {
+            return std::find(ids.begin(), ids.end(), id) != ids.end();
+        }
 
         [[nodiscard]] constexpr auto* getId(this auto& self, ID const& id)
         {
@@ -266,7 +271,7 @@ struct Collection<ID, NodeHandle>::Node<Context>::AsTrait : Node
     template<class Pred>
     struct WithPred : Node
     {
-        template<class Self, class... Keys, class... Args>
+        template<class Self, class... Args>
         constexpr void implWithKey(this Self& self, Pred const& pred, auto const& keys, Args&&... args)
         {
             for (auto& el : self.elements)
@@ -274,10 +279,10 @@ struct Collection<ID, NodeHandle>::Node<Context>::AsTrait : Node
                 if (pred(std::as_const(el.id)))
                 {
                     std::apply(
-                        [&](auto const&... keys)
+                        [&](auto const&... ks)
                         {
                             auto target = el.node.asTrait(detail::AsRef{}, Trait{});
-                            target.ptr->finalize(self, keys...)->impl(DI_FWD(args)...);
+                            target.ptr->finalize(self, ks...)->impl(DI_FWD(args)...);
                         },
                         keys);
                 }

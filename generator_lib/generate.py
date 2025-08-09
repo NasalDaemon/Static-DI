@@ -32,15 +32,21 @@ grammar_file = dir_path.joinpath(dir_path, 'dig_module.lark' if is_module else '
 dig_parser = Lark.open(grammar_file, maybe_placeholders=False, parser='lalr', cache=True)
 
 reconstructor = Reconstructor(dig_parser)
-section_lines: list[tuple[int, int]] = []
+section_lines: list[tuple[int, int, int]] = []
 
 
-def get_line(line: int) -> int:
+def get_line(line: int, col: int) -> tuple[int, int]:
     if not is_embedded:
-        return line
-    source_lines = [s for s, o in section_lines]
+        return line, col
+    source_lines = [sl[0] for sl in section_lines]
     index = bisect_right(source_lines, line) - 1
-    return line - section_lines[index][0] + section_lines[index][1]
+
+    if line == section_lines[index][0] or line == 1:
+        col += section_lines[index][2]
+        col += len("di-embed-begin") - 1
+    line = line - section_lines[index][0] + section_lines[index][1]
+
+    return line, col
 
 
 with open(input_file, 'r') as file:
@@ -53,8 +59,10 @@ with open(input_file, 'r') as file:
         end = 'di-embed-end'
         while True:
             begin_pos = text.find(begin)
-            outer_line_count += len(text[:begin_pos].splitlines()) - 1
-            section_lines.append((inner_line_count, outer_line_count))
+            outer_line_count += text[:begin_pos].count("\n")
+            if (npos := text.rfind("\n", 0, begin_pos)) != -1:
+                outer_col_count = begin_pos - npos
+            section_lines.append((inner_line_count, outer_line_count, outer_col_count))
             if begin_pos == -1:
                 assert sections, f"'{begin}' not found in {input_path}"
                 break
@@ -63,15 +71,16 @@ with open(input_file, 'r') as file:
             assert end_pos != -1, f"matching '{end}' not found in {input_path}"
 
             section = text[begin_pos:end_pos]
-            section_line_count = len(section.splitlines())
-            inner_line_count += section_line_count - 1
-            outer_line_count += section_line_count - 2
+            section_line_count = section.count("\n") + 1
+            inner_line_count += section_line_count
+            outer_line_count += section_line_count
             sections.append(section)
             text = text[end_pos + len(end):]
-        text = "\n".join(sections)
+        text = "".join(sections)
 
     def on_parse_error(e: UnexpectedInput) -> bool:
-        print(f"{input_path}:{get_line(e.line)}:{e.column} parse error:\n{e.get_context(text)}")
+        line, col = get_line(e.line, e.column)
+        print(f"{input_path}:{line}:{col} parse error:\n{e.get_context(text)}")
         return False
 
     parsed = dig_parser.parse(text, on_error=on_parse_error)
@@ -85,7 +94,8 @@ def get_pos(t: Tree | Token | None) -> str:
     if t is None:
         return str(input_path)
     if isinstance(t, Token):
-        return f"{input_path}:{get_line(t.line)}:{t.column}"
+        line, col = get_line(t.line, t.column)
+        return f"{input_path}:{line}:{col}"
     if isinstance(t, Tree):
         return get_pos(t.children[0])
     else:

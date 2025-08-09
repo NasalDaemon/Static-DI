@@ -83,6 +83,7 @@ struct InnerNode : di::PeerNode
         {
             static_assert(std::is_const_v<std::remove_reference_t<decltype(peer)>>);
             CHECK_THROWS(peer.asTrait(trait::inner).get());
+            // can always get the element id as it never changes during the lifetime of the node
             if (peer.getElementId() == index)
             {
                 return peer.asTrait(trait::inner, future).get().get();
@@ -141,21 +142,21 @@ TEST_CASE("di::Collection using threads")
                 add(0, DI_EMPLACE(
                     .node{
                         .node1{314},
-                        .node2{314},
+                        .node2{315},
                     },
                     .threadId = 0,
                 ));
                 add(1, DI_EMPLACE(
                     .node{
                         .node1{42},
-                        .node2{42},
+                        .node2{43},
                     },
                     .threadId = 1,
                 ));
                 add(2, DI_EMPLACE(
                     .node{
                         .node1{99},
-                        .node2{99},
+                        .node2{100},
                     },
                     .threadId = 2,
                 ));
@@ -197,9 +198,9 @@ TEST_CASE("di::Collection using threads")
         CHECK(at0->asTrait(trait::inner, future).getPeer(1).get() == 42);
         CHECK(at0->asTrait(trait::inner, future).getPeer(2).get() == 99);
 
-        CHECK(at0->asTrait(trait::inner).getInner() == 314);
-        CHECK(at1->asTrait(trait::inner, future).getInner().get() == 42);
-        CHECK(at2->asTrait(trait::inner, future).getInner().get() == 99);
+        CHECK(at0->asTrait(trait::inner).getInner() == 315);
+        CHECK(at1->asTrait(trait::inner, future).getInner().get() == 43);
+        CHECK(at2->asTrait(trait::inner, future).getInner().get() == 100);
 
         sch->stopAll();
     };

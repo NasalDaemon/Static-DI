@@ -11,8 +11,7 @@ import di.tests.virtual_;
 import di;
 
 
-/*
-di-embed-begin
+/* di-embed-begin
 
 export module di.tests.virtual_;
 
@@ -34,8 +33,7 @@ trait trait::Egg
     yolks() const -> int
 }
 
-di-embed-end
-*/
+di-embed-end */
 
 namespace di::tests::virtual_ {
 
@@ -160,6 +158,16 @@ void test(auto& g)
     CHECK(g.asTrait(trait::apple).seeds() == 34);
     CHECK(g.asTrait(trait::egg).yolks() == 2);
     CHECK(g.mocks.asTrait(trait::bread).slices() == 24);
+
+    int count = 0;
+    g.visitTrait(
+        trait::apple,
+        [&](auto apple)
+        {
+            count++;
+            CHECK(apple.seeds() == 34);
+        });
+    CHECK(count == 1);
 }
 
 void testExchange(auto& g)
@@ -318,8 +326,7 @@ struct EggFacade
     };
 };
 
-/*
-di-embed-begin
+/* di-embed-begin
 
 cluster EggBread [R = Root]
 {
@@ -330,8 +337,7 @@ cluster EggBread [R = Root]
     egg <-> bread
 }
 
-di-embed-end
-*/
+di-embed-end */
 
 DI_INSTANTIATE_BOX(StaticBread, BreadFacade, EggFacade, IEgg)
 

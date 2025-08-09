@@ -76,9 +76,9 @@ private:
     static constexpr void apply3(auto target, auto& repeater, Key const& key, auto const& keys, auto&... args)
     {
         std::apply(
-            [&](auto const&... keys)
+            [&](auto const&... ks)
             {
-                target.ptr->finalize(repeater, key, keys...)->impl(args...);
+                target.ptr->finalize(repeater, key, ks...)->impl(args...);
             },
             keys);
     }

@@ -206,9 +206,9 @@ struct Union<Options...>::Node<Context>::AsTrait<Trait>::WithKey : AsTrait
             [&](auto& option) -> decltype(auto)
             {
                 return std::apply(
-                    [&](auto const&... keys) -> decltype(auto)
+                    [&](auto const&... ks) -> decltype(auto)
                     {
-                        return withEnv<Environment>(option).asTrait(Trait{}, key, keys...).impl(DI_FWD(Args, args)...);
+                        return withEnv<Environment>(option).asTrait(Trait{}, key, ks...).impl(DI_FWD(Args, args)...);
                     },
                     keys);
             });

@@ -28,6 +28,18 @@ namespace detail {
                 node.onGraphConstructed();
         }
     };
+    template<IsTrait Trait, class Visitor>
+    struct TraitVisitor
+    {
+        template<IsNode Node>
+        constexpr void operator()(Node& node) const
+        {
+            if constexpr (HasTrait<Node, Trait>)
+                node.asTrait(Trait{})->visit(visitor);
+        }
+
+        Visitor&& visitor;
+    };
 }
 
 DI_MODULE_EXPORT
@@ -49,16 +61,11 @@ struct Cluster
         self.visit(detail::OnGraphConstructedVisitor{});
     }
 
-    template<class Self, IsTrait Trait>
+    template<class Self, IsTrait Trait, class Visitor>
     requires IsRootContext<ContextParameterOf<Self>>
-    void visitTrait(this Self& self, Trait, auto&& visitor)
+    void visitTrait(this Self& self, Trait, Visitor&& visitor)
     {
-        self.visit(
-            [&visitor]<IsNode Node>(Node& node)
-            {
-                if constexpr (HasTrait<Node, Trait>)
-                    node.asTrait(Trait{})->visit(visitor);
-            });
+        self.visit(detail::TraitVisitor<Trait, Visitor>{DI_FWD(visitor)});
     }
 
     template<class Self, IsTrait Trait, class Key = ContextParameterOf<Self>::Info::DefaultKey>
