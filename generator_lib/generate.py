@@ -190,11 +190,15 @@ class Node:
         self.impl: str = impl
         self.cluster = cluster
         self.is_nexus: bool = is_first and isinstance(cluster, Domain)
+        self.is_parent = False
+        self.is_global = False
         if name == '..':
             self.is_parent = True
             self.context = "Context"
+        elif name == '*':
+            self.is_global = True
+            self.context = "Context"
         else:
-            self.is_parent = False
             self.is_unary = name.upper() != name
             self.has_state = name[0].isupper()
             self.context: str = name + '_'
@@ -209,9 +213,13 @@ class Node:
         assert self.cluster == to_node.cluster
         if to_node == self:
             raise SyntaxError(f"{pos} cannot connect '{self.name}' to itself")
+        if self.is_global:
+            raise SyntaxError(f"{pos} cannot connect from global node '*' to any other node")
         if error := self.cluster.get_connection_error(self, to_node, is_override):
             raise SyntaxError(f"{pos} Cannot connect '{self.name}' to '{to_node.name}' in {self.cluster.cluster_class} '{self.cluster.full_name}': {error}")
 
+        if to_node.is_global:
+            to_trait = f"di::Global<{trait if to_trait is None else to_trait}>"
         to_node.add_client(self, trait)
         connection = Connection(to_node.context, trait=trait, to_trait=to_trait)
         if existing := next((c for c in self.connections if c.trait == connection.trait), None):
@@ -241,6 +249,7 @@ class Cluster:
         self.root_name: str | None = None
         self.info_name: str | None = None
         self.parent_node = Node("..", None, self.name, cluster=self, is_first=False)
+        self.global_node = Node("*", None, self.name, cluster=self, is_first=False)
         self.user_nodes: list[Node] = []
         self.repeaters: list[Repeater] = []
         self.nodes: list[Node | Repeater] = []
@@ -304,6 +313,7 @@ class Cluster:
         aliases: dict[str, str] = {}
         nodes: dict[str, Node] = {}
         nodes[".."] = self.parent_node
+        nodes["*"] = self.global_node
         left_trait: str
         right_trait: str
         for child in children:
@@ -331,7 +341,7 @@ class Cluster:
                             impl = f"{cls}<{', '.join(args)}>"
                         else:
                             impl = f"{cls}<{impl}>"
-                is_first = len(nodes) == 1
+                is_first = len(nodes) == 2
                 nodes[name] = Node(name, child, impl, cluster=self, is_first=is_first)
             elif child.data == imported('connection_block'):
                 for child in child.children:
@@ -407,7 +417,7 @@ class Cluster:
             else:
                 raise SyntaxError(f'{get_pos(child)} Unknown cluster section: {child.data}')
 
-        self.user_nodes = [node for node in nodes.values() if node.name != '..']
+        self.user_nodes = [node for node in nodes.values() if node.name not in ['..', '*']]
         self.aliases = sorted(aliases.items())
         self.parent_node.connections.sort(key=lambda v: v.trait)
         self.repeaters.extend(self.parent_node.repeaters)

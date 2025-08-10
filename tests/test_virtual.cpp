@@ -33,6 +33,11 @@ trait trait::Egg
     yolks() const -> int
 }
 
+trait trait::Global
+{
+    get() const -> int
+}
+
 di-embed-end */
 
 namespace di::tests::virtual_ {
@@ -143,6 +148,7 @@ struct Bread
 
         void onGraphConstructed() final
         {
+            CHECK(getGlobal(trait::global).get() == 9);
             CHECK(slices == 314);
             slices = 12;
         }
@@ -151,13 +157,25 @@ struct Bread
     };
 };
 
+struct GlobalNode : di::Node
+{
+    using Traits = di::Traits<GlobalNode, trait::Global>;
+
+    int impl(trait::Global::get) const
+    {
+        return i;
+    }
+
+    int i = 9;
+};
+
 void test(auto& g)
 {
     g.onConstructed();
 
     CHECK(g.asTrait(trait::apple).seeds() == 34);
     CHECK(g.asTrait(trait::egg).yolks() == 2);
-    CHECK(g.mocks.asTrait(trait::bread).slices() == 24);
+    CHECK(g->mocks.asTrait(trait::bread).slices() == 24);
 
     int count = 0;
     g.visitTrait(
@@ -175,23 +193,25 @@ void testExchange(auto& g)
     auto g2 = std::move(g);
     CHECK(g2.asTrait(trait::apple).seeds() == 34);
     CHECK(g2.asTrait(trait::egg).yolks() == 2);
-    CHECK(g2.mocks.asTrait(trait::bread).slices() == 24);
+    CHECK(g2->mocks.asTrait(trait::bread).slices() == 24);
 
     CHECK(g2.asTrait(trait::apple).testExchange());
 }
 
 TEST_CASE("di::Virtual")
 {
-    using Virtual = di::test::Graph<di::Virtual<IApple, IEgg>, di::Virtual<IBread>>;
-
+    using Virtual = di::test::GraphWithGlobal<di::Virtual<IApple, IEgg>, GlobalNode, di::Virtual<IBread>>;
     Virtual virt{
-        .node{std::in_place_type<AppleEgg>},
-        .mocks{di::withFactory, []<class C>(C) -> C::type { return std::in_place_type<Bread>; }}
+        .global{DI_EMPLACE(.i = 9)},
+        .main{
+            .node{std::in_place_type<AppleEgg>},
+            .mocks{di::withFactory, []<class C>(C) -> C::type { return std::in_place_type<Bread>; }},
+        },
     };
     test(virt);
     testExchange(virt);
 
-    using Static = di::test::Graph<AppleEgg, Bread>;
+    using Static = di::test::GraphWithGlobal<AppleEgg, GlobalNode, Bread>;
     Static stat;
     test(stat);
 }

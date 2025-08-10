@@ -113,7 +113,7 @@ cpp_func_param: cpp_type NAME
 
 node_names: NODE_NAME ("," NODE_NAME)*
 
-NODE_NAME: NAME | ".."
+NODE_NAME: NAME | ".." | "*"
 NAMESPACE: NAME ("::" NAME)*
 FQNAME: ["::"] NAMESPACE+
 

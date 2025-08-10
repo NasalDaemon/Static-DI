@@ -22,7 +22,8 @@ template<class ID, IsNodeHandle NodeHandle>
 struct Collection;
 
 namespace detail {
-
+    template<IsNodeHandle MainCluster, class GlobalNodeHandle, class Root = void>
+    struct GraphWithGlobalNode;
     struct ContextBase;
 
     // Bypass TraitView instantiation during intermediate asTrait/getNode calls
@@ -34,6 +35,8 @@ namespace detail {
         friend struct di::detail::ContextBase;
         template<class ID, IsNodeHandle NodeHandle>
         friend struct di::Collection;
+        template<IsNodeHandle MainCluster, class GlobalNodeHandle, class Root>
+        friend struct GraphWithGlobalNode;
 
         AsRef() = default;
     };

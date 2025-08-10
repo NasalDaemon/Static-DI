@@ -137,6 +137,15 @@ cluster FruitSalad
 
     // Note: when FruitSalad is used as a node in a parent cluster,
     // trait::ChopFruit transparently connects to _parentRepeater0
+
+    // Explicitly edirecting trait to the global cluster/node
+    [trait::Log]
+    apple --> *
+    // which resolves trait::Log from the global cluster or node
+    // Equivalent to:
+    // [trait::Log]
+    // apple --> (di::Global<trait::Log>) ..
+    // This is only necessary if `trait::Log` must be resolved using `getNode` instead of `getGlobal`
 }
 
 }

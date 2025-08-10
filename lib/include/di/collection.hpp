@@ -7,6 +7,7 @@
 #include "di/detail/concepts.hpp"
 #include "di/empty_types.hpp"
 #include "di/environment.hpp"
+#include "di/global_trait.hpp"
 #include "di/key.hpp"
 #include "di/macros.hpp"
 #include "di/node.hpp"
@@ -136,6 +137,12 @@ struct Collection
             static constexpr auto getNode(auto& node, Trait)
             {
                 return Context{}.getNode(getCollection(node), detail::ResolveLinkTrait<Context, Trait>{});
+            }
+
+            template<IsGlobalTrait GlobalTrait>
+            static constexpr auto getNode(auto& node, GlobalTrait globalTrait)
+            {
+                return Context{}.getNode(getCollection(node), globalTrait);
             }
 
             template<IsContext Parent>

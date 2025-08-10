@@ -1,6 +1,8 @@
 #ifndef INCLUDE_DI_RESOLVE_HPP
 #define INCLUDE_DI_RESOLVE_HPP
 
+#include "di/global_context.hpp"
+#include "di/global_trait.hpp"
 #include "di/link.hpp"
 #include "di/context_fwd.hpp"
 #include "di/macros.hpp"
@@ -19,6 +21,16 @@ namespace detail {
         using Trait = Trait_;
 
         using Types = Node::Traits::template ResolveTypes<Trait>;
+    };
+
+    // GlobalTrait is a global trait that can be resolved in contexts with a global node
+    template<class T, IsGlobalTrait GlobalTrait>
+    struct ResolveTraitT<T, GlobalTrait>
+    {
+        static_assert(ContextHasGlobalTrait<T, GlobalTrait>,
+                      "Global trait can only be resolved in contexts that have a global node");
+        using Trait = GlobalTrait::Trait;
+        using type = ResolveTraitT<typename T::Info::GlobalNode, Trait>::type;
     };
 
     // T is a context with a link to a sibling node's context

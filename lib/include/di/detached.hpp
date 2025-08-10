@@ -47,6 +47,7 @@ struct DetachedImpl : Interface, private Node
     using Node::visit;
     using Node::getNode;
     using Node::canGetNode;
+    using Node::getGlobal;
     using Node::asTrait;
     using Node::hasTrait;
 

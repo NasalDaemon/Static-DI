@@ -106,6 +106,16 @@ export namespace di {
     using di::withFactory;
     using di::Constructor;
     using di::Emplace;
+    // global_context.hpp
+    using di::ContextHasGlobal;
+    using di::ContextHasGlobalTrait;
+    // global_graph.hpp
+    using di::GraphWithGlobal;
+    // global_trait.hpp
+    using di::Global;
+    using di::IsGlobalTrait;
+    using di::IsNonGlobalTrait;
+    using di::global;
     // graph.hpp
     using di::InlineGraph;
     using di::Graph;
@@ -168,6 +178,7 @@ export namespace di {
         using test::MockKey;
         using test::Cluster;
         using test::Graph;
+        using test::GraphWithGlobal;
     }
     // thread.hpp
     using di::Thread;

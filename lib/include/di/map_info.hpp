@@ -5,6 +5,7 @@
 #include "di/detail/compress.hpp"
 
 #include "di/context_fwd.hpp"
+#include "di/global_trait.hpp"
 #include "di/macros.hpp"
 #include "di/node_fwd.hpp"
 
@@ -25,7 +26,7 @@ namespace detail {
     struct MappedContext : Context
     {
         template<class Trait>
-        requires detail::HasLink<Context, Trait>
+        requires detail::HasLink<Context, Trait> or IsGlobalTrait<Trait>
         constexpr auto getNode(this Context context, auto& node, Trait trait)
         {
             return context.getNode(node, trait);

@@ -2,6 +2,7 @@
 #define INCLUDE_DI_LINK_HPP
 
 #include "di/context_fwd.hpp"
+#include "di/global_trait.hpp"
 #include "di/macros.hpp"
 #include "di/trait.hpp"
 
@@ -42,7 +43,7 @@ concept IsResolvedLink = requires
 namespace detail {
 
     template<class T, class Trait>
-    concept HasLink = IsTrait<Trait> and requires (Trait trait) { { T::resolveLink(trait) } -> IsResolvedLink; };
+    concept HasLink = IsNonGlobalTrait<Trait> and requires (Trait trait) { { T::resolveLink(trait) } -> IsResolvedLink; };
 
     template<class T, class Trait>
     requires HasLink<T, Trait>

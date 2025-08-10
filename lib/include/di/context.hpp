@@ -10,6 +10,8 @@
 #include "di/context_fwd.hpp"
 
 #include "di/environment.hpp"
+#include "di/global_context.hpp"
+#include "di/global_trait.hpp"
 #include "di/key.hpp"
 #include "di/link.hpp"
 #include "di/trait.hpp"
@@ -24,6 +26,17 @@ namespace di {
 namespace detail {
     struct ContextBase
     {
+        // Delegate to parent cluster to get the global trait
+        template<IsContext Self_, IsGlobalTrait GlobalTrait>
+        constexpr auto getNode(this Self_, auto& node, GlobalTrait globalTrait)
+        {
+            using Self = detail::Decompress<Self_>;
+            auto memPtr = getNodePointer(AdlTag<Self>{});
+            static_assert(ContextHasGlobal<Self>, "Context does not have a global type");
+            static_assert(ContextHasGlobalTrait<Self, GlobalTrait>, "Global type does not have the requested trait");
+            return typename Self::ParentContext{}.getNode(getParent(node, memPtr), globalTrait);
+        }
+
         // Get sibling node
         template<IsContext Self_, IsTrait Trait>
         requires detail::HasLink<Self_, Trait>

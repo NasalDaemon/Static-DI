@@ -1,6 +1,8 @@
 #ifndef INCLUDE_DI_REQUIRES_HPP
 #define INCLUDE_DI_REQUIRES_HPP
 
+#include "di/global_context.hpp"
+#include "di/global_trait.hpp"
 #include "di/link.hpp"
 #include "di/context_fwd.hpp"
 #include "di/macros.hpp"
@@ -17,6 +19,11 @@ namespace detail {
     template<class Context, class Requirement, bool Transitive>
     requires HasLink<Context, Requirement>
         and (not Transitive or detail::ResolveTrait<Context, Requirement>::Node::Traits::template HasTrait<Requirement>)
+    auto dependencySatisfied() -> void;
+
+    template<class Context, IsGlobalTrait Requirement, bool Transitive>
+    requires ContextHasGlobalTrait<Context, Requirement>
+        and (not Transitive or detail::ResolveTrait<Context, Requirement>::Node::Traits::template HasTrait<typename Requirement::Trait>)
     auto dependencySatisfied() -> void;
 
     // When dependency is a pointer, it is optional and not to be enforced

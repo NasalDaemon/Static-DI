@@ -275,12 +275,9 @@ struct OnDynThread
         requires HasTrait<decltype(node), T>
         static auto resolveLink(T) -> ResolvedLink<Inner, T>;
 
-        constexpr decltype(auto) operator->(this auto& self)
+        constexpr auto* operator->(this auto& self)
         {
-            if constexpr (IsNode<ContextToNode<Inner>>)
-                return (self.node);
-            else
-                return std::addressof(self.node);
+            return std::addressof(self.node);
         }
 
         constexpr void visit(this auto& self, auto&& visitor)

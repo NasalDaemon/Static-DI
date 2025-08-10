@@ -9,6 +9,7 @@
 #include "di/empty_types.hpp"
 #include "di/environment.hpp"
 #include "di/factory.hpp"
+#include "di/global_trait.hpp"
 #include "di/key.hpp"
 #include "di/macros.hpp"
 #include "di/node_fwd.hpp"
@@ -51,11 +52,18 @@ struct Node
             static_assert(NodeDependencyAllowed<Self, Trait>, "Requested trait not listed in node definition");
         using ThisNode = Self::Traits::Node;
         auto& node = detail::upCast<ThisNode>(self);
-        static_assert(detail::HasLink<ContextOf<Self>, Trait>, "Node is missing dependency");
+        if constexpr (not IsGlobalTrait<Trait>)
+            static_assert(detail::HasLink<ContextOf<Self>, Trait>, "Node is missing dependency");
         auto target = ContextOf<Self>{}.getNode(node, trait);
         return makeTraitView(self, target, trait, key, keys...);
     }
 #endif
+
+    template<class Self, IsTrait Trait, class Key = ContextOf<Self>::Info::DefaultKey>
+    constexpr auto getGlobal(this Self& self, Trait trait, Key const& key = {}, auto const&... keys)
+    {
+        return self.getNode(di::global(trait), key, keys...);
+    }
 
     template<class Self, IsTrait Trait>
     constexpr auto canGetNode(this Self&, Trait)
@@ -156,6 +164,7 @@ namespace detail {
         using Node::isUnary;
         using Node::getNode;
         using Node::canGetNode;
+        using Node::getGlobal;
         using Node::asTrait;
         using Node::hasTrait;
 

@@ -3,6 +3,7 @@
 
 #include "di/cluster.hpp"
 #include "di/context.hpp"
+#include "di/global_graph.hpp"
 #include "di/graph.hpp"
 #include "di/key.hpp"
 #include "di/link.hpp"
@@ -134,6 +135,10 @@ using Cluster = MapInfo<detail::Cluster<Node, Mocks>, detail::TestMapInfo>;
 DI_MODULE_EXPORT
 template<IsNodeHandle Node, IsNodeHandle Mocks = Mock<>, class Root = void>
 using Graph = di::Graph<Cluster<Node, Mocks>, Root>;
+
+DI_MODULE_EXPORT
+template<IsNodeHandle Node, class GlobalNode, IsNodeHandle Mocks = Mock<>, class Root = void>
+using GraphWithGlobal = di::GraphWithGlobal<Cluster<Node, Mocks>, GlobalNode, Root>;
 
 } // namespace di::test
 

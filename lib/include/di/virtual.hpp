@@ -7,6 +7,7 @@
 #include "di/context.hpp"
 #include "di/empty_types.hpp"
 #include "di/factory.hpp"
+#include "di/global_trait.hpp"
 #include "di/macros.hpp"
 #include "di/node.hpp"
 #include "di/traits.hpp"
@@ -125,7 +126,7 @@ struct Virtual
             }
 
             template<class N, IsTrait Trait>
-            requires detail::HasLink<Context, Trait>
+            requires detail::HasLink<Context, Trait> or IsGlobalTrait<Trait>
             constexpr auto getNode(this Context virtualContext, N& impl, Trait trait)
             {
                 Node* virtualHost = Impl<ImplNode>::getVirtualHost(std::addressof(impl));

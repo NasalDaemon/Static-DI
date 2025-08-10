@@ -67,7 +67,10 @@ template<class T, class... Key>
 Alias(T&, Key...) -> Alias<T, Key...>;
 
 DI_MODULE_EXPORT
-constexpr auto makeAlias(auto& impl, auto const&... keys) { return Alias(detail::compressImpl(impl), keys...); }
+constexpr auto makeAlias(auto& impl, auto const&... keys)
+{
+    return Alias(detail::compressImpl(impl), keys...);
+}
 
 } // namespace di
 

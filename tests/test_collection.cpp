@@ -28,12 +28,20 @@ trait trait::Outside
     get() const -> int
 }
 
+trait trait::Global
+{
+    get() const -> int
+}
+
 cluster Element [R = Root]
 {
     element = R::Element
 
     [trait::Outside <-> trait::Element]
     .. <-> element
+
+    [trait::Global]
+    element --> *
 }
 
 cluster Collection [R = Root]
@@ -113,6 +121,18 @@ struct OutsideNode
     };
 };
 
+struct GlobalNode : di::Node
+{
+    using Traits = di::Traits<GlobalNode, trait::Global>;
+
+    int impl(trait::Global::get) const
+    {
+        return i;
+    }
+
+    int i;
+};
+
 TEST_CASE("di::Collection")
 {
     struct Root
@@ -120,12 +140,15 @@ TEST_CASE("di::Collection")
         using Outside = OutsideNode;
         using Element = ElementNode;
     };
-    di::Graph<Collection, Root> g{
-        .outside{DI_EMPLACE(.i = 10)},
-        .collection{2, [](auto insert) {
-            insert(0, DI_EMPLACE(.element{DI_EMPLACE(.i = 0)}));
-            insert(1, DI_EMPLACE(.element{DI_EMPLACE(.i = 1)}));
-        }},
+    di::GraphWithGlobal<Collection, GlobalNode, Root> g{
+        .global{DI_EMPLACE(.i = 14)},
+        .main{
+            .outside{DI_EMPLACE(.i = 10)},
+            .collection{2, [](auto insert) {
+                insert(0, DI_EMPLACE(.element{DI_EMPLACE(.i = 0)}));
+                insert(1, DI_EMPLACE(.element{DI_EMPLACE(.i = 1)}));
+            }},
+        },
     };
 
     CHECK(g.asTrait(trait::element, key::Element(0))->getElementId() == 0);
@@ -133,26 +156,29 @@ TEST_CASE("di::Collection")
 
     CHECK(g.asTrait(trait::element, key::Element(0)).get() == 10);
     CHECK(g.asTrait(trait::element, key::Element(1)).get() == 11);
-    CHECK(g.outside->getElement(0) == 10);
-    CHECK(g.outside->getElement(1) == 11);
+    CHECK(g->outside->getElement(0) == 10);
+    CHECK(g->outside->getElement(1) == 11);
 
     auto handle0 = g.asTrait(trait::element, key::Element(0))->getElementHandle();
     auto handle1 = g.asTrait(trait::element, key::Element(1))->getElementHandle();
 
     CHECK(g.asTrait(trait::element, key::Element(handle0)).get() == 10);
     CHECK(g.asTrait(trait::element, key::Element(handle1)).get() == 11);
-    CHECK(g.outside->getElement(handle0) == 10);
-    CHECK(g.outside->getElement(handle1) == 11);
+    CHECK(g->outside->getElement(handle0) == 10);
+    CHECK(g->outside->getElement(handle1) == 11);
 
-    CHECK(g.collection->getId(0)->getNode(trait::outside).get() == 10);
+    CHECK(g->collection->getId(0)->getNode(trait::outside).get() == 10);
 
     int count = 0;
-    g.collection.asTrait(trait::element, key::allElements).count(count);
+    g->collection.asTrait(trait::element, key::allElements).count(count);
     CHECK(count == 2);
 
     count = 0;
-    g.collection.asTrait(trait::element, key::Elements([](int id) { return id % 2 == 0;})).count(count);
+    g->collection.asTrait(trait::element, key::Elements([](int id) { return id % 2 == 0;})).count(count);
     CHECK(count == 1);
+
+    CHECK(g->collection->atId(0).element.getGlobal(trait::global).get() == 14);
+    CHECK(g->collection->atId(0).element.getNode(trait::global).get() == 14);
 }
 
 }

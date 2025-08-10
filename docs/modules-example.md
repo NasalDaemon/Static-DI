@@ -32,8 +32,10 @@ The nodes also have two dependencies on data types:
 - [my/pass_hash.ixx](#pass_hashixx): `my::PassHash` data type stores the hash of passwords
 - [my/auth_service.ixx](#auth_serviceixx): `my::AuthService` node implements the trait `my::trait::AuthService`
 - [my/sessions.ixx](#sessionsixx): `my::Sessions` node implements the traits `my::trait::TokenStore` and `my::trait::SessionManager`
+- [my/logger.ixx](#loggerixx): `my::Logger` node implements the trait `my::trait::Logger`
 - [my/main.cpp](#maincpp): Constructs and uses the full graph of nodes which satisfies all requirements of the nodes within `my::Cluster`
 - [Unit tests](#unittests): Unit test `my::trait::SessionManager` trait of `my::Sessions` using a `AuthServiceTestDouble` test double, and also the `di::test::Mock` mocking node
+
 ## CMakeLists.txt
 ```CMake
 add_executable(my_app main.cpp)
@@ -106,6 +108,12 @@ trait SessionManager [Types]
     getToken(std::string_view user, std::string_view pass) -> Task<std::optional<typename Types::Token>>
 }
 
+trait Logger
+{
+    // Takes any std::format compatible arguments
+    log(...)
+}
+
 }
 ```
 
@@ -131,6 +139,10 @@ cluster Cluster
     // Above is equivalent to:
     // [trait::TokenStore]  sessions <-- authService
     // [trait::AuthService] sessions --> authService
+
+    // Explicitly redirect sessions to the global logger so it can be resolved like a normal dependency (optional)
+    [trait::Logger]
+    sessions --> *
 }
 
 }
@@ -184,7 +196,11 @@ namespace my {
 // in separate .cpp files for faster compilation.
 export struct AuthService : di::Node
 {
-    using Depends = di::Depends<trait::TokenStore>;
+    // `AuthService` uses `trait::TokenStore` via `getNode`, and `trait::Logger` via `getGlobal`
+    // Both are checked when compiling the graph that hosts `AuthService`
+    using Depends = di::Depends<trait::TokenStore, di::Global<trait::Logger>>;
+
+    // `AuthService` implements the trait `my::trait::AuthService`
     using Traits = di::Traits<AuthService, trait::AuthService>;
     // shorthand for:
     //      di::Traits<AuthService
@@ -193,7 +209,7 @@ export struct AuthService : di::Node
 
     struct Types
     {
-        // exposes Token type to client nodes, as is required by `trait::AuthService`
+        // exposes `Token` type to client nodes, as is required by `trait::AuthService`
         using Token = my::Token;
     };
 
@@ -220,6 +236,8 @@ export struct AuthService : di::Node
             // which directly calls
             // <my::Cluster>.sessions.impl(trait::TokenStore::store{}, user, PassHash(...), Token(...));
         }
+        // Global dependencies resolved via `getGlobal` can be omitted from the graph
+        self.getGlobal(trait::logger).log("User {} logged in successfully: {}", user, success);
         co_return success;
     }
 
@@ -275,7 +293,10 @@ export struct Sessions
     template<class Context>
     struct Node : di::Node
     {
-        using Depends = di::Depends<trait::AuthService>;
+        // Since `sessions` is explicitly redirected to the global node `*` in the graph,
+        // we can simply depend on `trait::Logger` instead of `di::Global<trait::Logger>`
+        using Depends = di::Depends<trait::AuthService, trait::Logger>;
+
         using Traits = di::Traits<Node, trait::TokenStore, trait::SessionManager>;
         // shorthand for:
         //      di::Traits<Node
@@ -298,6 +319,9 @@ export struct Sessions
 
         void impl(trait::TokenStore::store, std::string_view user, PassHash passHash, Token token)
         {
+            // `trait::Logger` dependency is explicitly resolved in the graph,
+            // so we can call it directly with `getNode` instead of `getGlobal`
+            getNode(trait::logger).log("Storing token for user: {}", user);
             auto const [it, inserted] = userDetailsMap.try_emplace(user, std::move(passHash), std::move(token));
             if (not inserted)
             {
@@ -308,6 +332,7 @@ export struct Sessions
 
         void impl(trait::TokenStore::revoke, std::string_view user)
         {
+            getNode(trait::logger).log("Revoking token for user: {}", user);
             userDetailsMap.erase(user);
         }
 
@@ -365,10 +390,35 @@ export struct Sessions
 }
 ```
 
+## logger.ixx
+`my::Logger` node implements the trait `my::trait::Logger` (which will be the global node)
+```cpp
+export module my.logger;
+
+import my.traits;
+import di;
+import std;
+
+namespace my {
+
+export struct Logger : di::Node
+{
+    using Traits = di::Traits<Logger, trait::Logger>;
+
+    template<class... Args>
+    void impl(trait::Logger::log, Args&&... args) const
+    {
+        std::println(std::forward<Args>(args)...);
+    }
+};
+
+}
+```
 ## main.cpp
 Constructs the full graph of nodes which satisfies all requirements of the nodes within `my::Cluster`
 ```cpp
 import my.cluster;
+import my.logger;
 import my.pass_hash;
 import my.traits;
 import di;
@@ -382,8 +432,11 @@ int main()
         using PassHash = my::PassHash
     };
 
-    di::Graph<my::Cluster, Root> graph{
-        .authService{"super token secret", std::chrono::seconds{600}}
+    di::GraphWithGlobal<my::Cluster, my::Logger, Root> graph{
+        .global{}, // my::Logger is the global node
+        .main{ // my::Cluster is the main cluster
+            .authService{"super token secret", std::chrono::seconds{600}},
+        },
     };
     // `di::Graph<my::Cluster, Root>` is an alias to `my::Cluster<di::RootContext<Root>>`, which is roughly:
     //  struct my::PseudoGeneratedCluster
@@ -404,7 +457,7 @@ int main()
     //      }
     //  };
 
-    auto sessionManager = graph.sessions.asTrait(trait::sessionManager);
+    auto sessionManager = graph.main.sessions.asTrait(trait::sessionManager);
     assert(not sessionManager.hasToken("user1")); // user1 not logged in yet
     // same as sessionManager.impl(trait::SessionManager::hasToken{}, "user1")
     // which directly calls graph.sessions.impl(trait::SessionManager::hasToken{}, "user1")
@@ -419,7 +472,7 @@ int main()
     // and absolves nodes of the responsibility to hide away their state and implementation details,
     // since other nodes in the graph are only able to access their traits via getNode(<trait>).
 
-    auto authService = graph.authService.asTrait(trait::authService);
+    auto authService = graph.main.authService.asTrait(trait::authService);
     auto user1LoginTask = authService.logIn("user1", "user1Pass");
     if (user1LoginTask.value()) // synchronously waits for task to complete (as we are in main)
     {
@@ -470,6 +523,16 @@ struct MockTypes
         bool expired() const { return *time < expiry; }
         auto operator<=>(Token const&) const = default;
     };
+};
+
+struct MockLogger : di::Node
+{
+    using Traits = di::Traits<MockLogger, trait::Logger>;
+
+    void impl(trait::Logger::log, auto&&...) const
+    {
+        // no-op logger
+    }
 };
 
 inline constexpr std::string_view theUser = "user";
@@ -549,8 +612,9 @@ TEST_SUITE("my::Sessions as trait::SessionManager")
 {
     TEST_CASE("Using AuthServiceTestDouble")
     {
-        di::test::Graph<my::Sessions, AuthServiceTestDouble, MockRoot> graph;
-        // With di::test::Graph, any and all getNode calls in my::Sessions resolve to AuthServiceTestDouble
+        di::test::Graph<my::Sessions, di::Combine<MockLogger, AuthServiceTestDouble>, MockRoot> graph;
+        // With `di::test::Graph`, any and all `getNode` calls in `my::Sessions` resolve to
+        // `di::Combine<MockLogger, AuthServiceTestDouble>`, which selects the node which implements the required trait
 
         graph.mocks->addUser(theUser, thePass);
         auto sessionManager = graph.node.asTrait(trait::sessionManager);
@@ -562,14 +626,16 @@ TEST_SUITE("my::Sessions as trait::SessionManager")
     {
         using Mocks = di::test::Mock<MockTypes>;
         di::test::Graph<my::Sessions, Mocks, MockRoot> graph;
-        // With di::test::Graph, any and all getNode calls in my::Sessions resolve to Mocks
+        // With `di::test::Graph`, any and all `getNode` calls in `my::Sessions` resolve to `Mocks`
 
         std::size_t time = 0;
         std::size_t tokenId = 0;
 
         // Mock all trait dependencies that are used by my::Sessions
-        // NOTE: Not all of trait::AuthService needs to be defined in the mock,
-        // since AuthService::changePass is not called from my::Sessions
+        // NOTE: Not all of `trait::AuthService` needs to be defined in the mock,
+        // since `AuthService::changePass` is not called from `my::Sessions`
+        // NOTE: `trait::Logger::log` does not need to be explicitly mocked,
+        // the default implementation for any missing method is a no-op
         graph.mocks->define(
             [&](trait::AuthService::logIn, std::string user, std::string pass) -> my::Task<bool>
             {
