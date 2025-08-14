@@ -1,17 +1,16 @@
 #ifndef INCLUDE_DI_VIRTUAL_HPP
 #define INCLUDE_DI_VIRTUAL_HPP
 
-#include "di/detail/cast.hpp"
-#include "di/detail/compress.hpp"
+#include "di/detail/as_ref.hpp"
 #include "di/detail/select.hpp"
-#include "di/context.hpp"
-#include "di/empty_types.hpp"
 #include "di/factory.hpp"
+#include "di/global_context.hpp"
 #include "di/global_trait.hpp"
+#include "di/link.hpp"
 #include "di/macros.hpp"
 #include "di/node.hpp"
 #include "di/traits.hpp"
-#include "di/traits_fwd.hpp"
+#include "di/virtual_fwd.hpp"
 
 #if !DI_IMPORT_STD
 #include <concepts>
@@ -23,52 +22,6 @@
 #endif
 
 namespace di {
-
-DI_MODULE_EXPORT
-struct IDestructible
-{
-    virtual ~IDestructible() = default;
-};
-
-DI_MODULE_EXPORT
-struct [[nodiscard, maybe_unused]] KeepAlive
-{
-    explicit constexpr KeepAlive(std::unique_ptr<IDestructible> m) : m(std::move(m)) {}
-    KeepAlive() = default;
-    KeepAlive(KeepAlive&&) = default;
-    KeepAlive& operator=(KeepAlive&&) = default;
-
-private:
-    std::unique_ptr<IDestructible> m;
-};
-
-namespace detail {
-    struct INodeBase;
-    struct IsVirtualContextTag{};
-
-    template<IsNodeWrapper T, class Context>
-    auto toVirtualNodeImpl() -> T::template Node<CompressContext<Context>>;
-    template<IsNode T, class>
-    auto toVirtualNodeImpl() -> T;
-
-    template<IsNodeHandle T, class Context>
-    using ToVirtualNodeImpl = decltype(toVirtualNodeImpl<T, Context>());
-
-    template<class>
-    inline constexpr bool injectVirtualHost = false;
-}
-
-DI_MODULE_EXPORT
-template<class T>
-concept IsInterface = std::derived_from<T, detail::INodeBase> and requires {
-    typename T::Traits;
-};
-
-DI_MODULE_EXPORT
-template<class Context>
-concept IsVirtualContext = IsContext<Context> and requires {
-    { Context::isVirtualContext(detail::IsVirtualContextTag()) } -> std::same_as<detail::Decompress<Context>>;
-};
 
 struct detail::INodeBase : Node
 {
@@ -101,16 +54,20 @@ struct Virtual
         {
             constexpr ImplBase(Node* virtualHost)
                 : virtualHost(virtualHost)
+                , globalNode(virtualHost)
             {}
 
             virtual void setVirtualHost(Node* newVirtualHost)
             {
                 virtualHost = newVirtualHost;
+                globalNode.set(newVirtualHost);
             }
             Node* getVirtualHost() const { return virtualHost; }
+            auto* getGlobalNode() const { return globalNode.get(); }
 
         private:
             Node* virtualHost;
+            [[no_unique_address]] detail::GlobalNodePtr<Context> globalNode;
         };
 
         template<class ImplNode>
@@ -126,11 +83,25 @@ struct Virtual
             }
 
             template<class N, IsTrait Trait>
-            requires detail::HasLink<Context, Trait> or IsGlobalTrait<Trait>
+            requires detail::HasLink<Context, Trait>
             constexpr auto getNode(this Context virtualContext, N& impl, Trait trait)
             {
                 Node* virtualHost = Impl<ImplNode>::getVirtualHost(std::addressof(impl));
                 return virtualContext.getNode(std::forward_like<N&>(*virtualHost), trait);
+            }
+
+            template<IsGlobalTrait GlobalTrait>
+            static constexpr auto getNode(auto& node, GlobalTrait)
+            {
+                detail::assertContextHasGlobalTrait<Context, GlobalTrait>();
+                return getGlobalNode(node).asTrait(detail::AsRef{}, typename GlobalTrait::Trait{});
+            }
+
+            template<class N>
+            static constexpr auto& getGlobalNode(N& impl)
+            {
+                // Global node pointer is cached in ImplBase to avoid multiple lookups
+                return std::forward_like<N&>(*Impl<ImplNode>::getGlobalNode(std::addressof(impl)));
             }
 
             template<IsContext Parent>
@@ -163,6 +134,12 @@ struct Virtual
             {
                 auto const& self = p->*detail::reverseMemberPointer(&Impl::impl);
                 return self.ImplBase::getVirtualHost();
+            }
+
+            static constexpr auto* getGlobalNode(ImplOf<ImplNode> const* p)
+            {
+                auto const& self = p->*detail::reverseMemberPointer(&Impl::impl);
+                return self.ImplBase::getGlobalNode();
             }
 
             void setVirtualHost(Node* newVirtualHost) final

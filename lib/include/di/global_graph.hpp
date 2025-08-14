@@ -13,6 +13,7 @@
 #if !DI_IMPORT_STD
 #include <type_traits>
 #include <utility>
+#include <memory>
 #endif
 
 namespace di {
@@ -52,19 +53,15 @@ namespace detail {
             struct MainContext : di::Context<Node, MainCluster>
             {
                 using Info = GlobalInfo<GlobalNodeHandle, Root, RootContext>;
-
-                // Delegate to parent cluster to get the node
-                template<class N, IsGlobalTrait GlobalTrait>
-                static constexpr auto getNode(N& node, GlobalTrait)
+                template<class N>
+                static constexpr auto& getGlobalNode(N& node)
                 {
-                    using Trait = GlobalTrait::Trait;
                     auto memPtr = getNodePointer(AdlTag<MainContext>{});
-                    static_assert(HasTrait<GlobalNode, Trait>, "Global missing the requested trait");
                     auto& global = getParent(node, memPtr).global;
                     if constexpr (std::is_pointer_v<decltype(Node::global)>)
-                        return std::forward_like<N&>(*global).asTrait(detail::AsRef{}, Trait{});
+                        return std::forward_like<N&>(*global);
                     else
-                        return std::forward_like<N&>(global).asTrait(detail::AsRef{}, Trait{});
+                        return std::forward_like<N&>(global);
                 }
             };
 

@@ -7,6 +7,7 @@
 #include "di/detail/concepts.hpp"
 #include "di/empty_types.hpp"
 #include "di/environment.hpp"
+#include "di/global_context.hpp"
 #include "di/global_trait.hpp"
 #include "di/key.hpp"
 #include "di/macros.hpp"
@@ -91,10 +92,11 @@ struct Collection
         {
             ID id;
             Node* collection;
+            [[no_unique_address]] detail::GlobalNodePtr<Context> globalNode;
             [[no_unique_address]] ElementNode node;
 
             explicit Element(ID const& id, Node* collection, auto&&... args)
-                : id(id), collection(collection), node(DI_FWD(args)...)
+                : id(id), collection(collection), globalNode(collection), node(DI_FWD(args)...)
             {}
 
             template<class Caller, class Target>
@@ -140,9 +142,17 @@ struct Collection
             }
 
             template<IsGlobalTrait GlobalTrait>
-            static constexpr auto getNode(auto& node, GlobalTrait globalTrait)
+            static constexpr auto getNode(auto& node, GlobalTrait)
             {
-                return Context{}.getNode(getCollection(node), globalTrait);
+                detail::assertContextHasGlobalTrait<ElementContext, GlobalTrait>();
+                return getGlobalNode(node).asTrait(detail::AsRef{}, typename GlobalTrait::Trait{});
+            }
+
+            template<class N>
+            static constexpr auto& getGlobalNode(N& node)
+            {
+                // Global node pointer is cached in Element to avoid multiple lookups
+                return std::forward_like<N&>(*getElement(node).globalNode.get());
             }
 
             template<IsContext Parent>
@@ -205,14 +215,20 @@ struct Collection
             , ids(other.ids)
         {
             for (auto& element : elements)
+            {
                 element.collection = this;
+                element.globalNode.set(this);
+            }
         }
         constexpr Node(Node&& other)
             : elements(std::move(other.elements))
             , ids(std::move(other.ids))
         {
             for (auto& element : elements)
+            {
                 element.collection = this;
+                element.globalNode.set(this);
+            }
         }
 
         using Traits = di::TraitsTemplate<Node, TraitsTemplate>;

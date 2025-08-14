@@ -8,5 +8,6 @@ cluster abc::CharlieCluster
 {
     charlie = Charlie
 
-    [trait::Alice <-> trait::Charlie] .. <-> charlie
+    [trait::Alice]   ..
+    [trait::Charlie] charlie
 }

@@ -22,17 +22,19 @@ namespace <fully-qualified-namespace> {
 cluster <cluster-name> [<cluster-annotations>...]
 {
     <"node":
-    | <node-name> = <node-type>
+        | <node-name> = <node-type>
     >...
 
     <either "alias":
         | using <alias-name> = <trait-type>
      or "connection-block":
         <"connection-block-tag":
-        | [<trait-type or alias-name>]
+            | [<trait-type or alias-name>]
         >
-        <"connection":
-        | <node-name>... <arrow> <node-name>...
+        <either "sink-node":
+            | <node-name>
+         or "connection":
+            | <node-name>... <arrow> <node-name>...
         >...
     >...
 }
@@ -52,6 +54,18 @@ cluster FruitSalad
     cherry = Cherry
     sourCherry = Cherry
     date = Date
+    elderberry = Elderberry
+
+    // Sink trait
+    [trait::Elderberry] elderberry
+    // Connects all other nodes to elderberry (including the parent cluster)
+    // Equivalent to:
+    // [trait::Elderberry]
+    // elderberry <-- .., apple, banana, cherry, sourCherry, date
+    // Any sink traits must be declared before all explicit connections
+    // `elderberry` may not have any outgoing connections apart from the implicit
+    // connection to the global node or cluster and other sink nodes
+    // `trait::Elderberry` cannot be used in any further connection blocks
 
     // Connection block (using both arrow directions)
     [trait::Apple]
@@ -138,7 +152,7 @@ cluster FruitSalad
     // Note: when FruitSalad is used as a node in a parent cluster,
     // trait::ChopFruit transparently connects to _parentRepeater0
 
-    // Explicitly edirecting trait to the global cluster/node
+    // Explicitly redirecting trait to the global cluster/node
     [trait::Log]
     apple --> *
     // which resolves trait::Log from the global cluster or node

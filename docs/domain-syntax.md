@@ -54,6 +54,8 @@ According to various studies, iteratively growing networks tend to become scale-
   * It encourages tightly-coupled unary sub-nodes to be either merged into one sub-node or put into a sub-`domain`
 * All sub-nodes must have their dependencies specified via a `di::Depends` list in the node definition, even if the list is empty
   * In clusters, this is optional, but in domains it is mandatory to ensure that nodes are held to the higher standards of the domain
+* Sink traits are not allowed in domains
+  * All connections between nodes in the `domain` must be explicitly defined in the `domain` block
 
 # Domain syntax
 
@@ -66,6 +68,7 @@ The domain syntax is identical to the cluster syntax, with a few key differences
     * Stateful unary: CamelCase
     * Non-unary (sub-domain or sub-cluster): ALL_CAPS
 * Unary-to-unary sub-node connections must use strong arrows `--->>>`, all of which will be made to get stronger as the total number of these connections increases
+* Sink traits are not allowed in domains
 
 ## Example
 ```

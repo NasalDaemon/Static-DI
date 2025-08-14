@@ -42,6 +42,8 @@ domain Domain [R = Root]
     unary1 <<<--->>> unary2
     unary1 <<<--->>> unary2
     // unary1 <<<--->>> unary2
+
+    // [trait::Unary] nexus
 }
 
 domain Domain1 [R = Root]

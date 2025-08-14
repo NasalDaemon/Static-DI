@@ -56,15 +56,17 @@ node: NAME "=" node_type (":" node_type_wrapper)*
 node_type: [TYPENAME] node_type_wrapper
 node_type_wrapper: NAMESPACE [cpp_templ_args]
 
-connection_block: connection_context* connection_trait connection+
+connection_block: connection_aliases* connection_trait (connection+ | sink_node)
 
-connection_context: "using" connection_context_alias ("," connection_context_alias)*
+connection_aliases: "using" connection_alias ("," connection_alias)*
 
-connection_context_alias: NAME "=" cpp_type
+connection_alias: NAME "=" cpp_type
 
 connection_trait: "[" cpp_type [BARROW cpp_type] "]"
 
 connection: node_names (arrow node_names)+
+
+sink_node: NODE_NAME
 
 arrow:             LARROW             -> left_arrow
      |             RARROW             -> right_arrow

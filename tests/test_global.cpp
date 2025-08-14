@@ -33,16 +33,14 @@ cluster InnerCluster [R = Root]
 {
     node = R::Node
 
-    [trait::Log]
-    node --> *
+    [trait::Log] *
 }
 
 cluster GlobalCluster [R = Root]
 {
     logger = R::Logger
 
-    [trait::Log]
-    .. --> logger
+    [trait::Log] logger
 }
 
 }

@@ -192,6 +192,7 @@ class Node:
         self.is_nexus: bool = is_first and isinstance(cluster, Domain)
         self.is_parent = False
         self.is_global = False
+        self.is_sink_node = False
         if name == '..':
             self.is_parent = True
             self.context = "Context"
@@ -215,6 +216,14 @@ class Node:
             raise SyntaxError(f"{pos} cannot connect '{self.name}' to itself")
         if self.is_global:
             raise SyntaxError(f"{pos} cannot connect from global node '*' to any other node")
+        if self.is_sink_node and not to_node.is_sink_node:
+            raise SyntaxError(f"{pos} cannot connect from sink node '{self.name}' to a non-sink node")
+        if trait in self.cluster.sink_traits:
+            raise SyntaxError(f"{pos} Trait '{trait}' already allocated to sink node '{self.cluster.sink_traits[trait][0].name}' "
+                              f"in cluster '{self.cluster.full_name}' here {self.cluster.sink_traits[trait][1]}")
+        if to_trait is not None and to_trait in self.cluster.sink_traits:
+            raise SyntaxError(f"{pos} Trait '{to_trait}' already allocated to sink node '{self.cluster.sink_traits[to_trait][0].name}' "
+                              f"in cluster '{self.cluster.full_name}' here {self.cluster.sink_traits[to_trait][1]}")
         if error := self.cluster.get_connection_error(self, to_node, is_override):
             raise SyntaxError(f"{pos} Cannot connect '{self.name}' to '{to_node.name}' in {self.cluster.cluster_class} '{self.cluster.full_name}': {error}")
 
@@ -255,6 +264,7 @@ class Cluster:
         self.nodes: list[Node | Repeater] = []
         self.aliases: list[tuple[str, str]] = []
         self.dependencies: list[str] = []
+        self.sink_traits: dict[str, tuple[Node, str]] = {}  # trait: (Node, position)
 
     @property
     def cluster_type(self) -> str:
@@ -314,8 +324,10 @@ class Cluster:
         nodes: dict[str, Node] = {}
         nodes[".."] = self.parent_node
         nodes["*"] = self.global_node
+        explicit_connection_seen = False
         left_trait: str
         right_trait: str
+        bi_trait: bool
         for child in children:
             if child.data == imported('cluster_annotations'):
                 for ann in child.children:
@@ -345,7 +357,7 @@ class Cluster:
                 nodes[name] = Node(name, child, impl, cluster=self, is_first=is_first)
             elif child.data == imported('connection_block'):
                 for child in child.children:
-                    if child.data == imported('connection_context'):
+                    if child.data == imported('connection_aliases'):
                         for child in child.children:
                             alias, trait_type = child.children
                             type_string = reconstructor.reconstruct(trait_type)
@@ -358,10 +370,33 @@ class Cluster:
                         left_trait = reconstructor.reconstruct(child.children[0])
 
                         if len(child.children) == 1:
+                            bi_trait = False
                             right_trait = left_trait
                         else:
+                            bi_trait = True
                             right_trait = reconstructor.reconstruct(child.children[-1])
+                        if left_trait in self.sink_traits:
+                            raise SyntaxError(f"{get_pos(child.children[0])} Trait '{left_trait}' already allocated to sink node "
+                                              f"'{self.sink_traits[left_trait][0].name}' in cluster '{self.full_name}' here {self.sink_traits[left_trait][1]}")
+                        if right_trait in self.sink_traits:
+                            raise SyntaxError(f"{get_pos(child.children[-1])} Trait '{right_trait}' already allocated to sink node "
+                                              f"'{self.sink_traits[right_trait][0].name}' in cluster '{self.full_name}' here {self.sink_traits[right_trait][1]}")
+                    elif child.data == imported('sink_node'):
+                        name = child.children[0].value
+                        node = nodes[name]
+                        if self.cluster_class == "domain":
+                            raise SyntaxError(f"{get_pos(child)} Sink node '{name}' not permitted in domain '{self.full_name}'")
+                        if explicit_connection_seen:
+                            raise SyntaxError(f"{get_pos(child)} Sink node '{name}' in cluster '{self.full_name}' must be declared before any explicit connections")
+                        if bi_trait:
+                            raise SyntaxError(f"{get_pos(child)} Sink node '{name}' in cluster '{self.full_name}' cannot have bi-directional trait")
+                        if left_trait in self.sink_traits:
+                            raise SyntaxError(f"{get_pos(child)} Sink node '{name}' in cluster '{self.full_name}' is using the trait '{left_trait}' "
+                                              f"already used by another sink node '{self.sink_traits[left_trait][0].name}' here {self.sink_traits[left_trait][1]}")
+                        node.is_sink_node = True
+                        self.sink_traits[left_trait] = (node, get_pos(child))
                     elif child.data == imported('connection'):
+                        explicit_connection_seen = True
                         for i in range(0, len(child.children) - 1, 2):
                             lnames, arrow, rnames = (child.children[i], child.children[i+1], child.children[i+2])
                             is_override = self.validate_arrow(arrow)
@@ -416,6 +451,14 @@ class Cluster:
                         raise SyntaxError(f'{get_pos(child)} Unknown connection section: {child.data}')
             else:
                 raise SyntaxError(f'{get_pos(child)} Unknown cluster section: {child.data}')
+
+        # Connect all nodes (including parent) to sink nodes at very end
+        sink_traits = self.sink_traits
+        self.sink_traits = {}
+        for trait, (sink_node, pos) in sink_traits.items():
+            for node in nodes.values():
+                if node.name not in ["*", sink_node.name]:
+                    node.add_connection(pos, False, sink_node, trait)
 
         self.user_nodes = [node for node in nodes.values() if node.name not in ['..', '*']]
         self.aliases = sorted(aliases.items())

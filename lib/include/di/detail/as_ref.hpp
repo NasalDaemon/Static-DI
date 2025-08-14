@@ -5,6 +5,7 @@
 #include "di/macros.hpp"
 #include "di/node_fwd.hpp"
 #include "di/empty_types.hpp"
+#include "di/virtual_fwd.hpp"
 
 #if !DI_IMPORT_STD
 #include <memory>
@@ -22,8 +23,6 @@ template<class ID, IsNodeHandle NodeHandle>
 struct Collection;
 
 namespace detail {
-    template<IsNodeHandle MainCluster, class GlobalNodeHandle, class Root = void>
-    struct GraphWithGlobalNode;
     struct ContextBase;
 
     // Bypass TraitView instantiation during intermediate asTrait/getNode calls
@@ -35,8 +34,8 @@ namespace detail {
         friend struct di::detail::ContextBase;
         template<class ID, IsNodeHandle NodeHandle>
         friend struct di::Collection;
-        template<IsNodeHandle MainCluster, class GlobalNodeHandle, class Root>
-        friend struct GraphWithGlobalNode;
+        template<IsInterface... Interfaces>
+        friend struct di::Virtual;
 
         AsRef() = default;
     };

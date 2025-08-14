@@ -26,15 +26,20 @@ namespace di {
 namespace detail {
     struct ContextBase
     {
-        // Delegate to parent cluster to get the global trait
-        template<IsContext Self_, IsGlobalTrait GlobalTrait>
-        constexpr auto getNode(this Self_, auto& node, GlobalTrait globalTrait)
+        // Delegate to parent cluster to get the global node
+        template<IsContext Self_, class N>
+        constexpr auto& getGlobalNode(this Self_, N& node)
         {
             using Self = detail::Decompress<Self_>;
             auto memPtr = getNodePointer(AdlTag<Self>{});
-            static_assert(ContextHasGlobal<Self>, "Context does not have a global type");
-            static_assert(ContextHasGlobalTrait<Self, GlobalTrait>, "Global type does not have the requested trait");
-            return typename Self::ParentContext{}.getNode(getParent(node, memPtr), globalTrait);
+            return typename Self::ParentContext{}.getGlobalNode(getParent(node, memPtr));
+        }
+
+        template<IsContext Self, IsGlobalTrait GlobalTrait>
+        constexpr auto getNode(this Self self, auto& node, GlobalTrait)
+        {
+            detail::assertContextHasGlobalTrait<Self, GlobalTrait>();
+            return self.getGlobalNode(node).asTrait(detail::AsRef{}, typename GlobalTrait::Trait{});
         }
 
         // Get sibling node

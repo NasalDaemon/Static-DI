@@ -64,7 +64,7 @@ target_generate_di_modules(my_app)
 
 ## traits.ixx.dig
 `my::trait::AuthService`, `my::trait::TokenStore`, `my::trait::SessionManager`: traits for nodes to implement. See full trait syntax [documentation](trait-syntax.md).
-```
+```cpp
 export module my.traits;
 
 import std;
@@ -119,7 +119,7 @@ trait Logger
 
 ## cluster.ixx.dig
 `my::Cluster`: A cluster of interconnected nodes implementing the traits. See full cluster syntax [documentation](cluster-syntax.md).
-```
+```cpp
 export module my.cluster;
 
 import my.sessions;
