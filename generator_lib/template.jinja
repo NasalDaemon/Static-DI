@@ -184,6 +184,7 @@ struct {{ cluster.node_name() }} : {{ cluster.cluster_type }}
     {% endif %}
     {% for node in cluster.nodes %}
     struct {{ node.context }};
+    using {{ node.node_alias }} = {{ node.impl }};
     {% endfor %}
     {% if cluster.aliases %}
 
@@ -203,7 +204,6 @@ struct {{ cluster.node_name() }} : {{ cluster.cluster_type }}
     {% endif %}
 
     {% for node in cluster.nodes %}
-    using {{ node.context }}Node_ = {{ node.impl }};
     struct {{ node.context }} : di::Context<{{ cluster.node_name() }}, {{ node.context }}Node_>
     {
         {% for connection in node.connections %}

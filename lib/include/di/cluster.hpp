@@ -68,21 +68,21 @@ struct Cluster
         self.visit(detail::TraitVisitor<Trait, Visitor>{DI_FWD(visitor)});
     }
 
-    template<class Self, IsTrait Trait, class Key = ContextParameterOf<Self>::Info::DefaultKey>
-    constexpr IsTraitViewOf<Trait, Key> auto getNode(this Self& cluster, Trait trait, Key key = {}, auto const&... keys)
+    template<IsTrait Trait, class Self, class Key = ContextParameterOf<Self>::Info::DefaultKey>
+    constexpr IsTraitViewOf<Trait, Key> auto getNode(this Self& cluster, Trait trait = {}, Key key = {}, auto const&... keys)
     {
         auto target = cluster.getNode(detail::AsRef{}, trait);
         return makeTraitView(cluster, target, trait, key, keys...);
     }
 
-    template<class Self, IsTrait Trait>
-    constexpr auto getNode(this Self& cluster, detail::AsRef, Trait trait)
+    template<IsTrait Trait, class Self>
+    constexpr auto getNode(this Self& cluster, detail::AsRef, Trait trait = {})
     {
         return detail::getContextParameter(cluster).getNode(cluster, trait);
     }
 
-    template<class Self, IsTrait Trait>
-    constexpr auto canGetNode(this Self const&, Trait)
+    template<IsTrait Trait, class Self>
+    constexpr auto canGetNode(this Self const&, Trait = {})
     {
         constexpr bool value =
             requires (Self c, Trait trait) {
@@ -91,9 +91,9 @@ struct Cluster
         return std::bool_constant<value>{};
     }
 
-    template<class Self, IsTrait Trait, class Key = ContextParameterOf<Self>::Info::DefaultKey>
+    template<IsTrait Trait, class Self, class Key = ContextParameterOf<Self>::Info::DefaultKey>
     requires detail::HasLink<Self, Trait>
-    constexpr IsTraitViewOf<Trait, Key> auto asTrait(this Self& self, Trait trait, Key key = {}, auto const&... keys)
+    constexpr IsTraitViewOf<Trait, Key> auto asTrait(this Self& self, Trait trait = {}, Key key = {}, auto const&... keys)
     {
         auto target = self.asTrait(detail::AsRef{}, trait);
         return makeTraitView(self, target, trait, key, keys...);
@@ -109,8 +109,8 @@ struct Cluster
         return node.asTrait(asRef, typename Target::Trait{});
     }
 
-    template<class Self, IsTrait Trait>
-    constexpr auto hasTrait(this Self const&, Trait)
+    template<IsTrait Trait, class Self>
+    constexpr auto hasTrait(this Self const&, Trait = {})
     {
         constexpr bool value =
             detail::HasLink<Self, Trait> and

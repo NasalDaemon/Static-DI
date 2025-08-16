@@ -62,11 +62,15 @@ connection_aliases: "using" connection_alias ("," connection_alias)*
 
 connection_alias: NAME "=" cpp_type
 
-connection_trait: "[" cpp_type [BARROW cpp_type] "]"
+connection_trait: "[" connection_trait_type [BARROW connection_trait_type] "]"
+
+connection_trait_type: NO_TRAIT | cpp_type
+
+NO_TRAIT: "~"
 
 connection: node_names (arrow node_names)+
 
-sink_node: NODE_NAME
+sink_node: node_names
 
 arrow:             LARROW             -> left_arrow
      |             RARROW             -> right_arrow

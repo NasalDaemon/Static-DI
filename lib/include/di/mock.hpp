@@ -1,10 +1,12 @@
 #ifndef INCLUDE_DI_MOCK_HPP
 #define INCLUDE_DI_MOCK_HPP
 
+#include "di/context_fwd.hpp"
 #include "di/detail/type_name.hpp"
 #include "di/empty_types.hpp"
 #include "di/macros.hpp"
 #include "di/node.hpp"
+#include "di/test_context.hpp"
 #include "di/trait.hpp"
 #include "di/traits.hpp"
 
@@ -174,6 +176,8 @@ struct Mock
         template<class Self, class Method, class... Args>
         constexpr detail::MockReturn impl(this Self& self, Method, Args&&... args)
         {
+            static_assert(IsTestContext<ContextOf<Self>>, "di::test::Mock may only be used in test contexts.");
+
             ArgTypes argTypes{
                 std::type_index{typeid(Method)},
                 std::type_index{typeid(Args)}...};

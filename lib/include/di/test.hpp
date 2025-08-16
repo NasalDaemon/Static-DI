@@ -10,17 +10,10 @@
 #include "di/macros.hpp"
 #include "di/map_info.hpp"
 #include "di/mock.hpp"
+#include "di/test_context.hpp"
 #include "di/trait.hpp"
 
 namespace di::test {
-
-namespace detail {
-struct TestContextTag{};
-}
-
-DI_MODULE_EXPORT
-template<class Context>
-concept IsTestContext = IsContext<Context> and requires { Context::Info::isTestContext(detail::TestContextTag{}); };
 
 DI_MODULE_EXPORT
 template<IsTrait Trait>
@@ -31,7 +24,7 @@ struct Local : Trait
 
 DI_MODULE_EXPORT
 template<IsTrait Trait>
-constexpr Local<Trait> local(Trait) { return {}; }
+constexpr Local<Trait> local(Trait = {}) { return {}; }
 
 DI_MODULE_EXPORT
 template<IsTrait Trait>

@@ -154,6 +154,12 @@ export namespace di {
     using di::NodeHasDepends;
     using di::NodeDependencyAllowed;
     using di::NodeDependenciesSatisfied;
+    // no_trait.hpp
+    using di::NoTrait;
+    using di::noTrait;
+    using di::NullTrait;
+    using di::IsNoTrait;
+    using di::NoTraits;
     // peer_node.hpp
     using di::PeerNode;
     using di::PeerDetached;

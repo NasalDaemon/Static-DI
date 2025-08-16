@@ -37,11 +37,11 @@ concept IsNonGlobalTrait = IsTrait<T> and not detail::IsGlobalTrait<T>;
 
 DI_MODULE_EXPORT
 template<IsGlobalTrait Trait>
-constexpr Trait global(Trait) { return {}; }
+constexpr Trait global(Trait = {}) { return {}; }
 
 DI_MODULE_EXPORT
 template<IsTrait Trait>
-constexpr Global<Trait> global(Trait) { return {}; }
+constexpr Global<Trait> global(Trait = {}) { return {}; }
 
 } // namespace di
 

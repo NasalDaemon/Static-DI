@@ -42,10 +42,10 @@ struct Node
 
 #if DI_AUTOCOMPLETE
     template<IsTrait Trait, class Key = key::Default>
-    static constexpr AutoCompleteTraitView<key::Trait<Key, Trait>> getNode(Trait trait, Key const& key = {}, auto const&... keys);
+    static constexpr AutoCompleteTraitView<key::Trait<Key, Trait>> getNode(Trait trait = {}, Key const& key = {}, auto const&... keys);
 #else
-    template<class Self, IsTrait Trait, class Key = ContextOf<Self>::Info::DefaultKey>
-    constexpr IsTraitViewOf<Trait, Key> auto getNode(this Self& self, Trait trait, Key const& key = {}, auto const&... keys)
+    template<IsTrait Trait, class Self, class Key = ContextOf<Self>::Info::DefaultKey>
+    constexpr IsTraitViewOf<Trait, Key> auto getNode(this Self& self, Trait trait = {}, Key const& key = {}, auto const&... keys)
     {
         assertNodeDependencies<Self>();
         if constexpr (not detail::IsNodeState<Self>)
@@ -59,14 +59,14 @@ struct Node
     }
 #endif
 
-    template<class Self, IsTrait Trait, class Key = ContextOf<Self>::Info::DefaultKey>
-    constexpr auto getGlobal(this Self& self, Trait trait, Key const& key = {}, auto const&... keys)
+    template<IsTrait Trait, class Self, class Key = ContextOf<Self>::Info::DefaultKey>
+    constexpr auto getGlobal(this Self& self, Trait trait = {}, Key const& key = {}, auto const&... keys)
     {
         return self.getNode(di::global(trait), key, keys...);
     }
 
-    template<class Self, IsTrait Trait>
-    constexpr auto canGetNode(this Self&, Trait)
+    template<IsTrait Trait, class Self>
+    constexpr auto canGetNode(this Self&, Trait = {})
     {
         constexpr bool value =
             requires (ContextOf<Self> c, Self::Traits::Node n, Trait trait) {
@@ -75,8 +75,8 @@ struct Node
         return std::bool_constant<value>{};
     }
 
-    template<class Self, IsTrait Trait, class Key = ContextOf<Self>::Info::DefaultKey>
-    constexpr IsTraitViewOf<Trait, Key> auto asTrait(this Self& self, Trait trait, Key const& key = {}, auto const&... keys)
+    template<IsTrait Trait, class Self, class Key = ContextOf<Self>::Info::DefaultKey>
+    constexpr IsTraitViewOf<Trait, Key> auto asTrait(this Self& self, Trait trait = {}, Key const& key = {}, auto const&... keys)
     {
         auto impl = self.asTrait(detail::AsRef{}, trait);
         return makeTraitView(self, impl, trait, key, keys...);
@@ -95,8 +95,8 @@ struct Node
         return detail::TargetRef{detail::downCast<Interface>(node), std::type_identity<Types>{}};
     }
 
-    template<class Self, IsTrait Trait>
-    constexpr auto hasTrait(this Self&, Trait) -> std::bool_constant<detail::TraitsHasTrait<typename Self::Traits, Trait>>
+    template<IsTrait Trait, class Self>
+    constexpr auto hasTrait(this Self&, Trait = {}) -> std::bool_constant<detail::TraitsHasTrait<typename Self::Traits, Trait>>
     {
         return {};
     }

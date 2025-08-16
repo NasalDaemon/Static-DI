@@ -18,6 +18,7 @@ add_executable(di_tests_module
     test_embedded_modules.cpp
     test_global.cpp
     test_node_count.cpp
+    test_null_trait.cpp
     test_union.cpp
     test_virtual.cpp
     test_repeater/main.cpp
@@ -77,6 +78,7 @@ target_generate_di_modules(di_tests_module
         test_global.cpp
         test_collection.cpp
         test_node_count.cpp
+        test_null_trait.cpp
         test_virtual.cpp
 )
 

@@ -4,11 +4,12 @@
 #include "di/detail/concepts.hpp"
 
 #include "di/alias.hpp"
-#include "di/key.hpp"
-#include "di/trait.hpp"
-#include "di/macros.hpp"
-#include "di/traits_fwd.hpp"
 #include "di/empty_types.hpp"
+#include "di/key.hpp"
+#include "di/macros.hpp"
+#include "di/no_trait.hpp"
+#include "di/trait.hpp"
+#include "di/traits_fwd.hpp"
 
 #if !DI_IMPORT_STD
 #include <functional>
@@ -172,6 +173,39 @@ struct TraitView final : Trait::Meta::Methods
     DI_INLINE auto operator->(this auto&& self)
     {
         return TraitNodeView(Trait{}, self.alias);
+    }
+
+private:
+    ImplAlias alias;
+};
+
+template<IsNoTrait Trait, class ImplAlias, class Types_>
+struct TraitView<Trait, ImplAlias, Types_> final : Trait::Meta::Methods
+{
+    constexpr TraitView(Trait, ImplAlias alias, std::type_identity<Types_>)
+        : alias(alias)
+    {}
+
+    static consteval std::false_type isTrait(auto) { return {}; }
+
+    using Types = detail::Decompress<Types_>;
+    struct Traits
+    {
+        using Node = ImplAlias::Impl;
+
+        template<std::same_as<TraitView> = TraitView>
+        using GetContext = ContextOf<typename ImplAlias::Impl>;
+
+        template<std::same_as<Trait> T>
+        using ResolveInterface = TraitView;
+
+        template<std::same_as<Trait> T>
+        using ResolveTypes = Types;
+    };
+
+    DI_INLINE auto operator->(this auto&& self)
+    {
+        return self.alias;
     }
 
 private:

@@ -62,10 +62,10 @@ cluster FruitSalad
     // Equivalent to:
     // [trait::Elderberry]
     // elderberry <-- .., apple, banana, cherry, sourCherry, date
-    // Any sink traits must be declared before all explicit connections
-    // `elderberry` may not have any outgoing connections apart from the implicit
-    // connection to the global node or cluster and other sink nodes
-    // `trait::Elderberry` cannot be used in any further connection blocks
+    // Any sink traits (like `trait::Elderberry`) must be declared before all explicit connections
+    // Sink nodes (like `elderBerry`) may not have any outgoing connections apart from the implicit
+    // connections to global nodes and other sink nodes
+    // Sink traits cannot be used in any further connection blocks
 
     // Connection block (using both arrow directions)
     [trait::Apple]
@@ -152,10 +152,10 @@ cluster FruitSalad
     // Note: when FruitSalad is used as a node in a parent cluster,
     // trait::ChopFruit transparently connects to _parentRepeater0
 
-    // Explicitly redirecting trait to the global cluster/node
+    // Explicitly redirecting trait to the global node
     [trait::Log]
     apple --> *
-    // which resolves trait::Log from the global cluster or node
+    // which resolves trait::Log to the respective global node
     // Equivalent to:
     // [trait::Log]
     // apple --> (di::Global<trait::Log>) ..
@@ -199,3 +199,66 @@ cluster ClusterWithNamedTypes [C = Context, R = Root, I = Info]
 }
 ```
 Without their respective annotations, the Context, Root, and Info type names are implementation-defined, and so should not be used inside the cluster.
+
+## No-trait connections [~]
+
+Use the no-trait marker `~` when you do not need a named trait/interface for a link. It models a traitless connection that stays type-safe via `di::NoTrait<NodeHandle>` at codegen time. The client will have access to all of the provider's public data and member functions without any interface constraints.
+
+### When to use
+- Internal wiring where the consumer needs the provider as-is (no interface to constrain)
+- One implementation per role with no plan to swap behind a trait
+- Prototyping before introducing a named trait
+- Tests and examples to keep graphs concise
+
+### When not to use
+- Public or cross-cluster contracts where a stable interface matters
+- Multiple interchangeable implementations selected by trait
+- You need to mix different client views of the same node (use named traits)
+
+### Syntax
+#### Connection block (traitless):
+```cpp
+cluster MyCluster
+{
+    client = Client
+    provider = Provider
+
+    // No-trait connection to a node
+    [~] client --> provider
+    // Equivalent to:
+    // [di::NoTrait<Provider>]
+    // client --> provider
+}
+```
+#### Sink declaration (collect all clients by default):
+```cpp
+[~] logger
+// All nodes (including parent) implicitly connect to `logger` using the no-trait link
+```
+#### Multiple sinks in one declaration:
+```cpp
+[~] logger, metrics
+// Multiple no-trait sinks can be declared in one line (only possible for no-trait connections)
+```
+#### No trait node
+```cpp
+struct Provider : di::Node
+{
+    using Traits = di::NoTraits<Provider>;
+    // No traits, just public members
+    void memberFunction() { /* ... */ }
+};
+```
+#### Consumption
+```cpp
+// From client node
+auto provider = getNode(di::noTrait<Provider>);
+provider->memberFunction(); // Calls `Provider`'s member function directly
+```
+
+### Caveats:
+- Cannot not mix `[~]` and a named trait for the same target node in one graph; pick one.
+- No-trait with the global node (`*`) is not supported; use a named trait or `getGlobal`.
+
+Migration tip
+- If you later need a stable interface, replace `[~]` with a named trait (e.g., `[trait::X]`) and update call sites from `getNode(di::noTrait<T>)` to `getNode(trait::x)`.

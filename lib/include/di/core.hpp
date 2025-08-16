@@ -18,6 +18,7 @@
 #include "di/graph.hpp"
 #include "di/link.hpp"
 #include "di/macros.hpp"
+#include "di/no_trait.hpp"
 #include "di/node.hpp"
 #include "di/resolve.hpp"
 #include "di/repeater.hpp"

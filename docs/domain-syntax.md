@@ -40,7 +40,7 @@ The fact that social networks are approximately scale-free in shape also suggest
 
 According to various studies, iteratively growing networks tend to become scale-free when new nodes preferentially connect to existing nodes with a higher degree (i.e., hubs connected to many other nodes). Static-DI `domains` aim to encourage the emergence of approximately scale-free dependency graphs through the following:
 
-* Every `domain` must have a _single_ unary nexus-node which acts as the central hub or coordinator for the `domain`
+* Every `domain` must have a _single_ traitful unary nexus-node which acts as the central hub or coordinator for the `domain`
 * Sub-`cluster`s or sub-`domain`s must have names in ALL_CAPS
 * Unary nodes (including the nexus) in the `domain` that have state must have names starting with a capital letter (e.g., CamelCase), and stateless nodes must have names starting with a lowercase letter (e.g., pascalCase)
 * The nexus-node is the only node allowed any connection to or from the parent `..` of the `domain`
