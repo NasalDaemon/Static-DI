@@ -47,7 +47,7 @@ struct Node
     template<IsTrait Trait, class Self, class Key = ContextOf<Self>::Info::DefaultKey>
     constexpr IsTraitViewOf<Trait, Key> auto getNode(this Self& self, Trait trait = {}, Key const& key = {}, auto const&... keys)
     {
-        assertNodeDependencies<Self>();
+        Self::template assertNodeContext<Self>();
         if constexpr (not detail::IsNodeState<Self>)
             static_assert(NodeDependencyAllowed<Self, Trait>, "Requested trait not listed in node definition");
         using ThisNode = Self::Traits::Node;
@@ -85,7 +85,7 @@ struct Node
     template<class Self, IsTrait Trait>
     constexpr auto asTrait(this Self& self, detail::AsRef, Trait)
     {
-        assertNodeDependencies<Self>();
+        Self::template assertNodeContext<Self>();
         using ThisNode = Self::Traits::Node;
         auto& node = detail::upCast<ThisNode>(self);
 
@@ -108,11 +108,20 @@ struct Node
     }
 
     template<class Self>
-    static consteval void assertNodeDependencies()
+    static consteval void assertNodeContext()
     {
         static_assert(NodeDependenciesSatisfied<Self, true>, "Listed node dependencies are not satisfied transitively.");
     }
 
+    // For use by nodes host in di::Union or di::Virtual
+    template<IsNodeHandle T, class Self>
+    constexpr decltype(auto) exchangeImpl(this Self& self, auto&&... args)
+    {
+        static_assert(not std::is_const_v<Self>);
+        return ContextOf<Self>::template exchangeImpl<T>(self, DI_FWD(args)...);
+    }
+
+    // di::Peer will override these
     static void getElementId() = delete;
     static void getElementHandle() = delete;
     static void getPeers() = delete;
@@ -157,20 +166,7 @@ namespace detail {
             : Node(f)
         {}
 
-        // Expose utility functions from the underlying node
-        using Traits = Node::Traits;
-        using Depends = Node::Depends;
-        using Environment = Node::Environment;
-        using Node::isUnary;
-        using Node::getNode;
-        using Node::canGetNode;
-        using Node::getGlobal;
-        using Node::asTrait;
-        using Node::hasTrait;
-
-        // Expose peer node functions
-        using Node::getElementId;
-        using Node::getElementHandle;
+        DI_NODE_USE_PUBLIC_MEMBERS(Node)
 
         DI_INLINE constexpr decltype(auto) visit(this auto& self, auto&& f)
         {

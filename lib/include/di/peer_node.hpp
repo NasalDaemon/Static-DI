@@ -7,6 +7,7 @@
 #include "di/macros.hpp"
 #include "di/node.hpp"
 #include "di/peer.hxx"
+#include "di/traits_fwd.hpp"
 
 #if !DI_IMPORT_STD
 #include <type_traits>
@@ -54,6 +55,13 @@ struct PeerNode : Node
     // Default impl of di::trait::Peer is to have no peers
     constexpr std::false_type impl(this auto const&, trait::Peer::isPeerId, auto const&) { return {}; }
     constexpr std::false_type impl(this auto const&, trait::Peer::isPeerInstance, auto const&) { return {}; }
+
+    template<class Self>
+    static constexpr void assertNodeContext()
+    {
+        static_assert(detail::TraitsHasTrait<typename Self::Traits, trait::Peer>, "Peer node is missing implementation for di::trait::Peer.");
+        Node::assertNodeContext<Self>();
+    }
 };
 
 DI_MODULE_EXPORT

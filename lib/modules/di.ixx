@@ -106,6 +106,9 @@ export namespace di {
     using di::withFactory;
     using di::Constructor;
     using di::Emplace;
+    // function.hpp
+    using di::Function;
+    using di::FunctionPolicy;
     // global_context.hpp
     using di::ContextHasGlobal;
     using di::ContextHasGlobalTrait;
@@ -182,6 +185,7 @@ export namespace di {
         using test::local;
         using test::MockTrait;
         using test::MockKey;
+        using test::TestOnlyNode;
         using test::Cluster;
         using test::Graph;
         using test::GraphWithGlobal;

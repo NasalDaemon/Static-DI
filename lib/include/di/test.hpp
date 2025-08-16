@@ -9,7 +9,8 @@
 #include "di/link.hpp"
 #include "di/macros.hpp"
 #include "di/map_info.hpp"
-#include "di/mock.hpp"
+#include "di/mock_fwd.hpp"
+#include "di/node.hpp"
 #include "di/test_context.hpp"
 #include "di/trait.hpp"
 
@@ -42,6 +43,17 @@ struct MockKey : di::key::Default
 {
     template<class T>
     using Trait = MockTrait<T>;
+};
+
+DI_MODULE_EXPORT
+struct TestOnlyNode : di::Node
+{
+    template<class Self>
+    static constexpr void assertNodeContext()
+    {
+        static_assert(IsTestContext<ContextOf<Self>>, "This node may only be used in test contexts.");
+        di::Node::assertNodeContext<Self>();
+    }
 };
 
 namespace detail {

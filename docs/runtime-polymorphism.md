@@ -14,9 +14,11 @@ This selective approach enables you to build systems that are both robust and ad
 
 `di::Union<Node, Nodes...>` (see [union.hpp](../lib/include/di/union.hpp)) is to be used if the full set of possible nodes implementing an intersection of traits is known at compile-time. When the graph is constructed, a single implementation is constructed. This remains active until an alternative implementation from the list is emplaced during runtime, or the graph is destructed.
 
+Nodes hosted in a `di::Union` can swap themselves with another alternative from the list by calling `auto deferredExchange = exchangeImpl<NewImpl>(constructorArgs...)` in the active node (arguments are taken by value). When `deferredExchange` is destroyed, it replaces the current option with `NewImpl`, invalidating the current node state. You can also swap from outside the graph using `graph.node->emplace<Index>(...)` or `graph.node->emplace<Type>(...)`. **NOTE:** Unlike `di::Virtual`, `di::Union` does not provide a detached handover; the lifetimes of the old and new alternative do not overlap.
+
 The memory layout of `di::Union<Nodes...>` is much like `std::variant<Ts...>`, where the state of the active alternative is stored on the stack alongside its respective index. Since only one node alternative is active at any one time, a `union` is effectively used to host the state. When a trait method is invoked, the only extra runtime cost is a branch to pick the active node's implementation given the active index. Due to the list of alternatives being known at compile-time, it presents opportunities for the compiler to optimise invocations, including inlining. Nodes in a `di::Union` are also able to retain compile-time thread-affinity protection where it is employed.
 
-Only methods calls from external nodes into the `di::Union` incur the extra runtime cost. Any methods invoked from within the nodes hosted by the `di::Union` incur no extra runtime cost, including calls to methods external to the `di::Union`.
+Only method calls from external nodes into the `di::Union` incur the extra runtime cost. Any methods invoked from within the nodes hosted by the `di::Union` incur no extra runtime cost, including calls to methods external to the `di::Union`.
 
 ### Examples
 
@@ -34,7 +36,7 @@ cluster app::Cluster
     animal = di::Union<Cow, Sheep>
 
     [trait::Animal]
-    famer --> animal
+    farmer --> animal
 }
 ```
 ```cpp
@@ -129,9 +131,11 @@ int main(int argc, char** argv)
 
 ## `di::Virtual`
 
-`di::Virtual<Interfaces...>` (see [virtual.hpp](../lib/include/di/virtual.hpp)) is to be used to host an open-set of node implementations of the given `Interfaces` (which derive from `di::INode`). This is the most flexible option, as any implementation of the interfaces can be used, even if it is not known when compiling the graph. As with `di::Union` when the graph is constructed, a single implementation is constructed. This remains active until an alternative implementation of the interface is emplaced during runtime, or the graph is destructed. Unlike static nodes, nodes deriving from `di::INode` also have the ability to swap themselves out with another implementation and handover as they see fit.
+`di::Virtual<Interfaces...>` (see [virtual.hpp](../lib/include/di/virtual.hpp)) is to be used to host an open-set of node implementations of the given `Interfaces` (which derive from `di::INode`). This is the most flexible option, as any implementation of the interfaces can be used, even if it is not known when compiling the graph. As with `di::Union` when the graph is constructed, a single implementation is constructed. This remains active until an alternative implementation of the interface is emplaced during runtime, or the graph is destructed.
 
-The memory layout of `di::Virtual<Interfaces...>` is much like `std::tuple<Interfaces*...>`, where the `Interfaces*` are pointers to the heap-allocated implementation. When a trait method is invoked, the interface that satisfies the trait is found from the list (as long as there is no ambiguity) and the method is called on that interface. Since the trait methods are typically implemented as virtual overrides of the interface methods, one vtable lookup is to expected per method call, much like a standard abstract class. In the case of a virtual override, it is harder for the compiler to optimise the call or inline it, although with judicious use of the `final` keyword and with whole-program or link-time-optimisation it may be possible for the compiler to devirtualise the call. Nodes hosted in a `di::Virtual` are not able to retain compile-time thread-affinity protection where it is employed, as the types needed to enforce this are erased.
+Nodes deriving from `di::INode` have the ability to swap themselves out with another implementation and handover interactively as they see fit by using `auto handle = exchangeImpl<NewImpl>(constructorArgs...)`. The `handle` obtains ownership over the calling node's detached state—which can reach the rest of the graph, but cannot itself be reached from other nodes. It also holds a non-owning reference to the new implementation which has been attached to the graph in its stead, allowing for an interactive handover.
+
+The memory layout of `di::Virtual<Interfaces...>` is much like `std::tuple<Interfaces*...>`, where the `Interfaces*` are pointers to the heap-allocated implementation. When a trait method is invoked, the interface that satisfies the trait is found from the list (as long as there is no ambiguity) and the method is called on that interface. Since the trait methods are typically implemented as virtual overrides of the interface methods, one vtable lookup is to be expected per method call, much like a standard abstract class. In the case of a virtual override, it is harder for the compiler to optimise the call or inline it, although with judicious use of the `final` keyword and with whole-program or link-time-optimisation it may be possible for the compiler to devirtualise the call. Nodes hosted in a `di::Virtual` are not able to retain compile-time thread-affinity protection where it is employed, as the types needed to enforce this are erased.
 
 Only method calls from external nodes into nodes hosted by `di::Virtual` incur the extra runtime cost. Any methods invoked from within the nodes hosted by the `di::Virtual` incur no extra runtime cost, including calls to methods external to the `di::Virtual`.
 
@@ -141,7 +145,7 @@ Only method calls from external nodes into nodes hosted by `di::Virtual` incur t
 
 By using `di::Adapt<StaticNode, InterfaceFacade>`, it is possible to adapt a static node that doesn't derive from `di::INode` or use virtual overrides, so that it can be hosted by a `di::Virtual`. The second template parameter is a facade, implementing the `Interface` required by the hosting `di::Virtual<Interface>`, which invokes the respective trait methods on the static node like a proxy. The static node, being static and having no knowledge of being dynamic, is not capable of swapping itself out, but the facade can swap the implementation of the `di::Virtual`, as it is a dynamic node. The static node can still call methods external to `di::Virtual` as per usual with no extra vtable lookup.
 
-With `di::Box<StaticNode, InFacade, OutFacade = void, OutInterfaces...>`, one adaps the given static node but also adapts all external dependencies behind another `OutFacade`, implementing `OutInterfaces...`. This means that the static node must pay a virtual dispatch also in all its calls to its dependencies, which are entirely abstracted behind the `OutFacade`. Using `di::Box`, one can instantiate a completely isolated implementation of the interfaces from which `InFacade` derives, completely agnostic to the context of the hosting `di::Virtual`.
+With `di::Box<StaticNode, InFacade, OutFacade = void, OutInterfaces...>`, one adapts the given static node but also adapts all external dependencies behind another `OutFacade`, implementing `OutInterfaces...`. This means that the static node must pay a virtual dispatch also in all its calls to its dependencies, which are entirely abstracted behind the `OutFacade`. Using `di::Box`, one can instantiate a completely isolated implementation of the interfaces from which `InFacade` derives, completely agnostic to the context of the hosting `di::Virtual`.
 
 ### Examples
 
@@ -158,7 +162,7 @@ cluster app::Cluster
     animal = di::Virtual<IAnimal>
 
     [trait::Animal]
-    famer --> animal
+    farmer --> animal
 }
 ```
 ```cpp
@@ -301,7 +305,7 @@ struct Fox : di::Node
 
     void impl(trait::Animal::evolve)
     {
-        // static node can not swap itself out (alas, `evolve` shouldn't really be a method in the trait)
+        // static node cannot swap itself out inside a di::Virtual (alas, `evolve` shouldn't really be a method in the trait)
     }
 };
 
@@ -322,7 +326,7 @@ struct IAnimalFacade final : IAnimal
         return getNode(trait::animal).speak();
     }
 
-    // As a dynamic node, this facade can swap the implementation hosted by di::Virtal
+    // As a dynamic node, this facade can swap the implementation hosted by di::Virtual
     void impl(trait::Animal::evolve) override
     {
         auto handle = exchangeImpl<Cow>(true);
@@ -392,9 +396,9 @@ int main(int argc, char** argv)
     // The `animal` variable is just a non-owning trait view of the di::Virtual node in the graph
     std::println("Sad cow says {}", graph.farmer.getNode(trait::animal).speak());
 
-    graph.animal->emplace<di::Adapt<Fox, IAnimalFacade>>()
+    graph.animal->emplace<di::Adapt<Fox, IAnimalFacade>>();
     std::println("Fox says {}", animal.speak());
-    // IAnimalFacade hotswaps with happy cow
+    // IAnimalFacade hot-swaps with happy cow
     animal.evolve();
     std::println("Cow says {}", animal.speak());
 }

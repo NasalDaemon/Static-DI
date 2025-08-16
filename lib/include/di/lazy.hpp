@@ -2,14 +2,13 @@
 
 #include "di/detail/cast.hpp"
 #include "di/detail/compress.hpp"
+#include "di/function.hpp"
 #include "di/link.hpp"
 #include "di/macros.hpp"
 #include "di/node.hpp"
 #include "di/trait.hpp"
 
 #if !DI_IMPORT_STD
-#include <memory>
-#include <functional>
 #include <utility>
 #include <variant>
 #endif
@@ -27,10 +26,10 @@ struct Lazy
         [[using DI_IF_GNU_ELSE(gnu)(msvc): noinline, cold]]
         void initialise() const
         {
-            auto* init = std::get_if<InitialiserPtr>(&state);
+            auto* init = std::get_if<Initialiser>(&state);
             [[assume(init != nullptr)]];
             auto initKeepAlive = std::move(*init);
-            (*initKeepAlive)(this);
+            initKeepAlive(this);
         }
 
         struct InnerContext : Context
@@ -46,9 +45,8 @@ struct Lazy
         };
 
         using NodeState = ToNodeWrapper<Underlying>::template Node<detail::CompressContext<InnerContext>>;
-        using Initialiser = std::function<void(Node const*)>;
-        using InitialiserPtr = std::unique_ptr<Initialiser>;
-        using Variant = std::variant<NodeState, InitialiserPtr>;
+        using Initialiser = Function<void(Node const*), FunctionPolicy{.copyable=true, .mutableCall=true, .immutableCall=false}>;
+        using Variant = std::variant<NodeState, Initialiser>;
         Variant mutable state;
 
         template<class Trait>
@@ -74,7 +72,7 @@ struct Lazy
         }
 
         constexpr explicit Node(auto&&... args)
-            : state(std::make_unique<Initialiser>(
+            : state(Initialiser(
                 [...args = DI_FWD(args)](Node const* self) mutable -> void
                 {
                     self->state.template emplace<NodeState>(std::move(args)...);
@@ -86,8 +84,8 @@ struct Lazy
             : state(
                 [&]() -> Variant
                 {
-                    if (InitialiserPtr const* init = std::get_if<InitialiserPtr>(&other.state))
-                        return Variant(std::make_unique<Initialiser>(**init));
+                    if (Initialiser const* init = std::get_if<Initialiser>(&other.state))
+                        return Variant(Initialiser(*init));
                     else
                         return Variant(std::get<NodeState>(other.state));
                 }())

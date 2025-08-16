@@ -37,23 +37,10 @@ struct DetachedImpl : Interface, private Node
 {
     static_assert(std::is_empty_v<Interface>);
 
-    // Expose utility functions from the underlying node
-    using Traits = Node::Traits;
-    using Depends = Node::Depends;
+    DI_NODE_USE_PUBLIC_MEMBERS(Node)
     using Types = Node::Types;
-    using Environment = Node::Environment;
-    using Node::isUnary;
     using Node::finalize;
     using Node::visit;
-    using Node::getNode;
-    using Node::canGetNode;
-    using Node::getGlobal;
-    using Node::asTrait;
-    using Node::hasTrait;
-
-    // Expose peer node functions
-    using Node::getElementId;
-    using Node::getElementHandle;
 
     // Use impl from the detached interface
     using Interface::impl;

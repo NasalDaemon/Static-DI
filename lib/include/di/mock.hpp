@@ -5,8 +5,10 @@
 #include "di/detail/type_name.hpp"
 #include "di/empty_types.hpp"
 #include "di/macros.hpp"
+#include "di/mock_fwd.hpp"
 #include "di/node.hpp"
 #include "di/test_context.hpp"
+#include "di/test.hpp"
 #include "di/trait.hpp"
 #include "di/traits.hpp"
 
@@ -124,13 +126,13 @@ namespace detail {
 } // namespace detail
 
 DI_MODULE_EXPORT
-template<class DefaultTypes = EmptyTypes, class... MockedTraits>
+template<class DefaultTypes/* = EmptyTypes*/, class... MockedTraits>
 struct Mock
 {
     using ArgTypes = std::vector<std::type_index>;
 
     template<class Context>
-    struct Node : di::Node
+    struct Node : di::test::TestOnlyNode
     {
         using Traits = std::conditional_t<
             sizeof...(MockedTraits) == 0,
@@ -176,8 +178,6 @@ struct Mock
         template<class Self, class Method, class... Args>
         constexpr detail::MockReturn impl(this Self& self, Method, Args&&... args)
         {
-            static_assert(IsTestContext<ContextOf<Self>>, "di::test::Mock may only be used in test contexts.");
-
             ArgTypes argTypes{
                 std::type_index{typeid(Method)},
                 std::type_index{typeid(Args)}...};

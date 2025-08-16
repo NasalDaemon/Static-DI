@@ -36,6 +36,11 @@ struct InheritAll : Bases...
 template<class Pred, class... Ts>
 using SelectIf = InheritAll<EnableIf<Pred::template value<Ts>, Ts>...>::type;
 
+struct Empty{};
+
+template<bool B, class T>
+using EmptyIf = std::conditional_t<B, Empty, T>;
+
 } // namespace di::detail
 
 

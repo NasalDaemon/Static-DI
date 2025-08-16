@@ -11,6 +11,24 @@
 #include <type_traits>
 #endif
 
+#define DI_NODE_USE_PUBLIC_MEMBERS(Node) \
+    /* Expose utility functions from the underlying node */ \
+    using Traits = Node::Traits; \
+    using Depends = Node::Depends; \
+    using Environment = Node::Environment; \
+    using Node::assertNodeContext; \
+    using Node::isUnary; \
+    using Node::getNode; \
+    using Node::canGetNode; \
+    using Node::getGlobal; \
+    using Node::asTrait; \
+    using Node::hasTrait; \
+    /* Expose union and virtual node functions */ \
+    using Node::exchangeImpl; \
+    /* Expose peer node functions */ \
+    using Node::getElementId; \
+    using Node::getElementHandle; \
+
 namespace di {
 
 DI_MODULE_EXPORT

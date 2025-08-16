@@ -139,6 +139,17 @@ TEST_CASE("di::Union")
     CHECK(cat.onion.asTrait(trait::Name{})->visit([]<class T>(T) { return requires { typename T::Types::CatType; }; }));
 
     CHECK(dog.onion.asTrait(trait::Name{})->visit([]<class T>(T) { return requires { typename T::Types::DogType; }; }));
+
+    {
+        di::Defer keepAlive;
+        {
+            auto d = cat.onion->get<0>().exchangeImpl<Dog>();
+            CHECK(cat.onion.asTrait(trait::Name{}).get() == 141);
+            keepAlive = std::move(d);
+        }
+        CHECK(cat.onion.asTrait(trait::Name{}).get() == 141);
+    }
+    CHECK(cat.onion.asTrait(trait::Name{}).get() == 42);
 }
 
 } // di::tests::union_

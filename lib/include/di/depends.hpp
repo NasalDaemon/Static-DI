@@ -59,7 +59,7 @@ struct Depends
     template<IsTrait Trait>
     static constexpr bool dependencyAllowed = (... or MatchesTrait<Trait, std::remove_pointer_t<Traits>>);
 
-    // On failure, the missing required trait types are returned for better error messages
+    // On failure, the missing required trait types are named in a list for better error messages
     template<class Node, bool Transitive>
     using AssertSatisfied = detail::AllVoid<decltype(detail::dependencySatisfied<ContextOf<Node>, Traits, Transitive>())...>;
 };

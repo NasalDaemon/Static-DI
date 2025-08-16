@@ -9,6 +9,7 @@
 
 #include "di/alias.hpp"
 #include "di/context_fwd.hpp"
+#include "di/defer.hpp"
 #include "di/factory.hpp"
 #include "di/link.hpp"
 #include "di/macros.hpp"
@@ -19,13 +20,22 @@
 
 #if !DI_IMPORT_STD
 #include <cstddef>
-#include <memory>
 #include <new>
 #include <type_traits>
 #include <utility>
 #endif
 
 namespace di {
+
+namespace detail {
+    struct IsUnionContextTag {};
+}
+
+DI_MODULE_EXPORT
+template<class Context>
+concept IsUnionContext = IsContext<Context> and requires {
+    { Context::isUnionContext(detail::IsUnionContextTag()) } -> std::same_as<detail::Decompress<Context>>;
+};
 
 DI_MODULE_EXPORT
 template<IsNodeHandle... Options>
@@ -38,6 +48,23 @@ struct Union
     {
         struct InnerContext : Context
         {
+            static InnerContext isUnionContext(detail::IsUnionContextTag);
+
+            template<IsNodeHandle T, class Current>
+            requires (not std::is_const_v<Current>)
+            static constexpr auto exchangeImpl(Current& current, auto&&... args)
+            {
+                static_assert((... or std::is_same_v<T, Options>), "Cannot exchange with a node that is not listed as an option in the di::Union");
+                auto const nodePtr = std::bit_cast<Current Node::*>(&Node::bytes);
+                Node& node = detail::getParent(current, nodePtr);
+                // Take args by value in case they come from the current node's state, which will be invalidated during the call to emplace
+                return di::Defer(
+                    [&node, ...args = DI_FWD(args)]() mutable
+                    {
+                        node.template emplace<T>(std::move(args)...);
+                    });
+            }
+
             template<class Option, IsTrait Trait>
             requires detail::HasLink<Context, Trait>
             static constexpr auto getNode(Option& option, Trait trait)
@@ -46,8 +73,8 @@ struct Union
                     detail::NodeHasTraitsNodePred<typename Option::Traits::Node>,
                     ToNode<Options>...
                 >;
-                auto const nodePtr = std::bit_cast<Node OptionNode::*>(-detail::memPtrToInt(&Node::bytes));
-                return Context{}.getNode(detail::downCast<OptionNode>(option).*nodePtr, trait);
+                auto const nodePtr = std::bit_cast<OptionNode Node::*>(&Node::bytes);
+                return Context{}.getNode(detail::getParent(option, nodePtr), trait);
             }
 
             template<IsContext Parent>
@@ -141,13 +168,13 @@ struct Union
         }
 
         template<std::size_t Index>
-        constexpr auto& get()
+        constexpr auto& get() &
         {
             return *std::launder(reinterpret_cast<NodeAt<Index>*>(bytes));
         }
 
         template<std::size_t Index>
-        constexpr auto const& get() const
+        constexpr auto const& get() const &
         {
             return *std::launder(reinterpret_cast<NodeAt<Index> const*>(bytes));
         }
