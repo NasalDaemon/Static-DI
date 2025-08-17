@@ -51,7 +51,7 @@ struct TestOnlyNode : di::Node
     template<class Self>
     static constexpr void assertNodeContext()
     {
-        static_assert(IsTestContext<ContextOf<Self>>, "This node may only be used in test contexts.");
+        static_assert(IsTestContext<ContextOf<Self>>, "This node may only be used in a test context.");
         di::Node::assertNodeContext<Self>();
     }
 };

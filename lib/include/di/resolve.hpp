@@ -28,7 +28,7 @@ namespace detail {
     struct ResolveTraitT<T, GlobalTrait>
     {
         static_assert(ContextHasGlobalTrait<T, GlobalTrait>,
-                      "Global trait can only be resolved in contexts that have a global node");
+                      "Global trait can only be resolved in graphs that have a global node");
         using Trait = GlobalTrait::Trait;
         using type = ResolveTraitT<typename T::Info::GlobalNode, Trait>::type;
     };

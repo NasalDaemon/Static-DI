@@ -11,12 +11,12 @@
 #include "di/context_fwd.hpp"
 #include "di/defer.hpp"
 #include "di/factory.hpp"
+#include "di/finalize.hpp"
 #include "di/link.hpp"
 #include "di/macros.hpp"
 #include "di/node.hpp"
 #include "di/resolve.hpp"
 #include "di/traits.hpp"
-#include "di/trait_view.hpp"
 
 #if !DI_IMPORT_STD
 #include <cstddef>
@@ -54,7 +54,7 @@ struct Union
             requires (not std::is_const_v<Current>)
             static constexpr auto exchangeImpl(Current& current, auto&&... args)
             {
-                static_assert((... or std::is_same_v<T, Options>), "Cannot exchange with a node that is not listed as an option in the di::Union");
+                static_assert((... or std::is_same_v<T, Options>), "Cannot exchange with a node that is not listed as an option in the hosting di::Union");
                 auto const nodePtr = std::bit_cast<Current Node::*>(&Node::bytes);
                 Node& node = detail::getParent(current, nodePtr);
                 // Take args by value in case they come from the current node's state, which will be invalidated during the call to emplace
@@ -81,7 +81,25 @@ struct Union
             constexpr auto getParentMemPtr()
             {
                 // Disable member pointer access to children as the implementation can be swapped out at runtime
-                static_assert(detail::alwaysFalse<Parent>, "di::Union does not have a stable member pointer to its children");
+                static_assert(detail::alwaysFalse<Parent>, "di::Union does not have a stable member pointer relative to its parent node");
+            }
+
+            template<IsContext Parent, class Option>
+            constexpr auto& getParentNode(Option& node)
+            {
+                if constexpr (std::is_same_v<detail::Decompress<Parent>, InnerContext>)
+                {
+                    return node;
+                }
+                else
+                {
+                    using OptionNode = detail::SelectIf<
+                        detail::NodeHasTraitsNodePred<typename Option::Traits::Node>,
+                        ToNode<Options>...
+                    >;
+                    auto const nodePtr = std::bit_cast<OptionNode Node::*>(&Node::bytes);
+                    return Context{}.template getParentNode<Parent>(detail::getParent(node, nodePtr));
+                }
             }
         };
 
@@ -208,25 +226,15 @@ template<class Context>
 template<class Trait>
 struct Union<Options...>::Node<Context>::AsTrait : Node
 {
-    template<class Key>
-    struct WithKey;
-
     template<class Source, class Key = ContextOf<Source>::Info::DefaultKey>
-    constexpr auto finalize(this auto& self, Source&, Key const& key = {}, auto const&... keys)
+    constexpr auto finalize(this auto& self, Source& source, Key const& key = {}, auto const&... keys)
     {
-        using Environment = Source::Environment;
-        return makeAlias(withEnv<Environment>(detail::downCast<WithKey<Key>>(self)), key, keys...);
+        // Don't consume the key, as it needs to be applied once we know the active option
+        return di::finalize<false>(source, self, key, keys...);
     }
-};
 
-template<IsNodeHandle... Options>
-template<class Context>
-template<class Trait>
-template<class Key>
-struct Union<Options...>::Node<Context>::AsTrait<Trait>::WithKey : AsTrait
-{
-    template<class Self, class... Keys, class... Args>
-    constexpr decltype(auto) implWithKey(this Self& self, Key key, auto const& keys, Args&&... args)
+    template<class Self, class... Args>
+    constexpr decltype(auto) implWithKey(this Self& self, auto const& key, auto const& keys, Args&&... args)
     {
         using Environment = Self::Environment;
         return self.visit(

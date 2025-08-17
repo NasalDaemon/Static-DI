@@ -1,7 +1,7 @@
 trait di::trait::Peer [Info]
 {
-    info CollectionContext::IdType
+    info ElementContext::IdType
 
-    isPeerId(Info::CollectionContext::IdType const& id) const -> std::convertible_to<bool> auto
+    isPeerId(Info::ElementContext::IdType const& id) const -> std::convertible_to<bool> auto
     isPeerInstance(auto const& peerState) const -> std::convertible_to<bool> auto
 }

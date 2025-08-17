@@ -145,9 +145,7 @@ struct Domain : Cluster
 
 DI_MODULE_EXPORT
 template<class T>
-concept IsCluster = std::derived_from<T, Cluster> and requires {
-    { T::isUnary() } -> std::convertible_to<bool>;
-};
+concept IsCluster = std::derived_from<T, Cluster>;
 
 } // namespace di
 

@@ -59,7 +59,7 @@ export namespace di {
     // context_fwd.hpp
     using di::Context;
     using di::IsContext;
-    using di::IsCollectionContext;
+    using di::IsElementContext;
     using di::ContextParameterOf;
     using di::ContextOf;
     using di::ContextToNode;
@@ -109,6 +109,8 @@ export namespace di {
     // function.hpp
     using di::Function;
     using di::FunctionPolicy;
+    // finalize.hpp
+    using di::finalize;
     // global_context.hpp
     using di::ContextHasGlobal;
     using di::ContextHasGlobalTrait;

@@ -7,6 +7,7 @@
 #include "di/detail/concepts.hpp"
 #include "di/empty_types.hpp"
 #include "di/environment.hpp"
+#include "di/finalize.hpp"
 #include "di/global_context.hpp"
 #include "di/global_trait.hpp"
 #include "di/key.hpp"
@@ -104,7 +105,8 @@ struct Collection
             {
                 using CallerNode = Caller::Traits::Node;
                 using TargetNode = Target::Traits::Node;
-                using Environment = Caller::Environment;
+                // Remove dynamic environment components from Caller, as the peers are independent instances
+                using Environment = Caller::Environment::RemoveDynamic;
                 using NodeState = WithEnv<Environment, di::ContextToNodeState<detail::Decompress<ContextOf<Caller>>>>;
                 static_assert(std::is_same_v<CallerNode, TargetNode>);
                 return std::as_const(collection->elements)
@@ -158,15 +160,25 @@ struct Collection
             template<IsContext Parent>
             constexpr auto getParentMemPtr()
             {
-                static_assert(std::is_same_v<Parent, ElementContext>, "Parents of a di::Collection do not have a stable member pointer to its children");
+                static_assert(std::is_same_v<Parent, ElementContext>, "di::Collection does not have a stable member pointer relative to its parent node");
                 return &Element::node;
             }
 
+            template<IsContext Parent>
+            constexpr auto& getParentNode(auto& node)
+            {
+                if constexpr (std::is_same_v<detail::Decompress<Parent>, ElementContext>)
+                    return node;
+                else
+                    return Context{}.template getParentNode<Parent>(getCollection(node));
+            }
+
             using IdType = ID;
+            using CollectionContext = Context;
 
             struct Info : Context::Info
             {
-                using CollectionContext = ElementContext;
+                using ElementContext = Node::ElementContext;
             };
 
         private:
@@ -279,39 +291,35 @@ struct Collection<ID, NodeHandle>::Node<Context>::AsTrait : Node
     }
 
     template<class T>
-    constexpr auto finalize(this auto&, auto&, key::Element<T>, auto const&...)
+    constexpr auto finalize(this auto&, auto&, key::Element<T> const&, auto const&...)
     {
         static_assert(std::is_same_v<T, ID>, "T is not ID or Handle type");
     }
 
-    template<class Source, class P>
-    constexpr auto finalize(this auto& self, Source&, key::Elements<P> const& key, auto const&... keys)
+    template<class Self>
+    DI_INLINE constexpr auto finalize(this Self& self, auto& source, auto const& key, auto const&... keys)
     {
-        using Environment = Source::Environment;
-        return makeAlias(withEnv<Environment>(detail::downCast<WithPred<P>>(detail::upCast<Node>(self))), key.pred, keys...);
+        // Don't consume the key, as we need to consume it for each element
+        return di::finalize<false>(source, self, key, keys...);
     }
 
-    template<class Pred>
-    struct WithPred : Node
+    template<class Self, class Pred, class... Args>
+    constexpr void implWithKey(this Self& self, key::Elements<Pred> const& key, auto const& keys, Args&&... args)
     {
-        template<class Self, class... Args>
-        constexpr void implWithKey(this Self& self, Pred const& pred, auto const& keys, Args&&... args)
+        for (auto& el : self.elements)
         {
-            for (auto& el : self.elements)
+            if (key.pred(std::as_const(el.id)))
             {
-                if (pred(std::as_const(el.id)))
-                {
-                    std::apply(
-                        [&](auto const&... ks)
-                        {
-                            auto target = el.node.asTrait(detail::AsRef{}, Trait{});
-                            target.ptr->finalize(self, ks...)->impl(DI_FWD(args)...);
-                        },
-                        keys);
-                }
+                std::apply(
+                    [&](auto const&... ks)
+                    {
+                        auto target = el.node.asTrait(detail::AsRef{}, Trait{});
+                        target.ptr->finalize(self, ks...)->impl(DI_FWD(args)...);
+                    },
+                    keys);
             }
         }
-    };
+    }
 };
 
 }

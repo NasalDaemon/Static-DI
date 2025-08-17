@@ -5,19 +5,19 @@
 #include "di/detail/cast.hpp"
 #include "di/detail/compress.hpp"
 
+#include "di/context_fwd.hpp"
 #include "di/macros.hpp"
 #include "di/node_fwd.hpp"
-#include "di/context_fwd.hpp"
 
-#include "di/environment.hpp"
+#include "di/finalize.hpp"
 #include "di/global_context.hpp"
 #include "di/global_trait.hpp"
 #include "di/key.hpp"
 #include "di/link.hpp"
 #include "di/trait.hpp"
-#include "di/trait_view.hpp"
 
 #if !DI_IMPORT_STD
+#include <tuple>
 #include <type_traits>
 #endif
 
@@ -49,15 +49,17 @@ namespace detail {
         {
             using Self = detail::Decompress<Self_>;
             using Other = detail::ResolveLink<Self, Trait>;
-            // Explicitly disallow "hairpin bend" dependencies, as it could subvert dynamic access controls
-            // via re-entry into the same protected context region hosted in a different instance.
-            // As a runtime optimisation, context regions with dynamic access enforcement elide access checks
-            // on getNode calls accessing the same protected context region. However, if the same region can be
-            // re-entered in a single getNode call via a hairpin dependency which at some point leaves the region,
-            // then the static context region being identical does not necessarily mean that the dynamic context is,
-            // and so checks cannot be elided.
-            // There is no legitimate reason for a node to depend on oneself, asTrait is available instead.
-            // Disallowing depending on oneself allows for the runtime optimisation to exist.
+            // Explicitly disallow "hairpin" dependencies, as they could subvert
+            // dynamic access controls via re-entry into the same protected context
+            // region hosted in a different instance. As a runtime optimisation, context
+            // regions with dynamic access enforcement can elide access checks on getNode
+            // calls targeting the identical protected context region. However, if the same
+            // region can be re-entered in a single getNode call via a hairpin
+            // dependency which at some point leaves the region, then the static context
+            // region being identical does not necessarily mean that the dynamic context
+            // is, and so checks cannot be elided. There is no legitimate reason for a
+            // node to depend on itself; asTrait is available instead. Disallowing
+            // depending on oneself allows for the runtime optimisation to exist.
             static_assert(not std::is_same_v<typename Other::Context, Self>, "Dependency on self not allowed");
             auto memPtr = getNodePointer(AdlTag<Self>{});
             auto& otherNode = getParent(node, memPtr).*getNodePointer(AdlTag<typename Other::Context>{});
@@ -90,6 +92,22 @@ namespace detail {
                 return combineMemberPointers(parentMemPtr, memPtr);
             }
         }
+
+        // Get the reference to a parent node by its context
+        template<IsContext Parent, IsContext Self_>
+        constexpr auto& getParentNode(this Self_, auto& node)
+        {
+            using Self = detail::Decompress<Self_>;
+            if constexpr (std::is_same_v<Self, detail::Decompress<Parent>>)
+            {
+                return node;
+            }
+            else
+            {
+                auto memPtr = getNodePointer(AdlTag<Self>{});
+                return typename Self::ParentContext{}.template getParentNode<Parent>(getParent(node, memPtr));
+            }
+        }
     };
 }
 
@@ -103,15 +121,18 @@ struct NullContext : detail::ContextBase
         using DefaultKey = key::Default;
 
         template<class Source, class Target, class Key = ContextOf<Source>::Info::DefaultKey>
-        static constexpr auto finalize(Source&, Target& target, Key const& = {}, auto const&... keys)
+        DI_INLINE static constexpr auto finalize(Source& source, Target& target, Key const& key = {}, auto const&... keys)
         {
-            using Env = Source::Environment;
-            using WithEnv = di::WithEnv<Env, Target>;
-            using FinalInterface = Key::template Interface<WithEnv>;
-            return makeAlias(detail::downCast<FinalInterface>(target), keys...);
+            return di::finalize(source, target, key, keys...);
         }
 
         static constexpr void assertAccessible(auto&) {}
+
+        template<class Source, class Target>
+        static consteval std::tuple<> requiresKeysToTarget()
+        {
+            return {};
+        }
     };
 
     static constexpr std::size_t Depth = 0;

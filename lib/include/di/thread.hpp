@@ -2,7 +2,6 @@
 #define INCLUDE_DI_THREAD_HPP
 
 #include "di/detail/cast.hpp"
-#include "di/detail/compress.hpp"
 
 #include "di/context_fwd.hpp"
 #include "di/cluster.hpp"
@@ -21,7 +20,9 @@
 #else
 #include <format>
 #endif
+#include <memory>
 #include <stdexcept>
+#include <tuple>
 #include <utility>
 #endif
 
@@ -32,6 +33,7 @@ struct ThreadEnvironment
 {
     static constexpr std::size_t AnyThreadId = std::size_t(-1);
     static constexpr std::size_t DynamicThreadId = std::size_t(-2);
+    static constexpr std::size_t MainThreadId = std::size_t(0);
 
     struct Tag{};
 
@@ -40,6 +42,8 @@ struct ThreadEnvironment
     {
         using Tag = ThreadEnvironment::Tag;
         static WithId resolveEnvironment(Tag);
+
+        static constexpr bool isDynamic() { return Id == ThreadEnvironment::DynamicThreadId; }
 
         static constexpr std::size_t ThreadId = Id;
     };
@@ -51,13 +55,13 @@ struct Thread
     static constexpr std::size_t Unassigned = -1;
 
     static bool hasMainThread() { return MainThread != nullptr; }
-    static bool isMainThread() { return CurrentId == 0 and MainThread == &CurrentId; }
+    static bool isMainThread() { return CurrentId == ThreadEnvironment::MainThreadId and MainThread == &CurrentId; }
 
     static void setMainThread()
     {
         if (hasMainThread())
             throw std::runtime_error("A thread has already been assigned as the main");
-        CurrentId = 0;
+        CurrentId = ThreadEnvironment::MainThreadId;
         MainThread = &CurrentId;
     }
 
@@ -76,9 +80,9 @@ struct Thread
 
     static void setId(std::size_t threadId)
     {
-        if (threadId == 0)
+        if (threadId == ThreadEnvironment::MainThreadId)
             return setMainThread();
-        if (threadId == ThreadEnvironment::DynamicThreadId)
+        if (threadId == ThreadEnvironment::DynamicThreadId || threadId == ThreadEnvironment::AnyThreadId)
             #if DI_COMPILER_LT(GCC, 15)
                 throw std::runtime_error("Thread cannot be set to id " + std::to_string(threadId));
             #else
@@ -101,11 +105,20 @@ private:
 };
 
 namespace detail {
+
     template<class Source>
-    constexpr std::size_t getSourceStaticThread()
+    consteval std::size_t getEnvStaticThread()
     {
         if constexpr (Source::Environment::template HasTag<ThreadEnvironment::Tag>)
             return Source::Environment::template Get<ThreadEnvironment::Tag>::ThreadId;
+        return ThreadEnvironment::AnyThreadId;
+    }
+
+    template<class Source>
+    consteval std::size_t getCurrentStaticThread()
+    {
+        if constexpr (constexpr auto threadId = getEnvStaticThread<Source>(); threadId != ThreadEnvironment::AnyThreadId)
+            return threadId;
 
         // If source is a trait (i.e. not the node's or cluster's state), then we can assume
         // access has been already granted, and the required thread is the current thread
@@ -113,40 +126,56 @@ namespace detail {
             if constexpr (not IsCluster<Source> and not IsNodeState<Source>)
                 return ContextOf<Source>::Info::RequiredThreadId;
 
+        // Don't assume any current thread (not even main thread)
         return ThreadEnvironment::AnyThreadId;
     }
 
     template<class Target>
-    constexpr std::size_t getTargetDynamicRequiredThread(Target& target)
+    consteval std::size_t getTargetStaticRequiredThread()
     {
         if constexpr (requires { ContextOf<Target>::Info::RequiredThreadId; })
-        {
-            constexpr auto requiredThreadId = ContextOf<Target>::Info::RequiredThreadId;
-            if constexpr (requiredThreadId != ThreadEnvironment::DynamicThreadId)
-                return requiredThreadId;
-        }
+            return ContextOf<Target>::Info::RequiredThreadId;
 
-        using DynThreadContext = ContextOf<Target>::Info::DynThreadContext;
-        auto parentMemPtr = ContextOf<Target>{}.template getParentMemPtr<DynThreadContext>();
-        using TargetNode = Target::Traits::Node;
-        return getParent(upCast<TargetNode>(target), parentMemPtr).threadId;
+        // Require main thread for targets that do not specify a required thread
+        return ThreadEnvironment::MainThreadId;
     }
 
-    template<class Source>
-    constexpr std::size_t getSourceDynamicThread()
+    template<class Target>
+    DI_INLINE constexpr std::size_t getTargetDynamicRequiredThread(Target& target)
     {
-        constexpr auto staticThreadId = getSourceStaticThread<Source>();
+        constexpr auto staticThreadId = getTargetStaticRequiredThread<Target>();
         if constexpr (staticThreadId != ThreadEnvironment::DynamicThreadId)
             return staticThreadId;
 
-        return Thread::getId();
+        using DynThreadContext = ContextOf<Target>::Info::DynThreadContext;
+        using TargetNode = Target::Traits::Node;
+        return ContextOf<Target>{}.template getParentNode<DynThreadContext>(upCast<TargetNode>(target)).threadId;
     }
-}
+
+
+    template<class Source, class Target>
+    consteval bool sameThreadContext()
+    {
+        if constexpr (requires { typename ContextOf<Source>::Info::DynThreadContext; })
+        {
+            using STC = ContextOf<Source>::Info::DynThreadContext;
+            using TTC = ContextOf<Target>::Info::DynThreadContext;
+            // Don't assert if Source and Target have the same dynamic thread context type.
+            // Entering another instance with an identical dynamic thread context type via a hairpin dependency
+            // e.g. by exiting a collection and reentering a different element with another thread affinity --
+            // is disallowed via static_assert. As hairpin dependencies are not allowed, it is safe to elide
+            // the assertion as there is no way to access another instance's context in a single getNode call.
+            return std::is_same_v<STC, TTC>;
+        }
+        return false;
+    }
+
+} // namespace detail
 
 template<std::size_t ThreadId>
 struct RequireThread
 {
-    static_assert(ThreadId != ThreadEnvironment::DynamicThreadId);
+    static_assert(ThreadId != ThreadEnvironment::DynamicThreadId, "di::OnThread cannot be used with dynamic thread id, use di::OnDynThread instead");
 
     static consteval bool anyThreadId() { return ThreadId == ThreadEnvironment::AnyThreadId; }
 
@@ -155,8 +184,39 @@ struct RequireThread
     {
         static constexpr std::size_t RequiredThreadId = ThreadId;
 
+        // Protection to be applied when entering or exiting this thread context
+        // Does not assert itself, but ensures that thread keys are used to access the target,
+        // which are responsible for asserting the correct thread
+        template<class Source, class Target>
+        static consteval auto requiresKeysToTarget()
+        {
+            auto parentRequires = Info::template requiresKeysToTarget<Source, Target>();
+
+            // Target’s static requirement (Main thread if unspecified)
+            constexpr auto requiredThreadId = detail::getTargetStaticRequiredThread<Target>();
+            if constexpr (requiredThreadId == ThreadEnvironment::AnyThreadId)
+            {
+                return parentRequires;
+            }
+            // If Source already carries the correct thread affinity, don’t force a key
+            else if constexpr (detail::getEnvStaticThread<Source>() == requiredThreadId)
+            {
+                return parentRequires;
+            }
+            // If Target already carries the correct thread affinity, a thread key has already been used
+            else if constexpr (detail::getEnvStaticThread<Target>() == requiredThreadId)
+            {
+                return parentRequires;
+            }
+            // Otherwise require a thread key
+            else
+            {
+                return std::tuple_cat(std::tuple(ThreadEnvironment::Tag{}), parentRequires);
+            }
+        }
+
         template<class Target>
-        static constexpr void assertAccessible(Target&)
+        static constexpr void assertAccessible(Target& target)
         {
             if constexpr (not anyThreadId())
             {
@@ -165,23 +225,7 @@ struct RequireThread
                 constexpr auto threadId = Environment::template Get<ThreadEnvironment::Tag>::ThreadId;
                 static_assert(threadId == RequiredThreadId, "Access denied from current thread");
             }
-        }
-
-        template<class Source, class Target, class Key = ContextOf<Source>::Info::DefaultKey>
-        static constexpr auto finalize(Source& source, Target& target, Key const& key = {}, auto const&... keys)
-        {
-            constexpr auto currentThreadId = detail::getSourceStaticThread<Source>();
-            if constexpr (anyThreadId() or currentThreadId == RequiredThreadId)
-            {
-                using Env = Source::Environment::template InsertOrReplace<ThreadEnvironment::WithId<currentThreadId>>;
-                using WithEnv = di::WithEnv<Env, Target>;
-                using Interface = Key::template Interface<WithEnv, currentThreadId>;
-                return makeAlias(detail::downCast<Interface>(target), keys...);
-            }
-            else
-            {
-                return makeAlias(key.acquireAccess(source, target), keys...);
-            }
+            Info::assertAccessible(target);
         }
     };
 };
@@ -199,23 +243,63 @@ namespace key {
     DI_MODULE_EXPORT
     struct DynThreadAssert : Default
     {
-        template<class Source, class Target>
-        static constexpr Target& acquireAccess(Source&, Target& target)
+        template<class... Tags>
+        static constexpr void assertCanAcquireAccess()
         {
-            using Env = Source::Environment;
-            using WithEnv = di::WithEnv<Env, Target>;
-            auto& targetWithEnv = detail::downCast<WithEnv>(target);
+            if constexpr (sizeof...(Tags) > 0)
+                static_assert((... or std::is_same_v<Tags, ThreadEnvironment::Tag>),
+                    "di::key::DynThreadAssert can only acquire thread affinity; "
+                    "another key is required to acquire access to the target. Put access keys first.");
+        }
 
-            // Don't assert on detached nodes, as they are not bound to any thread until they access the node's state
-            if constexpr (not IsDetachedImpl<Target>)
+        template<class Source, class Target>
+        static constexpr auto& acquireAccess(Source&, Target& target)
+        {
+            using Environment = Source::Environment;
+
+            constexpr bool threadAffinityObtained = threadAffinityAlreadyObtained<Source, Target>();
+            // Don't assert eagerly on detached nodes--they will assert when they access the node's state
+            if constexpr (IsDetachedImpl<Target>)
             {
-                using STC = ContextOf<Source>::Info::DynThreadContext;
-                using TTC = ContextOf<Target>::Info::DynThreadContext;
-                if constexpr (not std::is_same_v<STC, TTC> or IsCluster<Source> or detail::IsNodeState<Source>)
-                    ContextOf<Target>::Info::assertAccessible(targetWithEnv);
+                // If the source has not already obtained the thread affinity, we need to declare this in the environment
+                // So that downstream nodes know that the correct thread affinity still needs to be asserted
+                constexpr auto threadId = threadAffinityObtained ? ThreadEnvironment::DynamicThreadId : ThreadEnvironment::AnyThreadId;
+                using Env = Environment::template InsertOrReplace<ThreadEnvironment::WithId<threadId>>;
+                return detail::downCast<di::WithEnv<Env, Target>>(target);
             }
+            else
+            {
+                // Assert if there is no proof that the thread affinity has been obtained
+                if constexpr (not threadAffinityObtained)
+                    ContextOf<Target>::Info::assertAccessible(target);
 
-            return targetWithEnv;
+                using Env = Environment::template InsertOrReplace<ThreadEnvironment::WithId<ThreadEnvironment::DynamicThreadId>>;
+                return detail::downCast<di::WithEnv<Env, Target>>(target);
+            }
+        }
+
+    private:
+        template<class Source, class Target>
+        static constexpr bool threadAffinityAlreadyObtained()
+        {
+            if constexpr (not detail::sameThreadContext<Source, Target>())
+            {
+                // Source from different thread context; must assert accessibility
+                return false;
+            }
+            else if constexpr (IsCluster<Source> or detail::IsNodeState<Source>)
+            {
+                // Cannot rely on cluster or node state to have obtained the correct thread affinity
+                return false;
+            }
+            else if constexpr (IsDetachedImpl<Source> and detail::getEnvStaticThread<Target>() != ThreadEnvironment::DynamicThreadId)
+            {
+                // Detached nodes do not eagerly assert accessibility, only when they access the node's state
+                // Therefore we rely on the environment to tell us if the thread affinity has been obtained
+                // Environment::ThreadId is only DynamicThreadId if the thread affinity has provably been obtained from some prior source
+                return false;
+            }
+            return true;
         }
     } inline constexpr dynThreadAssert{};
 }
@@ -241,15 +325,41 @@ struct OnDynThread
             {
                 using DefaultKey = key::DynThreadAssert;
 
-                using DynThreadContext = Inner;
+                using DynThreadContext = Context;
                 static constexpr std::size_t RequiredThreadId = ThreadEnvironment::DynamicThreadId;
+
+                // Protection to be applied when entering or exiting this thread context
+                // Does not assert itself, but ensures that thread keys are used to access the target,
+                // which are responsible for asserting the correct thread
+                template<class Source, class Target>
+                static consteval auto requiresKeysToTarget()
+                {
+                    auto parentRequires = Context::Info::template requiresKeysToTarget<Source, Target>();
+
+                    // Target’s static requirement (Main thread if unspecified)
+                    constexpr auto requiredThreadId = detail::getTargetStaticRequiredThread<Target>();
+                    if constexpr (requiredThreadId == ThreadEnvironment::AnyThreadId)
+                    {
+                        return parentRequires;
+                    }
+                    // If Target already carries some kind of thread affinity (even AnyId), a thread key has already been applied
+                    else if constexpr (Target::Environment::template HasTag<ThreadEnvironment::Tag>)
+                    {
+                        return parentRequires;
+                    }
+                    // Otherwise require a thread key
+                    else
+                    {
+                        return std::tuple_cat(std::tuple(ThreadEnvironment::Tag{}), parentRequires);
+                    }
+                }
 
                 template<class Target>
                 static constexpr void assertAccessible(Target& target)
                 {
                     auto requiredThreadId = detail::getTargetDynamicRequiredThread(target);
                     if (requiredThreadId == ThreadEnvironment::AnyThreadId)
-                        return;
+                        return Context::Info::assertAccessible(target);
 
                     auto currentThreadId = Thread::getId();
                     if (currentThreadId != requiredThreadId) [[unlikely]]
@@ -258,12 +368,8 @@ struct OnDynThread
                     #else
                         throw std::runtime_error(std::format("Access denied to node with thread affinity {} from current thread {}", requiredThreadId, currentThreadId));
                     #endif
-                }
 
-                template<class Source, class Target, class Key = ContextOf<Source>::Info::DefaultKey>
-                static constexpr auto finalize(Source& source, Target& target, Key const& key = {}, auto const&... keys)
-                {
-                    return makeAlias(key.acquireAccess(source, target), keys...);
+                    Context::Info::assertAccessible(target);
                 }
             };
         };
@@ -303,7 +409,7 @@ namespace key {
         template<class T>
         using Trait = di::detail::DuckTrait<T>;
 
-        template<class T, std::size_t CurrentThreadId>
+        template<class T, std::size_t CurrentThreadId = detail::getCurrentStaticThread<T>()>
         struct Interface : T
         {
             static_assert(std::derived_from<Poster, ThreadPost>);
@@ -316,7 +422,7 @@ namespace key {
                     dynamicRequiredThreadId,
                     [&, visitor = DI_FWD(visitor)](this auto&&) -> decltype(auto)
                     {
-                        return self.visit(std::move(visitor));
+                        return self.T::visit(std::move(visitor));
                     });
             }
 
@@ -337,12 +443,22 @@ namespace key {
             static constexpr auto requiredThreadId = ContextOf<T>::Info::RequiredThreadId;
         };
 
+        template<class... Tags>
+        static constexpr void assertCanAcquireAccess()
+        {
+            if constexpr (sizeof...(Tags) > 0)
+                static_assert((... or std::is_same_v<Tags, ThreadEnvironment::Tag>),
+                    "di::key::ThreadPost can only acquire thread affinity; "
+                    "another key is required to acquire access to the target. Put access keys first.");
+        }
+
         template<class Source, class Target>
         static constexpr auto& acquireAccess(Source&, Target& target)
         {
             constexpr auto requiredThreadId = ContextOf<Target>::Info::RequiredThreadId;
+            // Would be a Static-DI library bug if calling acquireAccess despite target accepting any thread id
             static_assert(requiredThreadId != ThreadEnvironment::AnyThreadId);
-            constexpr auto currentThreadId = detail::getSourceStaticThread<Source>();
+            constexpr auto currentThreadId = detail::getCurrentStaticThread<Source>();
 
             using Environment = Source::Environment;
             using Env = Environment::template InsertOrReplace<ThreadEnvironment::WithId<requiredThreadId>>;

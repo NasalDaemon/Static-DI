@@ -25,8 +25,14 @@ concept EnvironmentComponent = requires
     typename T::Tag;
     requires std::is_empty_v<typename T::Tag>;
     { T::resolveEnvironment(typename T::Tag{}) } -> std::same_as<T>;
+    { T::isDynamic() } -> std::convertible_to<bool>;
     requires std::is_empty_v<T>;
 };
+
+namespace detail {
+    template<class Keep, class Rest>
+    struct RemoveDynamic;
+}
 
 DI_MODULE_EXPORT
 template<EnvironmentComponent... Es>
@@ -82,7 +88,32 @@ struct Environment : Es...
 
     template<class Env>
     using MergeEnvironment = decltype(mergeEnvironment(std::declval<Env>()));
+
+    // Use this when transplanting an environment to a target that is an independent dynamic instance
+    // as the existance of a component acts as a stamp of its respective acquisition.
+    using RemoveDynamic = detail::RemoveDynamic<void(), void(Es...)>::type;
 };
+
+namespace detail {
+    template<class Keep, class E, class... Es>
+    requires (E::isDynamic())
+    struct RemoveDynamic<Keep, void(E, Es...)>
+    {
+        using type = RemoveDynamic<Keep, void(Es...)>::type;
+    };
+
+    template<class... Keep, class E, class... Es>
+    struct RemoveDynamic<void(Keep...), void(E, Es...)>
+    {
+        using type = RemoveDynamic<void(Keep..., E), void(Es...)>::type;
+    };
+
+    template<class... Es>
+    struct RemoveDynamic<void(Es...), void()>
+    {
+        using type = Environment<Es...>;
+    };
+}
 
 DI_MODULE_EXPORT
 template<EnvironmentComponent... Es, class Target>

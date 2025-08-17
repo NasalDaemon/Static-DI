@@ -49,11 +49,11 @@ struct Node
     {
         Self::template assertNodeContext<Self>();
         if constexpr (not detail::IsNodeState<Self>)
-            static_assert(NodeDependencyAllowed<Self, Trait>, "Requested trait not listed in node definition");
+            static_assert(NodeDependencyAllowed<Self, Trait>, "Requested trait missing from node's di::Depends list");
         using ThisNode = Self::Traits::Node;
         auto& node = detail::upCast<ThisNode>(self);
         if constexpr (not IsGlobalTrait<Trait>)
-            static_assert(detail::HasLink<ContextOf<Self>, Trait>, "Node is missing dependency");
+            static_assert(detail::HasLink<ContextOf<Self>, Trait>, "Node missing link to a dependency");
         auto target = ContextOf<Self>{}.getNode(node, trait);
         return makeTraitView(self, target, trait, key, keys...);
     }
@@ -89,7 +89,7 @@ struct Node
         using ThisNode = Self::Traits::Node;
         auto& node = detail::upCast<ThisNode>(self);
 
-        static_assert(Self::Traits::template HasTrait<Trait>, "Missing trait");
+        static_assert(Self::Traits::template HasTrait<Trait>, "Trait not listed in node's di::Traits");
         using Interface = Self::Traits::template ResolveInterface<Trait>;
         using Types = Self::Traits::template ResolveTypes<Trait>;
         return detail::TargetRef{detail::downCast<Interface>(node), std::type_identity<Types>{}};
@@ -110,7 +110,7 @@ struct Node
     template<class Self>
     static consteval void assertNodeContext()
     {
-        static_assert(NodeDependenciesSatisfied<Self, true>, "Listed node dependencies are not satisfied transitively.");
+        static_assert(NodeDependenciesSatisfied<Self, true>, "Not all entries in node's di::Depends are satisfied transitively.");
     }
 
     // For use by nodes host in di::Union or di::Virtual

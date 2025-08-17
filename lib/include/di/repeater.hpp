@@ -1,9 +1,8 @@
 #ifndef INCLUDE_DI_REPEATER_HPP
 #define INCLUDE_DI_REPEATER_HPP
 
-#include "di/alias.hpp"
 #include "di/context_fwd.hpp"
-#include "di/environment.hpp"
+#include "di/finalize.hpp"
 #include "di/node.hpp"
 #include "di/macros.hpp"
 #include "di/resolve.hpp"
@@ -32,9 +31,6 @@ struct Repeater
     {
         using Traits = di::Traits<Node, Trait>;
 
-        template<class Key>
-        struct WithKey;
-
         template<std::size_t I>
         struct TypesAtT : di::ResolveTypes<Node, RepeaterTrait<I>>
         {
@@ -46,42 +42,40 @@ struct Repeater
         using Types = TypesAtT<0>;
 
         template<class Source, class Key = ContextOf<Source>::Info::DefaultKey>
-        constexpr auto finalize(this auto& self, Source&, Key const& key = {}, auto const&... keys)
+        DI_INLINE constexpr auto finalize(this auto& self, Source& source, Key const& key = {}, auto const&... keys)
         {
-            using Environment = Source::Environment;
-            return makeAlias(withEnv<Environment>(detail::downCast<WithKey<Key>>(self)), key, keys...);
+            // Don't consume the key, as it needs to be applied for each repeater trait
+            return di::finalize<false>(source, self, key, keys...);
+        }
+
+        DI_INLINE constexpr void implWithKey(this auto& self, auto const& key, auto const& keys, auto&&... args)
+        {
+            self.applyWithKey(std::make_index_sequence<Count>{}, key, keys, args...);
+        }
+
+    private:
+        template<std::size_t... Is>
+        constexpr void apply(this auto& self, std::index_sequence<Is...>, auto&... args)
+        {
+            (self.getNode(RepeaterTrait<Is>{}).impl(args...), ...);
+        }
+
+        template<std::size_t... Is>
+        constexpr void applyWithKey(this auto& self, std::index_sequence<Is...>, auto const& key, auto const& keys, auto&... args)
+        {
+            (self.applyWithKey2(Context{}.getNode(detail::upCast<Node>(self), RepeaterTrait<Is>{}), key, keys, args...), ...);
+        }
+
+        constexpr void applyWithKey2(this auto& self, auto target, auto const& key, auto const& keys, auto&... args)
+        {
+            std::apply(
+                [&](auto const&... ks)
+                {
+                    target.ptr->finalize(self, key, ks...)->impl(args...);
+                },
+                keys);
         }
     };
-};
-
-template<class Trait, std::size_t Count>
-requires (Count > 0)
-template<class Context>
-template<class Key>
-struct Repeater<Trait, Count>::Node<Context>::WithKey : Node
-{
-    template<class... Keys>
-    constexpr void implWithKey(this auto& self, Key const& key, auto const& keys, auto&&... args)
-    {
-        apply2(std::make_index_sequence<Count>{}, self, key, keys, args...);
-    }
-
-private:
-    template<std::size_t... Is>
-    static constexpr void apply2(std::index_sequence<Is...>, auto& repeater, Key const& key, auto const& keys, auto&... args)
-    {
-        (apply3(Context{}.getNode(detail::upCast<Node>(repeater), RepeaterTrait<Is>{}), repeater, key, keys, args...), ...);
-    }
-
-    static constexpr void apply3(auto target, auto& repeater, Key const& key, auto const& keys, auto&... args)
-    {
-        std::apply(
-            [&](auto const&... ks)
-            {
-                target.ptr->finalize(repeater, key, ks...)->impl(args...);
-            },
-            keys);
-    }
 };
 
 } // namespace di

@@ -3,8 +3,6 @@
 
 #include "di/detail/concepts.hpp"
 
-#include "di/count.hpp"
-#include "di/key.hpp"
 #include "di/macros.hpp"
 #include "di/node_fwd.hpp"
 
@@ -29,7 +27,7 @@ concept IsContext = std::is_base_of_v<detail::ContextBase, T> and std::is_empty_
 
 DI_MODULE_EXPORT
 template<class Context>
-concept IsCollectionContext = IsContext<Context> and requires { typename Context::Info::CollectionContext; };
+concept IsElementContext = IsContext<Context> and requires { typename Context::Info::ElementContext; };
 
 namespace detail {
     template<template<class> class NodeTmpl, IsContext Context>

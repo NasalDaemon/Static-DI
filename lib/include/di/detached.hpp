@@ -40,10 +40,16 @@ struct DetachedImpl : Interface, private Node
     DI_NODE_USE_PUBLIC_MEMBERS(Node)
     using Types = Node::Types;
     using Node::finalize;
-    using Node::visit;
 
     // Use impl from the detached interface
     using Interface::impl;
+
+    template<class Self>
+    constexpr decltype(auto) visit(this Self& self, auto&&... args)
+    {
+        ContextOf<Self>::Info::assertAccessible(self);
+        return self.Node::visit(DI_FWD(args)...);
+    }
 
     template<class Self>
     constexpr auto& getState(this Self& self)

@@ -32,10 +32,16 @@ struct Default
     template<class T, auto... Info>
     using Interface = T;
 
+    template<class... Tags>
+    static constexpr void assertCanAcquireAccess()
+    {
+        static_assert(sizeof...(Tags) == 0, "Access cannot be acquired with di::key::Default");
+    }
+
     template<class Source, class Target>
     static constexpr Target& acquireAccess(Source&, Target& target)
     {
-        static_assert(di::detail::alwaysFalse<Source>, "Access denied");
+        static_assert(di::detail::alwaysFalse<Source, Target>, "Access denied");
         return target;
     }
 };

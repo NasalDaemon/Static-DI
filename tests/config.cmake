@@ -5,7 +5,7 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     if(DI_TESTS_DEBUG_SAN)
         string(APPEND CMAKE_CXX_FLAGS_DEBUG "-fsanitize=address -fsanitize=undefined ")
     endif()
-    string(APPEND CMAKE_CXX_FLAGS " -Werror -Wall -Wextra -Wpedantic ")
+    string(APPEND CMAKE_CXX_FLAGS " -Werror -Wall -Wextra -Wpedantic -ferror-limit=1 ")
     string(APPEND CMAKE_EXE_LINKER_FLAGS " -lc++abi ")
 
 elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU")

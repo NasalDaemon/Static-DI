@@ -110,6 +110,20 @@ struct Virtual
                 // Disable member pointer access to children as implementation can be swapped out at runtime
                 static_assert(detail::alwaysFalse<Parent>, "di::Virtual does not have a stable member pointer to its children");
             }
+
+            template<IsContext Parent, class N>
+            constexpr auto& getParentNode(this Context virtualContext, N& node)
+            {
+                if constexpr (std::is_same_v<detail::Decompress<Parent>, InnerContext>)
+                {
+                    return node;
+                }
+                else
+                {
+                    Node* virtualHost = Impl<ImplNode>::getVirtualHost(std::addressof(node));
+                    return virtualContext.template getParentNode<Parent>(std::forward_like<N&>(*virtualHost));
+                }
+            }
         };
 
         template<IsNodeHandle T>

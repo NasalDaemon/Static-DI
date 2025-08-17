@@ -20,35 +20,41 @@ struct PeerNode : Node
 {
     // Also exposed in TraitNodeView
     template<class Self>
-    requires IsCollectionContext<ContextOf<Self>>
+    requires IsElementContext<ContextOf<Self>>
     constexpr auto const& getElementId(this Self& self)
     {
         using ThisNode = Self::Traits::Node;
         auto& node = detail::upCast<ThisNode>(self);
-        using CollectionContext = ContextOf<Self>::Info::CollectionContext;
-        return detail::getParent(node, ContextOf<Self>{}.template getParentMemPtr<CollectionContext>()).id;
+        using ElementContext = ContextOf<Self>::Info::ElementContext;
+        auto& element = ContextOf<Self>{}.template getParentNode<ElementContext>(node);
+        auto memPtr = ElementContext{}.template getParentMemPtr<ElementContext>();
+        return detail::getParent(element, memPtr).id;
     }
 
     // Also exposed in TraitNodeView
     template<class Self>
-    requires IsCollectionContext<ContextOf<Self>>
+    requires IsElementContext<ContextOf<Self>>
     constexpr auto getElementHandle(this Self const& self)
     {
         using ThisNode = Self::Traits::Node;
         auto& node = detail::upCast<ThisNode>(self);
-        using CollectionContext = ContextOf<Self>::Info::CollectionContext;
-        return detail::getParent(node, ContextOf<Self>{}.template getParentMemPtr<CollectionContext>()).getElementHandle();
+        using ElementContext = ContextOf<Self>::Info::ElementContext;
+        auto& element = ContextOf<Self>{}.template getParentNode<ElementContext>(node);
+        auto memPtr = ElementContext{}.template getParentMemPtr<ElementContext>();
+        return detail::getParent(element, memPtr).getElementHandle();
     }
 
     // Only available to the node itself
     template<class Self>
-    requires IsCollectionContext<ContextOf<Self>> and HasTrait<Self, trait::Peer>
+    requires IsElementContext<ContextOf<Self>> and HasTrait<Self, trait::Peer>
     constexpr auto getPeers(this Self& self)
     {
         using ThisNode = Self::Traits::Node;
         auto& node = detail::upCast<ThisNode>(self);
-        using CollectionContext = ContextOf<Self>::Info::CollectionContext;
-        auto memPtr = ContextOf<Self>{}.template getParentMemPtr<CollectionContext>();
+        using ElementContext = ContextOf<Self>::Info::ElementContext;
+        // Deliberately use getParentMemPtr as it only works for nodes with a stable memory location compared to the parent
+        // Trying to allow peer access to nodes with dynamic context opens up a can of worms which is not worth it
+        auto memPtr = ContextOf<Self>{}.template getParentMemPtr<ElementContext>();
         return detail::getParent(node, memPtr).template getPeers<Self>(memPtr);
     }
 
