@@ -31,6 +31,10 @@ export namespace di {
     using di::boxWithRoot;
     using di::Box;
     using di::box;
+    // detail/cast.hpp
+    namespace detail {
+        using detail::memberPtr;
+    }
     // cluster.hpp
     using di::Cluster;
     using di::IsCluster;

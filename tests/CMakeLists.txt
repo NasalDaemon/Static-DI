@@ -11,6 +11,7 @@ target_link_libraries(di_tests PUBLIC doctest::doctest)
 add_executable(di_tests_headers
     test_abc_headers.cpp
     test_embedded_headers.cpp
+    test_mem_ptr.cpp
 )
 add_executable(di_tests_module
     test_abc_module.cpp

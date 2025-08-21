@@ -55,8 +55,8 @@ struct Union
             static constexpr auto exchangeImpl(Current& current, auto&&... args)
             {
                 static_assert((... or std::is_same_v<T, Options>), "Cannot exchange with a node that is not listed as an option in the hosting di::Union");
-                auto const nodePtr = std::bit_cast<Current Node::*>(&Node::bytes);
-                Node& node = detail::getParent(current, nodePtr);
+                auto const nodePtr = di::detail::memberPtr<Node>(std::bit_cast<Current Node::*>(&Node::bytes));
+                Node& node = nodePtr.getClassFromMember(current);
                 // Take args by value in case they come from the current node's state, which will be invalidated during the call to emplace
                 return di::Defer(
                     [&node, ...args = DI_FWD(args)]() mutable
@@ -73,8 +73,8 @@ struct Union
                     detail::NodeHasTraitsNodePred<typename Option::Traits::Node>,
                     ToNode<Options>...
                 >;
-                auto const nodePtr = std::bit_cast<OptionNode Node::*>(&Node::bytes);
-                return Context{}.getNode(detail::getParent(option, nodePtr), trait);
+                auto const nodePtr = detail::memberPtr<Node>(std::bit_cast<OptionNode Node::*>(&Node::bytes));
+                return Context{}.getNode(nodePtr.getClassFromMember(option), trait);
             }
 
             template<IsContext Parent>
@@ -97,8 +97,8 @@ struct Union
                         detail::NodeHasTraitsNodePred<typename Option::Traits::Node>,
                         ToNode<Options>...
                     >;
-                    auto const nodePtr = std::bit_cast<OptionNode Node::*>(&Node::bytes);
-                    return Context{}.template getParentNode<Parent>(detail::getParent(node, nodePtr));
+                    auto const nodePtr = detail::memberPtr<Node>(std::bit_cast<OptionNode Node::*>(&Node::bytes));
+                    return Context{}.template getParentNode<Parent>(nodePtr.getClassFromMember(node));
                 }
             }
         };

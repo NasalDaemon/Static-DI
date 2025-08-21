@@ -83,7 +83,7 @@ namespace detail {
             DI_NODE(Main_, main)
 
             detail::ToVirtualNodeImpl<InFacade, InFacade_> inFacade{};
-            friend consteval auto getNodePointer(di::AdlTag<InFacade_>) { return &Node::inFacade; }
+            friend consteval auto getNodePointer(di::AdlTag<InFacade_>) { return DI_MEM_PTR(Node, inFacade); }
             static_assert(IsInterface<decltype(inFacade)>);
 
             DI_NODE(OutVirtual_, outVirtual)

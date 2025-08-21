@@ -101,7 +101,7 @@ struct Collection
             {}
 
             template<class Caller, class Target>
-            constexpr auto getPeers(Target Element::* elToNodeMemPtr) const
+            constexpr auto getPeers(detail::MemberPtr<Element, Target> elToNodeMemPtr) const
             {
                 using CallerNode = Caller::Traits::Node;
                 using TargetNode = Target::Traits::Node;
@@ -115,16 +115,16 @@ struct Collection
                         {
                             if (&el == this)
                                 return false;
-                            auto const peer = (el.*elToNodeMemPtr).asTrait(trait::peer);
+                            auto const peer = elToNodeMemPtr.getMemberFromClass(el).asTrait(trait::peer);
                             if (not peer.isPeerId(id))
                                 return false;
-                            auto const& instance = detail::downCast<NodeState>(detail::upCast<CallerNode>(this->*elToNodeMemPtr));
+                            auto const& instance = detail::downCast<NodeState>(detail::upCast<CallerNode>(elToNodeMemPtr.getMemberFromClass(*this)));
                             return peer.isPeerInstance(instance);
                         })
                     | std::views::transform(
                         [=](auto const& el) -> NodeState const&
                         {
-                            return detail::downCast<NodeState>(detail::upCast<CallerNode>(el.*elToNodeMemPtr));
+                            return detail::downCast<NodeState>(detail::upCast<CallerNode>(elToNodeMemPtr.getMemberFromClass(el)));
                         });
             }
 
@@ -161,7 +161,7 @@ struct Collection
             constexpr auto getParentMemPtr()
             {
                 static_assert(std::is_same_v<Parent, ElementContext>, "di::Collection does not have a stable member pointer relative to its parent node");
-                return &Element::node;
+                return DI_MEM_PTR(Element, node);
             }
 
             template<IsContext Parent>
@@ -184,7 +184,8 @@ struct Collection
         private:
             static constexpr auto& getElement(auto& node)
             {
-                return detail::downCast<ElementNode>(node).*detail::reverseMemberPointer(&Element::node);
+                auto memPtr = DI_MEM_PTR(Element, node);
+                return memPtr.getClassFromMember(node);
             }
             template<class InnerNode>
             static constexpr auto& getCollection(InnerNode& node)

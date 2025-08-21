@@ -1,6 +1,7 @@
 #ifndef INCLUDE_DI_COMBINE_HPP
 #define INCLUDE_DI_COMBINE_HPP
 
+#include "di/detail/cast.hpp"
 #include "di/detail/select.hpp"
 #include "di/detail/type_at.hpp"
 #include "di/cluster.hpp"
@@ -32,9 +33,9 @@ namespace detail {
 
         [[no_unique_address]] ContextToNodeState<Context> node{};
 
-        friend DI_IF_MSVC_ELSE(constexpr)(consteval) decltype(node) CombineNode::* getNodePointer(di::AdlTag<Context>)
+        friend DI_IF_MSVC_ELSE(constexpr)(consteval) auto getNodePointer(di::AdlTag<Context>)
         {
-            return &CombinePart::node;
+            return memberPtr<CombineNode>(&CombinePart::node);
         }
     };
 

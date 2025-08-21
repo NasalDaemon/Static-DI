@@ -57,7 +57,7 @@ namespace detail {
                 static constexpr auto& getGlobalNode(N& node)
                 {
                     auto memPtr = getNodePointer(AdlTag<MainContext>{});
-                    auto& global = getParent(node, memPtr).global;
+                    auto& global = memPtr.getClassFromMember(node).global;
                     if constexpr (std::is_pointer_v<decltype(Node::global)>)
                         return std::forward_like<N&>(*global);
                     else

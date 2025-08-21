@@ -32,7 +32,7 @@ namespace detail {
         {
             using Self = detail::Decompress<Self_>;
             auto memPtr = getNodePointer(AdlTag<Self>{});
-            return typename Self::ParentContext{}.getGlobalNode(getParent(node, memPtr));
+            return typename Self::ParentContext{}.getGlobalNode(memPtr.getClassFromMember(node));
         }
 
         template<IsContext Self, IsGlobalTrait GlobalTrait>
@@ -61,8 +61,9 @@ namespace detail {
             // node to depend on itself; asTrait is available instead. Disallowing
             // depending on oneself allows for the runtime optimisation to exist.
             static_assert(not std::is_same_v<typename Other::Context, Self>, "Dependency on self not allowed");
-            auto memPtr = getNodePointer(AdlTag<Self>{});
-            auto& otherNode = getParent(node, memPtr).*getNodePointer(AdlTag<typename Other::Context>{});
+            auto thisMemPtr = getNodePointer(AdlTag<Self>{});
+            auto otherMemPtr = getNodePointer(AdlTag<typename Other::Context>{});
+            auto& otherNode = otherMemPtr.getMemberFromClass(thisMemPtr.getClassFromMember(node));
             return otherNode.asTrait(detail::AsRef{}, typename Other::Trait{});
         }
 
@@ -73,7 +74,7 @@ namespace detail {
         {
             using Self = detail::Decompress<Self_>;
             auto memPtr = getNodePointer(AdlTag<Self>{});
-            return typename Self::ParentContext{}.getNode(getParent(node, memPtr), detail::ResolveLinkTrait<Self, Trait>{});
+            return typename Self::ParentContext{}.getNode(memPtr.getClassFromMember(node), detail::ResolveLinkTrait<Self, Trait>{});
         }
 
         // Get member pointer from the perspective of a parent to this node
@@ -89,7 +90,7 @@ namespace detail {
             else
             {
                 auto parentMemPtr = typename Self::ParentContext{}.template getParentMemPtr<Parent>();
-                return combineMemberPointers(parentMemPtr, memPtr);
+                return parentMemPtr + memPtr;
             }
         }
 
@@ -105,7 +106,7 @@ namespace detail {
             else
             {
                 auto memPtr = getNodePointer(AdlTag<Self>{});
-                return typename Self::ParentContext{}.template getParentNode<Parent>(getParent(node, memPtr));
+                return typename Self::ParentContext{}.template getParentNode<Parent>(memPtr.getClassFromMember(node));
             }
         }
     };

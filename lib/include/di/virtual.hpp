@@ -146,13 +146,15 @@ struct Virtual
 
             static constexpr Node* getVirtualHost(ImplOf<ImplNode> const* p)
             {
-                auto const& self = p->*detail::reverseMemberPointer(&Impl::impl);
+                auto memPtr = DI_MEM_PTR(Impl, impl);
+                auto const& self = memPtr.getClassFromMember(*p);
                 return self.ImplBase::getVirtualHost();
             }
 
             static constexpr auto* getGlobalNode(ImplOf<ImplNode> const* p)
             {
-                auto const& self = p->*detail::reverseMemberPointer(&Impl::impl);
+                auto memPtr = DI_MEM_PTR(Impl, impl);
+                auto const& self = memPtr.getClassFromMember(*p);
                 return self.ImplBase::getGlobalNode();
             }
 

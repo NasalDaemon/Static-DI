@@ -105,7 +105,8 @@ struct Cluster
     {
         Self::template ensureDepth<ContextParameterOf<Self>>();
         using Target = detail::ResolveLink<Self, Trait>;
-        auto& node = cluster.*getNodePointer(AdlTag<typename Target::Context>{});
+        auto memPtr = getNodePointer(AdlTag<typename Target::Context>{});
+        auto& node = memPtr.getMemberFromClass(cluster);
         return node.asTrait(asRef, typename Target::Trait{});
     }
 

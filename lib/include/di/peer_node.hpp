@@ -28,7 +28,7 @@ struct PeerNode : Node
         using ElementContext = ContextOf<Self>::Info::ElementContext;
         auto& element = ContextOf<Self>{}.template getParentNode<ElementContext>(node);
         auto memPtr = ElementContext{}.template getParentMemPtr<ElementContext>();
-        return detail::getParent(element, memPtr).id;
+        return memPtr.getClassFromMember(element).id;
     }
 
     // Also exposed in TraitNodeView
@@ -41,7 +41,7 @@ struct PeerNode : Node
         using ElementContext = ContextOf<Self>::Info::ElementContext;
         auto& element = ContextOf<Self>{}.template getParentNode<ElementContext>(node);
         auto memPtr = ElementContext{}.template getParentMemPtr<ElementContext>();
-        return detail::getParent(element, memPtr).getElementHandle();
+        return memPtr.getClassFromMember(element).getElementHandle();
     }
 
     // Only available to the node itself
@@ -55,7 +55,7 @@ struct PeerNode : Node
         // Deliberately use getParentMemPtr as it only works for nodes with a stable memory location compared to the parent
         // Trying to allow peer access to nodes with dynamic context opens up a can of worms which is not worth it
         auto memPtr = ContextOf<Self>{}.template getParentMemPtr<ElementContext>();
-        return detail::getParent(node, memPtr).template getPeers<Self>(memPtr);
+        return memPtr.getClassFromMember(node).template getPeers<Self>(memPtr);
     }
 
     // Default impl of di::trait::Peer is to have no peers

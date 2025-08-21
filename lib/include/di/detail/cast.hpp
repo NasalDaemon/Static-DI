@@ -6,9 +6,14 @@
 
 #if !DI_IMPORT_STD
 #include <bit>
+#include <cstdint>
 #include <memory>
 #include <type_traits>
 #endif
+
+// Define the macro here (not in macros.hpp) so that it is not accessible for module users.
+#define DI_MEM_PTR(Class, member) \
+    ::di::detail::memberPtr<Class>(&Class::member)
 
 namespace di::detail {
 
@@ -44,35 +49,88 @@ DI_INLINE constexpr Base const& upCast(Derived const& derived)
     return *(Base const*)std::addressof(derived);
 }
 
-using MemPtrInt = DI_IF_MSVC_ELSE(std::int32_t)(std::ptrdiff_t);
 
+#if __cpp_lib_is_virtual_base_of >= 202406L
+template<class Base, class Derived>
+concept IsVirtualBaseOf = std::is_virtual_base_of_v<Base, Derived>;
+#else
+template<class Base, class Derived>
+constexpr bool IsVirtualBaseOf = std::is_base_of_v<Base, Derived>
+    and requires(Base* base, Derived* derived)
+    {
+        // Check if Derived* can be converted to Base*
+        (Base*)derived;
+        // Assert that Base* cannot be converted to Derived*
+        // A pointer to a virtual base class cannot be downcast to the derived class pointer
+        requires not requires { (Derived*)base; };
+    };
+#endif
+
+// MemberPtr stores a pointer to data member guaranteed to be represented as an offset in all known ABIs.
 template<class Class, class Member>
-DI_INLINE MemPtrInt memPtrToInt(Member Class::* memPtr)
+struct MemberPtr
 {
-    return std::bit_cast<MemPtrInt>(memPtr);
-}
+    DI_INLINE auto& getClassFromMember(auto& member) const
+    {
+        return downCast<Member>(member).*invert();
+    }
 
-template<class Class, class Member>
-DI_INLINE Class Member::* reverseMemberPointer(Member Class::* memPtr)
+    DI_INLINE auto& getMemberFromClass(auto& classInstance) const
+    {
+        return classInstance.*memPtr;
+    }
+
+    template<class InnerMember>
+    DI_INLINE MemberPtr<Class, InnerMember> operator+(MemberPtr<Member, InnerMember> inner) const
+    {
+        return MemberPtr<Class, InnerMember>(std::bit_cast<InnerMember Class::*>(toOffset() + inner.toOffset()));
+    }
+
+    template<class OuterClass>
+    DI_INLINE MemberPtr<OuterClass, Member> operator+(MemberPtr<OuterClass, Class> outer) const
+    {
+        return MemberPtr<OuterClass, Member>(std::bit_cast<Member OuterClass::*>(outer.toOffset() + toOffset()));
+    }
+
+    DI_INLINE auto toOffset() const
+    {
+        using Int = std::conditional_t<sizeof(memPtr) == 8, std::int64_t, std::int32_t>;
+        return std::bit_cast<Int>(memPtr);
+    }
+
+    template<class BaseClass>
+    constexpr MemberPtr(Member BaseClass::* memPtr) : memPtr(memPtr)
+    {
+        static_assert(std::is_base_of_v<BaseClass, Class>);
+        static_assert(not IsVirtualBaseOf<BaseClass, Class>);
+        if consteval
+        {
+            if (memPtr == nullptr)
+                throw "nullptr not allowed";
+        }
+    }
+
+private:
+    template<class C, class M>
+    friend struct MemberPtr;
+
+    Member Class::* memPtr;
+
+    DI_INLINE auto invert() const
+    {
+        // Not constexpr, but well defined (modulo ABI)
+        // Safe to do, since we guarantee that the member pointer is represented as an offset
+        // since it does not point to a member of a virtual base class
+        using Int = std::conditional_t<sizeof(Class Member::*) == 8, std::int64_t, std::int32_t>;
+        return std::bit_cast<Class Member::*>(-static_cast<Int>(toOffset()));
+    }
+};
+
+DI_MODULE_EXPORT
+template<class Class, class BaseClass, class Member>
+DI_INLINE constexpr MemberPtr<Class, Member> memberPtr(Member BaseClass::* memPtr)
 {
-    // Not constexpr, but well defined (modulo implementation)
-    return std::bit_cast<Class Member::*>(-memPtrToInt(memPtr));
-}
-
-template<class OuterClass, class Class, class Member>
-DI_INLINE Member OuterClass::* combineMemberPointers(Class OuterClass::* outer, Member Class::* inner)
-{
-    return std::bit_cast<Member OuterClass::*>(memPtrToInt(outer) + memPtrToInt(inner));
-}
-
-template<class Class, class Member>
-Member getMemberType(Member Class::*);
-
-DI_INLINE auto& getParent(auto& node, auto memPtr)
-{
-    using StateType = decltype(getMemberType(memPtr));
-    auto& n = downCast<StateType>(node);
-    return n.*reverseMemberPointer(memPtr);
+    return MemberPtr<Class, Member>(memPtr);
 }
 
 } // namespace di::detail

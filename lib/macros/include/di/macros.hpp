@@ -183,7 +183,11 @@
 
 #define DI_NODE(Context, nodeName, ... /* predicates */) \
     [[no_unique_address]] ::di::Ensure<::di::ContextToNodeState<Context>, ## __VA_ARGS__> nodeName{}; \
-    friend consteval auto getNodePointer(di::AdlTag<Context>) { return &Context::Parent::nodeName; }
+    friend consteval auto getNodePointer(di::AdlTag<Context>) \
+    { \
+        using P = Context::Parent; \
+        return ::di::detail::memberPtr<P>(&P::nodeName); \
+    }
 
 #define DI_INSTANTIATE(graph, dotPath) \
     template struct std::remove_cvref_t<decltype(DI_DEPAREN(graph)::dotPath)>::Node<::di::ContextOf<std::remove_cvref_t<decltype(DI_DEPAREN(graph)::dotPath)>>>;

@@ -44,7 +44,8 @@ struct Adapt
             requires (not std::is_const_v<N>)
             static constexpr auto exchangeImpl(N& facade, auto&&... args)
             {
-                auto& cluster = facade.*detail::reverseMemberPointer(&Node::facade);
+                auto memPtr = DI_MEM_PTR(Node, facade);
+                auto& cluster = memPtr.getClassFromMember(facade);
                 return Context::template exchangeImpl<T>(cluster, DI_FWD(args)...);
             }
         };
@@ -61,7 +62,7 @@ struct Adapt
         DI_NODE(Target_, target)
 
         detail::ToVirtualNodeImpl<Facade, Facade_> facade{};
-        friend consteval auto getNodePointer(di::AdlTag<Facade_>) { return &Node::facade; }
+        friend consteval auto getNodePointer(di::AdlTag<Facade_>) { return DI_MEM_PTR(Node, facade); }
         static_assert(IsInterface<decltype(facade)>);
 
         template<class... Ts>
