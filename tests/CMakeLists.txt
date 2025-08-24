@@ -41,6 +41,7 @@ if(NOT CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_VERSION VERSION
     )
     target_sources(di_tests_thread
         PUBLIC FILE_SET CXX_MODULES FILES
+            test_thread/global_scheduler.ixx
             test_thread/poster.ixx
             test_thread/test_node.ixx
         PRIVATE

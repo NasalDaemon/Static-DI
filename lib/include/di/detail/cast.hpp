@@ -83,19 +83,20 @@ struct MemberPtr
     template<class InnerMember>
     DI_INLINE MemberPtr<Class, InnerMember> operator+(MemberPtr<Member, InnerMember> inner) const
     {
-        return MemberPtr<Class, InnerMember>(std::bit_cast<InnerMember Class::*>(toOffset() + inner.toOffset()));
+        using Int = IntFor<InnerMember Class::*>;
+        return MemberPtr<Class, InnerMember>(std::bit_cast<InnerMember Class::*>(static_cast<Int>(toOffset() + inner.toOffset())));
     }
 
     template<class OuterClass>
     DI_INLINE MemberPtr<OuterClass, Member> operator+(MemberPtr<OuterClass, Class> outer) const
     {
-        return MemberPtr<OuterClass, Member>(std::bit_cast<Member OuterClass::*>(outer.toOffset() + toOffset()));
+        using Int = IntFor<Member OuterClass::*>;
+        return MemberPtr<OuterClass, Member>(std::bit_cast<Member OuterClass::*>(static_cast<Int>(outer.toOffset() + toOffset())));
     }
 
     DI_INLINE auto toOffset() const
     {
-        using Int = std::conditional_t<sizeof(memPtr) == 8, std::int64_t, std::int32_t>;
-        return std::bit_cast<Int>(memPtr);
+        return std::bit_cast<IntFor<decltype(memPtr)>>(memPtr);
     }
 
     template<class BaseClass>
@@ -111,6 +112,9 @@ struct MemberPtr
     }
 
 private:
+    template<class P>
+    using IntFor = std::conditional_t<sizeof(P) == 8, std::int64_t, std::int32_t>;
+
     template<class C, class M>
     friend struct MemberPtr;
 
@@ -119,9 +123,9 @@ private:
     DI_INLINE auto invert() const
     {
         // Not constexpr, but well defined (modulo ABI)
-        // Safe to do, since we guarantee that the member pointer is represented as an offset
-        // since it does not point to a member of a virtual base class
-        using Int = std::conditional_t<sizeof(Class Member::*) == 8, std::int64_t, std::int32_t>;
+        // Safe since we guarantee that the member pointer is represented as an offset
+        // because it does not point to a member of a virtual base class
+        using Int = IntFor<Class Member::*>;
         return std::bit_cast<Class Member::*>(-static_cast<Int>(toOffset()));
     }
 };

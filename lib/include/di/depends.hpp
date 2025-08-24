@@ -40,7 +40,7 @@ namespace detail {
         static constexpr bool isSpecified = false;
 
         // When no dependencies are specified, all dependencies are implicit and therefore allowed
-        template<IsTrait>
+        template<class, IsTrait>
         static constexpr bool dependencyAllowed = true;
 
         template<class, bool>
@@ -56,8 +56,8 @@ struct Depends
     static constexpr bool isSpecified = true;
 
     // When dependencies are specified, all dependencies must be listed explicitly
-    template<IsTrait Trait>
-    static constexpr bool dependencyAllowed = (... or MatchesTrait<Trait, std::remove_pointer_t<Traits>>);
+    template<class Node, IsTrait Trait>
+    static constexpr bool dependencyAllowed = requires { ContextOf<Node>::Info::implicitDependencyAllowed(Trait{}); } or (... or MatchesTrait<Trait, std::remove_pointer_t<Traits>>);
 
     // On failure, the missing required trait types are named in a list for better error messages
     template<class Node, bool Transitive>

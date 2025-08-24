@@ -117,7 +117,7 @@ concept NodeHasDepends = Node::Depends::isSpecified;
 
 DI_MODULE_EXPORT
 template<class Node, class Trait>
-concept NodeDependencyAllowed = Node::Depends::template dependencyAllowed<Trait>;
+concept NodeDependencyAllowed = Node::Depends::template dependencyAllowed<Node, Trait>;
 
 DI_MODULE_EXPORT
 template<class Node, bool Transitive = false>

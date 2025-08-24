@@ -121,6 +121,8 @@ struct NullContext : detail::ContextBase
     {
         using DefaultKey = key::Default;
 
+        static void implicitDependencyAllowed() = delete;
+
         template<class Source, class Target, class Key = ContextOf<Source>::Info::DefaultKey>
         DI_INLINE static constexpr auto finalize(Source& source, Target& target, Key const& key = {}, auto const&... keys)
         {

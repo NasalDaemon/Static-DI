@@ -26,8 +26,8 @@ namespace detail {
     template<IsContext Context, IsGlobalTrait GlobalTrait>
     consteval void assertContextHasGlobalTrait()
     {
-        static_assert(ContextHasGlobal<Context>, "Context does not have a global type");
-        static_assert(ContextHasGlobalTrait<Context, GlobalTrait>, "Global type does not have the requested trait");
+        static_assert(ContextHasGlobal<Context>, "Context does not have a global node or cluster");
+        static_assert(ContextHasGlobalTrait<Context, GlobalTrait>, "Global node or cluster does not have the requested trait");
     }
 
     template<class Context>

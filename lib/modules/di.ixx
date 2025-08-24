@@ -173,9 +173,10 @@ export namespace di {
     using di::PeerNode;
     using di::PeerDetached;
     using di::PeerDetachedOpen;
-    // peer.hxx
+    // traits/peer.hxx
     namespace trait {
         using trait::Peer;
+        using trait::peer;
     }
     // repeater.hpp
     using di::Repeater;
@@ -184,6 +185,11 @@ export namespace di {
     using di::ResolveTypes;
     using di::ResolveRoot;
     using di::ResolveInfo;
+    // traits/scheduler.hpp
+    namespace trait {
+        using trait::Scheduler;
+        using trait::scheduler;
+    }
     // test.hpp
     namespace test {
         using test::IsTestContext;
@@ -197,7 +203,6 @@ export namespace di {
         using test::GraphWithGlobal;
     }
     // thread.hpp
-    using di::Thread;
     using di::ThreadEnvironment;
     using di::OnThread;
     using di::AnyThread;

@@ -1,0 +1,11 @@
+trait di::trait::Scheduler
+{
+    currentThreadDetails() const -> std::convertible_to<std::string> auto
+    isCurrentThread(std::size_t threadId) const -> std::convertible_to<bool> auto
+
+    template<std::invocable Task>
+    postTask(std::size_t threadId, Task&& task) const -> std::convertible_to<bool> auto
+
+    run() const
+    stop() const
+}

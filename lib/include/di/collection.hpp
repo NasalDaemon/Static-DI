@@ -13,7 +13,7 @@
 #include "di/key.hpp"
 #include "di/macros.hpp"
 #include "di/node.hpp"
-#include "di/peer.hxx"
+#include "di/traits/peer.hxx"
 #include "di/traits.hpp"
 
 #if !DI_IMPORT_STD

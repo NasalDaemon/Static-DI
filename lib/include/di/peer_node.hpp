@@ -6,7 +6,7 @@
 #include "di/context_fwd.hpp"
 #include "di/macros.hpp"
 #include "di/node.hpp"
-#include "di/peer.hxx"
+#include "di/traits/peer.hxx"
 #include "di/traits_fwd.hpp"
 
 #if !DI_IMPORT_STD

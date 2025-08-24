@@ -7,6 +7,7 @@
 #endif
 
 import di.tests.thread.collection;
+import di.tests.thread.global_scheduler;
 import di.tests.thread.poster;
 import di;
 
@@ -135,59 +136,67 @@ TEST_CASE("di::Collection using threads")
         using Inner = InnerNode;
         using Outer = OuterNode;
     };
-    di::Graph<CollectionCluster, Root> graph{
-        .collection{3,
-            [](auto add)
+
+    di::GraphWithGlobal<CollectionCluster, GlobalScheduler, Root> graph{
+        .global{
+            [](auto& scheduler)
             {
-                add(0, DI_EMPLACE(
-                    .node{
-                        .node1{314},
-                        .node2{315},
-                    },
-                    .threadId = 0,
-                ));
-                add(1, DI_EMPLACE(
-                    .node{
-                        .node1{42},
-                        .node2{43},
-                    },
-                    .threadId = 1,
-                ));
-                add(2, DI_EMPLACE(
-                    .node{
-                        .node1{99},
-                        .node2{100},
-                    },
-                    .threadId = 2,
-                ));
-            }},
-        .outer{
-            .node{101},
-            .threadId = 3,
+                scheduler.addThread();
+                scheduler.addThread();
+                scheduler.addThread();
+            }
+        },
+        .main{
+            .collection{3,
+                [](auto add)
+                {
+                    add(0, DI_EMPLACE(
+                        .node{
+                            .node1{314},
+                            .node2{315},
+                        },
+                        .threadId = 0,
+                    ));
+                    add(1, DI_EMPLACE(
+                        .node{
+                            .node1{42},
+                            .node2{43},
+                        },
+                        .threadId = 1,
+                    ));
+                    add(2, DI_EMPLACE(
+                        .node{
+                            .node1{99},
+                            .node2{100},
+                        },
+                        .threadId = 2,
+                    ));
+                }
+            },
+            .outer{
+                .node{101},
+                .threadId = 3,
+            },
         },
     };
 
-    auto sch = Scheduler::make();
-    sch->addThread();
-    sch->addThread();
-    sch->addThread();
-    sch->startThreads();
+    auto scheduler = graph.global.asTrait(di::trait::scheduler);
 
     auto mainTask = [&]
     {
-        auto& at0 = graph.collection->atId(0);
-        auto& at1 = graph.collection->atId(1);
-        auto& at2 = graph.collection->atId(2);
+        auto& at0 = graph->collection->atId(0);
+        auto& at1 = graph->collection->atId(1);
+        auto& at2 = graph->collection->atId(2);
 
         CHECK(at0->asTrait(trait::inner).get() == 314);
         CHECK_THROWS(at1->asTrait(trait::inner).get());
         CHECK_THROWS(at2->asTrait(trait::inner).get());
 
-        CHECK(graph.collection->getId(0)->asTrait(trait::inner, future).get().get() == 314);
-        CHECK(graph.collection->getId(1)->asTrait(trait::inner, future).get().get() == 42);
-        CHECK(graph.collection->getId(2)->asTrait(trait::inner, future).get().get() == 99);
+        CHECK(graph->collection->getId(0)->asTrait(trait::inner, future).get().get() == 314);
+        CHECK(graph->collection->getId(1)->asTrait(trait::inner, future).get().get() == 42);
+        CHECK(graph->collection->getId(2)->asTrait(trait::inner, future).get().get() == 99);
 
-        CHECK(graph.outer.asTrait(trait::outer, future).get().get() == 101);
+        CHECK(graph->outer.asTrait(trait::outer, future).get().get() == 101);
         CHECK(at0->node1.asTrait(trait::outer).get() == 101);
         CHECK(at1->node1.asTrait(trait::outer).get() == 101);
         CHECK(at2->node1.asTrait(trait::outer).get() == 101);
@@ -202,11 +211,11 @@ TEST_CASE("di::Collection using threads")
         CHECK(at1->asTrait(trait::inner, future).getInner().get() == 43);
         CHECK(at2->asTrait(trait::inner, future).getInner().get() == 100);
 
-        sch->stopAll();
+        scheduler.stop();
     };
 
-    CHECK(sch->postTask(0, mainTask));
-    sch->run();
+    CHECK(scheduler.postTask(0, mainTask));
+    scheduler.run();
 }
 
 }

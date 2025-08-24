@@ -45,7 +45,7 @@ struct Lazy
         };
 
         using NodeState = ToNodeWrapper<Underlying>::template Node<detail::CompressContext<InnerContext>>;
-        using Initialiser = Function<void(Node const*), FunctionPolicy{.copyable=true, .mutableCall=true, .immutableCall=false}>;
+        using Initialiser = Function<void(Node const*), FunctionPolicy{.copyable=true, .mutableCall=true, .constCall=false}>;
         using Variant = std::variant<NodeState, Initialiser>;
         Variant mutable state;
 
@@ -77,18 +77,6 @@ struct Lazy
                 {
                     self->state.template emplace<NodeState>(std::move(args)...);
                 }))
-        {}
-
-        Node(Node&&) = default;
-        constexpr Node(Node const& other)
-            : state(
-                [&]() -> Variant
-                {
-                    if (Initialiser const* init = std::get_if<Initialiser>(&other.state))
-                        return Variant(Initialiser(*init));
-                    else
-                        return Variant(std::get<NodeState>(other.state));
-                }())
         {}
     };
 };

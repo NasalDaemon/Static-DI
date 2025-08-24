@@ -8,10 +8,12 @@
 #include "di/detached.hpp"
 #include "di/environment.hpp"
 #include "di/key.hpp"
+#include "di/link.hpp"
 #include "di/macros.hpp"
 #include "di/map_info.hpp"
 #include "di/node_fwd.hpp"
 #include "di/trait.hpp"
+#include "di/traits/scheduler.hpp"
 
 #if !DI_IMPORT_STD
 #include <cstddef>
@@ -47,61 +49,6 @@ struct ThreadEnvironment
 
         static constexpr std::size_t ThreadId = Id;
     };
-};
-
-DI_MODULE_EXPORT
-struct Thread
-{
-    static constexpr std::size_t Unassigned = -1;
-
-    static bool hasMainThread() { return MainThread != nullptr; }
-    static bool isMainThread() { return CurrentId == ThreadEnvironment::MainThreadId and MainThread == &CurrentId; }
-
-    static void setMainThread()
-    {
-        if (hasMainThread())
-            throw std::runtime_error("A thread has already been assigned as the main");
-        CurrentId = ThreadEnvironment::MainThreadId;
-        MainThread = &CurrentId;
-    }
-
-    static void resetMainThread()
-    {
-        if (not isMainThread())
-            throw std::runtime_error("Resetting main thread from thread other than the main thread");
-        CurrentId = Unassigned;
-        MainThread = nullptr;
-    }
-
-    static std::size_t getId()
-    {
-        return CurrentId;
-    }
-
-    static void setId(std::size_t threadId)
-    {
-        if (threadId == ThreadEnvironment::MainThreadId)
-            return setMainThread();
-        if (threadId == ThreadEnvironment::DynamicThreadId || threadId == ThreadEnvironment::AnyThreadId)
-            #if DI_COMPILER_LT(GCC, 15)
-                throw std::runtime_error("Thread cannot be set to id " + std::to_string(threadId));
-            #else
-                throw std::runtime_error(std::format("Thread cannot be set to id {}", threadId));
-            #endif
-        if (CurrentId != Unassigned)
-            #if DI_COMPILER_LT(GCC, 15)
-                throw std::runtime_error(
-                    "Thread has already been assigned ID " + std::to_string(CurrentId) + " while trying to assign ID " + std::to_string(threadId));
-            #else
-                throw std::runtime_error(
-                    std::format("Thread has already been assigned ID {} while trying to assign ID {}", CurrentId, threadId));
-            #endif
-        CurrentId = threadId;
-    }
-
-private:
-    inline static thread_local std::size_t CurrentId = Unassigned;
-    inline static void* MainThread = nullptr;
 };
 
 namespace detail {
@@ -183,6 +130,10 @@ struct RequireThread
     struct MapInfo : Info
     {
         static constexpr std::size_t RequiredThreadId = ThreadId;
+
+        using Info::implicitDependencyAllowed;
+        // Allow global scheduler trait to be omitted from Depends list of subnodes
+        static void implicitDependencyAllowed(di::Global<trait::Scheduler>);
 
         // Protection to be applied when entering or exiting this thread context
         // Does not assert itself, but ensures that thread keys are used to access the target,
@@ -323,6 +274,10 @@ struct OnDynThread
 
             struct Info : Context::Info
             {
+                using Context::Info::implicitDependencyAllowed;
+                // Allow global scheduler trait to be omitted from Depends list of subnodes
+                static void implicitDependencyAllowed(di::Global<trait::Scheduler>);
+
                 using DefaultKey = key::DynThreadAssert;
 
                 using DynThreadContext = Context;
@@ -358,16 +313,15 @@ struct OnDynThread
                 static constexpr void assertAccessible(Target& target)
                 {
                     auto requiredThreadId = detail::getTargetDynamicRequiredThread(target);
-                    if (requiredThreadId == ThreadEnvironment::AnyThreadId)
-                        return Context::Info::assertAccessible(target);
-
-                    auto currentThreadId = Thread::getId();
-                    if (currentThreadId != requiredThreadId) [[unlikely]]
-                    #if DI_COMPILER_LT(GCC, 15)
-                        throw std::runtime_error("Access denied to node with thread affinity " + std::to_string(requiredThreadId) + " from current thread " + std::to_string(currentThreadId));
-                    #else
-                        throw std::runtime_error(std::format("Access denied to node with thread affinity {} from current thread {}", requiredThreadId, currentThreadId));
-                    #endif
+                    if (requiredThreadId != ThreadEnvironment::AnyThreadId)
+                    {
+                        if (not target.getGlobal(trait::scheduler).isCurrentThread(requiredThreadId)) [[unlikely]]
+                        #if DI_COMPILER_LT(GCC, 15)
+                            throw std::runtime_error("Access denied to node with thread affinity " + std::to_string(requiredThreadId) + " from current thread: " + target.getGlobal(trait::scheduler).currentThreadDetails());
+                        #else
+                            throw std::runtime_error(std::format("Access denied to node with thread affinity {} from current thread: {}", requiredThreadId, target.getGlobal(trait::scheduler).currentThreadDetails()));
+                        #endif
+                    }
 
                     Context::Info::assertAccessible(target);
                 }
@@ -419,6 +373,7 @@ namespace key {
                 if constexpr (requiredThreadId == ThreadEnvironment::DynamicThreadId)
                     dynamicRequiredThreadId = detail::getTargetDynamicRequiredThread(self);
                 return Poster::template post<CurrentThreadId, requiredThreadId>(
+                    self.getGlobal(trait::scheduler),
                     dynamicRequiredThreadId,
                     [&, visitor = DI_FWD(visitor)](this auto&&) -> decltype(auto)
                     {
@@ -432,6 +387,7 @@ namespace key {
                 if constexpr (requiredThreadId == ThreadEnvironment::DynamicThreadId)
                     dynamicRequiredThreadId = detail::getTargetDynamicRequiredThread(self);
                 return Poster::template post<CurrentThreadId, requiredThreadId>(
+                    self.getGlobal(trait::scheduler),
                     dynamicRequiredThreadId,
                     [&self, ...args = DI_FWD(args)](this auto&&) -> decltype(auto)
                     {

@@ -2,30 +2,76 @@ module;
 #include "di/macros.hpp"
 
 #if !DI_IMPORT_STD
+#include <atomic>
 #include <condition_variable>
-#include <csignal>
-#include <cstddef>
-#include <exception>
 #include <format>
+#include <functional>
 #include <future>
+#include <iostream>
 #include <latch>
 #include <memory>
 #include <mutex>
 #include <print>
 #include <queue>
-#include <string>
 #include <stdexcept>
+#include <string>
 #include <thread>
-#include <type_traits>
 #include <vector>
 #endif
 
-#include <signal.h>
+// #include <signal.h>
 module di.tests.thread.poster;
 
 import di;
 
 namespace di::tests::thread {
+
+struct Thread
+{
+    static constexpr std::size_t Unassigned = -1;
+
+    static bool hasMainThread() { return MainThread != nullptr; }
+    static bool isMainThread() { return CurrentId == ThreadEnvironment::MainThreadId and MainThread == getCurrentThreadIdPtr(); }
+
+    static void setMainThread()
+    {
+        if (hasMainThread())
+            throw std::runtime_error("A thread has already been assigned as the main");
+        CurrentId = ThreadEnvironment::MainThreadId;
+        MainThread = getCurrentThreadIdPtr();
+    }
+
+    static void resetMainThread()
+    {
+        if (not isMainThread())
+            throw std::runtime_error("Resetting main thread from thread other than the main thread");
+        CurrentId = Unassigned;
+        MainThread = nullptr;
+    }
+
+    static std::size_t getId()
+    {
+        return CurrentId;
+    }
+
+    static void setId(std::size_t threadId)
+    {
+        if (threadId == ThreadEnvironment::MainThreadId)
+            return setMainThread();
+        if (threadId == ThreadEnvironment::DynamicThreadId || threadId == ThreadEnvironment::AnyThreadId)
+            throw std::runtime_error(std::format("Thread cannot be set to id {}", threadId));
+        if (CurrentId != Unassigned)
+            throw std::runtime_error(
+                std::format("Thread has already been assigned ID {} while trying to assign ID {}", CurrentId, threadId));
+        CurrentId = threadId;
+    }
+
+    static void* getCurrentThreadIdPtr() { return &CurrentId; }
+
+private:
+    inline static thread_local std::size_t CurrentId = Unassigned;
+    inline static void* MainThread = nullptr;
+};
 
 struct Scheduler::ThreadContext
 {
@@ -66,6 +112,11 @@ struct Scheduler::ThreadContext
         }
     }
 
+    bool isCurrentThread() const
+    {
+        return threadIdPtr == Thread::getCurrentThreadIdPtr();
+    }
+
     ~ThreadContext()
     {
         std::println("Thread {} finished", threadId);
@@ -94,6 +145,7 @@ private:
     }
 
     std::size_t const threadId;
+    void* const threadIdPtr = Thread::getCurrentThreadIdPtr();
     std::mutex mtx;
     std::condition_variable cv;
     std::queue<Function<void()>> tasks;
@@ -109,30 +161,43 @@ bool postTask(std::weak_ptr<Scheduler::ThreadContext> h, Function<void()> f)
     return false;
 }
 
-Scheduler::Scheduler(Private) {}
-
-std::shared_ptr<Scheduler> Scheduler::make()
+Scheduler::Scheduler()
 {
-    if (auto current = s_current.lock())
-        return current;
-    auto main = std::make_shared<Scheduler>(Private());
-    main->mainThreadContext = std::make_shared<ThreadContext>(0);
-    main->threadContexts.push_back(main->mainThreadContext);
-    s_current = main;
-    signal(SIGINT, [](int)
-    {
-        std::puts("SIGINT detected, stopping all threads...");
-        if (auto tc = Scheduler::get().lock())
-            tc->stopAll();
-    });
-    return main;
+    mainThreadContext = std::make_shared<ThreadContext>(0);
+    threadContexts.push_back(mainThreadContext);
+    // signal(SIGINT, [](int)
+    // {
+    //     std::puts("SIGINT detected, stopping all threads...");
+    //     if (auto tc = Scheduler::get().lock())
+    //         tc->stopAll();
+    // });
 }
 
-auto Scheduler::addThread() -> std::weak_ptr<ThreadContext>
+void Scheduler::resetMainThread()
+{
+    Thread::resetMainThread();
+}
+
+bool Scheduler::isCurrentThread(std::size_t threadId) const
+{
+    return getThread(threadId).lock()->isCurrentThread();
+}
+
+std::string Scheduler::currentThreadDetails()
+{
+    return std::format("ID: {}", Thread::getId());
+}
+
+auto Scheduler::addThread(std::weak_ptr<ThreadContext> previous) -> std::weak_ptr<ThreadContext>
 {
     if (sealed.load(std::memory_order_acquire))
         throw std::runtime_error("Cannot add threads after some have started");
     auto lk = std::lock_guard(threadsMtx);
+    if (auto p = previous.lock())
+    {
+        threadContexts.emplace_back(previous);
+        return previous;
+    }
     auto threadId = threadContexts.size();
     std::promise<std::weak_ptr<ThreadContext>> newTc;
     auto thread = std::jthread{
@@ -183,7 +248,7 @@ auto Scheduler::addThread() -> std::weak_ptr<ThreadContext>
     return result;
 }
 
-auto Scheduler::getThread(std::size_t threadId) -> std::weak_ptr<ThreadContext>
+auto Scheduler::getThread(std::size_t threadId) const -> std::weak_ptr<ThreadContext>
 {
     if (not sealed.load(std::memory_order_acquire)) [[unlikely]]
         throw std::runtime_error("Cannot getThread before threads have started");
