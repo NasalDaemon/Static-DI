@@ -19,7 +19,7 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
         "-fdiagnostics-all-candidates -fconcepts-diagnostics-depth=5 "
     )
 
-    if(DI_TESTS_LTO)
+    if(DI_BUILD_LTO)
         if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS "15.1.0")
             # Unfortunately, GCC 14 LTO partitioning and modules do not mix well (symbols often missing at link time)
             string(APPEND CMAKE_CXX_FLAGS

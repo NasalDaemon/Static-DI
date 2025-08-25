@@ -54,7 +54,7 @@ if(NOT CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_VERSION VERSION
     add_test(di_tests_thread di_tests_thread)
 endif()
 
-if(DI_TESTS_LTO)
+if(DI_BUILD_LTO)
     set_property(TARGET di_tests_headers di_tests_module
         PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
 

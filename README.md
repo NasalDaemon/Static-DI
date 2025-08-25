@@ -76,8 +76,6 @@ target_generate_di_src(your_modules_lib
         apple          your.app.apple:impl
         orange         your.app.orange         # :impl is default implementation parition name, so it can be ommitted
         path.to.pear   your.app.pear:node_impl # :node_impl parition is used instead of :impl
-        all, in, one   your.app.all, your.app.in, your.app.one
-        # nodes all+in+one to be instantiated in the same generated cpp
 )
 ```
 </details>

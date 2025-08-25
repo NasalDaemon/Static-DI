@@ -102,9 +102,10 @@ jobs:
         cmake ..
         --preset conan-default
         -DDI_BUILD_TESTS=TRUE
+        -DDI_BUILD_BENCH=TRUE
         -DDI_COMPRESS_TYPES=TRUE
         -DCMAKE_COLOR_DIAGNOSTICS=TRUE
-        -DDI_TESTS_LTO=${{ matrix.build_type == 'Release' && 'TRUE' || 'FALSE' }}
+        -DDI_BUILD_LTO=${{ matrix.build_type == 'Release' && 'TRUE' || 'FALSE' }}
         -DCMAKE_CXX_MODULE_STD=${{ matrix.compiler.std_module && 'TRUE' || 'FALSE' }}
 
     - name: Build

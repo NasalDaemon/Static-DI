@@ -1,0 +1,25 @@
+export module di.bench.compile.node84;
+
+import di;
+export import di.bench.compile.trait.trait83;
+export import di.bench.compile.trait.trait84;
+
+namespace di::bench::compile {
+
+export
+struct Node84
+{
+    template<class Context>
+    struct Node : di::Node
+    {
+        using Depends = di::Depends<trait::Trait83>;
+        using Traits  = di::Traits<Node, trait::Trait84>;
+
+        int impl(trait::Trait84::get) const;
+
+        Node() = default;
+        int i = 84;
+    };
+};
+
+}

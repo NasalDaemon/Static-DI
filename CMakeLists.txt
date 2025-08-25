@@ -17,16 +17,24 @@ project(Static-DI VERSION 1.0 LANGUAGES CXX)
 
 option(DI_COMPRESS_TYPES "Compress recursive type names for Context, Impl, Type" FALSE)
 option(DI_BUILD_TESTS "Build tests for Static-DI" FALSE)
-option(DI_TESTS_LTO "Enable LTO when building tests" TRUE)
+option(DI_BUILD_BENCH "Build benchmarks for Static-DI" FALSE)
+option(DI_BUILD_LTO "Enable LTO when building tests/benchmarks" TRUE)
 option(DI_TESTS_DEBUG_SAN "Enable sanitisers when building tests in debug" TRUE)
 
 if(DI_BUILD_TESTS)
     enable_testing()
+endif()
+
+if(DI_BUILD_TESTS OR DI_BUILD_BENCH)
     include(tests/config.cmake)
 endif()
 
 add_subdirectory(generator_lib)
 add_subdirectory(lib)
+
+if(DI_BUILD_BENCH)
+    add_subdirectory(benchmarks/compilation)
+endif()
 
 if(DI_BUILD_TESTS)
     add_subdirectory(tests)

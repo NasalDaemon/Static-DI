@@ -1,0 +1,6 @@
+export module di.bench.compile.trait.trait62;
+
+trait di::bench::compile::trait::Trait62
+{
+    get() const
+}

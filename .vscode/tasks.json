@@ -35,13 +35,14 @@
 			"type": "shell",
 			"group": "build",
 			"label": "CMake configure",
-			"command": "cmake .. --preset conan-default -DDI_BUILD_TESTS=TRUE -DCMAKE_COLOR_DIAGNOSTICS=TRUE -DCMAKE_CXX_MODULE_STD=${input:ImportStd} -DDI_COMPRESS_TYPES=$COMPRESS_TYPES -DDI_TESTS_LTO=$ENABLE_LTO -DDI_TESTS_DEBUG_SAN=$ENABLE_SAN",
+			"command": "cmake .. --preset conan-default -DDI_BUILD_TESTS=TRUE -DCMAKE_COLOR_DIAGNOSTICS=TRUE -DCMAKE_CXX_MODULE_STD=${input:ImportStd} -DDI_COMPRESS_TYPES=$COMPRESS_TYPES -DDI_BUILD_LTO=$ENABLE_LTO -DDI_TESTS_DEBUG_SAN=$ENABLE_SAN -DDI_BUILD_BENCH=$BUILD_BENCH -DCMAKE_BUILD_TYPE=${input:BuildType}",
 			"options": {
 				"cwd": "${workspaceFolder}/build",
 				"env": {
 					"COMPRESS_TYPES": "TRUE",
 					"ENABLE_LTO": "FALSE",
 					"ENABLE_SAN": "FALSE",
+					"BUILD_BENCH": "FALSE",
 				},
 			},
 			"windows": {
