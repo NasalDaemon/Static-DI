@@ -131,10 +131,6 @@ import :${NODE_MODULE_PART}\;
 
 import ${arg_GRAPH_MODULE}\;
 ${COMMON_MODULES}
-#if DI_IMPORT_STD
-import std\;
-#endif
-
 ${NODE_INSTANTIATIONS}
 ]=])
         else()

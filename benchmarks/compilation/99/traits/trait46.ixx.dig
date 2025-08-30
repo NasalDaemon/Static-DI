@@ -1,4 +1,4 @@
-export module di.bench.compile.trait.trait46;
+export module di.bench.compile99.trait.trait46;
 
 trait di::bench::compile::trait::Trait46
 {

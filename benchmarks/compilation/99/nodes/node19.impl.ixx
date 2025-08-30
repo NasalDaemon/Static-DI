@@ -1,5 +1,5 @@
-module di.bench.compile.node19:impl;
-import di.bench.compile.node19;
+module di.bench.compile99.node19:impl;
+import di.bench.compile99.node19;
 
 namespace di::bench::compile {
 template<class Context>

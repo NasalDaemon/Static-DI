@@ -1,8 +1,8 @@
-export module di.bench.compile.node83;
+export module di.bench.compile99.node83;
 
 import di;
-export import di.bench.compile.trait.trait82;
-export import di.bench.compile.trait.trait83;
+export import di.bench.compile99.trait.trait82;
+export import di.bench.compile99.trait.trait83;
 
 namespace di::bench::compile {
 

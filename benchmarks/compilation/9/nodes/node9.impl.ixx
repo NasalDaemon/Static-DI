@@ -1,5 +1,5 @@
-module di.bench.compile.node9:impl;
-import di.bench.compile.node9;
+module di.bench.compile9.node9:impl;
+import di.bench.compile9.node9;
 
 namespace di::bench::compile {
 
