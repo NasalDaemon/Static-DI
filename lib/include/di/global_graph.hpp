@@ -61,7 +61,7 @@ namespace detail {
                     if constexpr (std::is_pointer_v<decltype(Node::global)>)
                         return std::forward_like<N&>(*global);
                     else
-                        return std::forward_like<N&>(global);
+                        return global;
                 }
             };
 

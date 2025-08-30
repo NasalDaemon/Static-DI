@@ -136,7 +136,9 @@ TEST_CASE("MemberPtr edge cases")
     CHECK(DI_MEM_PTR(Packed, a).getMemberFromClass(pk).value == 321);
     CHECK(DI_MEM_PTR(Packed, b).getMemberFromClass(pk).value == 'y');
 
-    // CHECK(&(DI_MEM_PTR(Packed, a).getClassFromMember(pk.a)) == &pk);
+#if !DI_COMPILER_GCC // GCC won't compile this
+    CHECK(&(DI_MEM_PTR(Packed, a).getClassFromMember(pk.a)) == &pk);
+#endif
     CHECK(&(DI_MEM_PTR(Packed, b).getClassFromMember(pk.b)) == &pk);
 }
 

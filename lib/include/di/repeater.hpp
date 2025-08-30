@@ -18,7 +18,7 @@ namespace di {
 
 DI_MODULE_EXPORT
 template<std::size_t>
-struct RepeaterTrait : di::Trait
+struct RepeaterTrait : di::UnconstrainedTrait
 {};
 
 DI_MODULE_EXPORT

@@ -1,7 +1,7 @@
-module di.bench.compile.node19:impl;
-import di.bench.compile.node19;
+module di.bench.compile99.node19:impl;
+import di.bench.compile99.node19;
 
-namespace di::bench::compile {
+namespace di::bench::compile99 {
 template<class Context>
 int Node19::Node<Context>::impl(trait::Trait19::get) const
 {

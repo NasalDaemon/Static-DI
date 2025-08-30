@@ -60,7 +60,7 @@ constexpr auto finalise(Source& source, Target& target, Key const& key, Keys con
 {
     if constexpr (detail::shouldAcquireAccess<Source, Target, Key>())
     {
-        // Consume the key to acquire access as we will not know original source after making the alias
+        // Always consume the key to acquire access as we will lose the original source after finalising
         auto& target2 = key.acquireAccess(source, target);
         return finalise(source, target2, keys...);
     }

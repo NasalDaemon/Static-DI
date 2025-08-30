@@ -12,6 +12,9 @@ namespace di::detail {
 template<template<class> class Template>
 using TakesUnaryClassTemplate = void;
 
+template<template<class...> class Template>
+using TakesNaryClassTemplate = void;
+
 template<template<class, auto...> class Template>
 using TakesUnaryClassPackedAutoTemplate = void;
 

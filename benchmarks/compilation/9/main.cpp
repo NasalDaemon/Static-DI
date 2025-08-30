@@ -1,10 +1,11 @@
-import di.bench.compile.graph;
-import di.bench.compile.trait.trait9;
+import di.bench.compile9.graph;
+import di.bench.compile9.trait.trait9;
 
 import di;
 
-using namespace di::bench::compile;
+using namespace di::bench::compile9;
 
+// Will collapse into int main() { return 0; } in LTO release build
 int main()
 {
     di::Graph<Graph> g{};

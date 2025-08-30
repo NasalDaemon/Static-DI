@@ -112,6 +112,11 @@ add_colon_to_requires_statements = AddColonToRequiresStatements()
 
 NO_TRAIT = "~"
 
+def is_no_trait(trait: str | None) -> bool:
+    if trait is None:
+        return False
+    return trait == NO_TRAIT or "di::NoTrait<" in trait
+
 
 class CppType:
     def __init__(self, string: str, *, is_auto: bool = False, tree: Tree | None = None):
@@ -238,21 +243,23 @@ class Node:
             raise SyntaxError(f"{pos} cannot connect from global node '*' to any other node")
         if self.is_sink_node and not to_node.is_sink_node:
             raise SyntaxError(f"{pos} cannot connect from sink node '{self.name}' to a non-sink node")
-        if trait != NO_TRAIT and trait in self.cluster.sink_traits:
+        if not is_no_trait(trait) and trait in self.cluster.sink_traits:
             raise SyntaxError(f"{pos} Trait '{trait}' already allocated to sink node '{self.cluster.sink_traits[trait][0][0].name}' "
                               f"in {self.cluster.cluster_class} '{self.cluster.full_name}' here {self.cluster.sink_traits[trait][0][1]}")
-        if to_trait is not None and to_trait != NO_TRAIT and to_trait in self.cluster.sink_traits:
+        if not is_no_trait(to_trait) and to_trait in self.cluster.sink_traits:
             raise SyntaxError(f"{pos} Trait '{to_trait}' already allocated to sink node '{self.cluster.sink_traits[to_trait][0][0].name}' "
                               f"in {self.cluster.cluster_class} '{self.cluster.full_name}' here {self.cluster.sink_traits[to_trait][0][1]}")
-        if to_trait is not None and (trait == NO_TRAIT) != (to_trait == NO_TRAIT):
+        if to_trait is not None and is_no_trait(trait) != is_no_trait(to_trait):
             raise SyntaxError(f"{pos} Cannot redirect trait '{trait}' to trait '{to_trait}' in {self.cluster.cluster_class} '{self.cluster.full_name}'")
         if error := self.cluster.get_connection_error(self, to_node, is_override):
             raise SyntaxError(f"{pos} Cannot connect '{self.name}' to '{to_node.name}' in {self.cluster.cluster_class} '{self.cluster.full_name}':\n{error}")
 
-        effective_to_trait = to_trait if to_trait is not None else trait
+        effective_to_trait = trait if to_trait is None else to_trait
+        if effective_to_trait == NO_TRAIT:
+            if to_node.is_global or to_node.is_parent:
+                raise SyntaxError(f"{pos} Cannot use no-trait shorthand '~' to connect to global '*' or parent '..' node in {self.cluster.cluster_class} '{self.cluster.full_name}'. "
+                                  "Use a named trait like 'di::NoTrait<TargetNode>' instead.")
         if to_node.is_global:
-            if effective_to_trait == NO_TRAIT:
-                raise SyntaxError(f"{pos} Cannot connect no-trait '~' to global node '*' in {self.cluster.cluster_class} '{self.cluster.full_name}'")
             to_trait = f"di::Global<{effective_to_trait}>"
         to_node.add_client(pos, self, effective_to_trait)
         connection = Connection(to_node, trait=trait, to_trait=to_trait)
@@ -272,17 +279,18 @@ class Node:
 
     def add_client(self, pos, client, trait):
         if self.no_traits:
-            if trait != NO_TRAIT:
+            if not is_no_trait(trait):
                 raise SyntaxError(f"{pos} Cannot connect '{client.name}' to '{self.name}' in {self.cluster.cluster_class} '{self.cluster.full_name}':\n"
                                 f"'{self.name}' has no traits, but a named trait '{trait}' was specified")
-        elif trait == NO_TRAIT:
+        elif is_no_trait(trait):
             if len(self.clients) > 0:
                 raise SyntaxError(f"{pos} Cannot connect '{client.name}' to '{self.name}' in {self.cluster.cluster_class} '{self.cluster.full_name}':\n"
                                   f"'{self.name}' already has a client with a named trait connection here {self.clients[0][0]}, but a no-trait connection was specified")
-        self.clients.append((pos, client, trait))
-        if trait == NO_TRAIT:
             if self.is_nexus:
                 raise SyntaxError(f"{pos} Nexus node '{self.name}' in domain '{self.cluster.full_name}' cannot have no-trait connections")
+
+        self.clients.append((pos, client, trait))
+        if is_no_trait(trait):
             self.no_traits = True
 
 

@@ -1,10 +1,10 @@
-export module di.bench.compile.node75;
+export module di.bench.compile99.node75;
 
 import di;
-export import di.bench.compile.trait.trait74;
-export import di.bench.compile.trait.trait75;
+export import di.bench.compile99.trait.trait74;
+export import di.bench.compile99.trait.trait75;
 
-namespace di::bench::compile {
+namespace di::bench::compile99 {
 
 export
 struct Node75

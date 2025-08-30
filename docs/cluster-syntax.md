@@ -257,8 +257,8 @@ provider->memberFunction(); // Calls `Provider`'s member function directly
 ```
 
 ### Caveats:
-- Cannot not mix `[~]` and a named trait for the same target node in one graph; pick one.
-- No-trait with the global node (`*`) is not supported; use a named trait or `getGlobal`.
+- Cannot not mix no-trait and a named trait for the same target node in one graph; pick one.
+- No-trait shorthand `~` with the global node (`*`) or parent node (`..`) is not supported; must explicitly use `di::NoTrait<NodeHandle>` or a named trait.
 
 Migration tip
 - If you later need a stable interface, replace `[~]` with a named trait (e.g., `[trait::X]`) and update call sites from `getNode(di::noTrait<T>)` to `getNode(trait::x)`.

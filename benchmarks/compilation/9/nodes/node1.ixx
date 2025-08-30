@@ -1,9 +1,9 @@
-export module di.bench.compile.node1;
+export module di.bench.compile9.node1;
 
-export import di.bench.compile.trait.trait1;
+export import di.bench.compile9.trait.trait1;
 import di;
 
-namespace di::bench::compile {
+namespace di::bench::compile9 {
 
 export
 struct Node1
