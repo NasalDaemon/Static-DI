@@ -2,7 +2,7 @@
 #define INCLUDE_DI_REPEATER_HPP
 
 #include "di/context_fwd.hpp"
-#include "di/finalize.hpp"
+#include "di/finalise.hpp"
 #include "di/node.hpp"
 #include "di/macros.hpp"
 #include "di/resolve.hpp"
@@ -42,10 +42,10 @@ struct Repeater
         using Types = TypesAtT<0>;
 
         template<class Source, class Key = ContextOf<Source>::Info::DefaultKey>
-        DI_INLINE constexpr auto finalize(this auto& self, Source& source, Key const& key = {}, auto const&... keys)
+        DI_INLINE constexpr auto finalise(this auto& self, Source& source, Key const& key = {}, auto const&... keys)
         {
             // Don't consume the key, as it needs to be applied for each repeater trait
-            return di::finalize<false>(source, self, key, keys...);
+            return di::finalise<false>(source, self, key, keys...);
         }
 
         DI_INLINE constexpr void implWithKey(this auto& self, auto const& key, auto const& keys, auto&&... args)
@@ -54,12 +54,6 @@ struct Repeater
         }
 
     private:
-        template<std::size_t... Is>
-        constexpr void apply(this auto& self, std::index_sequence<Is...>, auto&... args)
-        {
-            (self.getNode(RepeaterTrait<Is>{}).impl(args...), ...);
-        }
-
         template<std::size_t... Is>
         constexpr void applyWithKey(this auto& self, std::index_sequence<Is...>, auto const& key, auto const& keys, auto&... args)
         {
@@ -71,7 +65,7 @@ struct Repeater
             std::apply(
                 [&](auto const&... ks)
                 {
-                    target.ptr->finalize(self, key, ks...)->impl(args...);
+                    target.ptr->finalise(self, key, ks...)->impl(args...);
                 },
                 keys);
         }

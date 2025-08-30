@@ -1,0 +1,36 @@
+digraph ShopDomain {
+    compound=true;
+    rankdir=TB;
+
+    subgraph cluster_ShopDomain {
+        label="ShopDomain";
+        Api [label="ShopRestAPI"];
+        ORDER [label="OrderDomain", shape=box];
+        DELIVERY [label="DeliveryDomain", shape=box];
+
+        subgraph cluster_CustomerDomain {
+            label="CustomerDomain";
+            gw [label="CustomerGateway"];
+            Accounts [label="CustomerAccounts"];
+            Regs [label="CustomerRegulations"];
+
+            // CustomerDomain internal connections
+            gw -> Accounts [color=darkgoldenrod, fontcolor=darkgoldenrod];
+            gw -> Regs [color=darkgreen, fontcolor=darkgreen];
+        }
+
+        // ShopDomain connections (bidirectional for <->, trait per direction, no labels)
+        Api -> gw [color=blue, fontcolor=blue];
+        gw -> Api [color=red, fontcolor=red];
+
+        Api -> DELIVERY [color=green, fontcolor=green];
+        DELIVERY -> Api [color=orange, fontcolor=orange];
+
+        Api -> ORDER [color=purple, fontcolor=purple];
+        ORDER -> Api [color=brown, fontcolor=brown];
+
+        Api -> ORDER [color=gray, fontcolor=gray];
+        gw -> ORDER [color=gray, fontcolor=gray];
+        DELIVERY -> ORDER [color=gray, fontcolor=gray];
+    }
+}

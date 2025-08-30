@@ -513,7 +513,7 @@ class Cluster:
         self.dependencies = [aliases.get(trait, trait) for _, _, trait in self.parent_node.clients]
         self.dependencies.sort()
 
-    def finalize(self):
+    def finalise(self):
         self.dependencies = [f"{dep}*" for dep in self.dependencies]
 
 
@@ -598,7 +598,7 @@ class Domain(Cluster):
             return "No override is needed for this connection, but an override was specified"
         return None
 
-    def finalize(self):
+    def finalise(self):
         min_overrides = self.min_extra_chevrons * self.overrides_per_extra_chevron
         if self.overrides_allowed > min_overrides and (self.overrides_allowed - self.overrides_seen) >= self.overrides_per_extra_chevron:
             raise SyntaxError(
@@ -781,10 +781,10 @@ class Namespace:
             raise SyntaxError(f'{get_pos(tree)} First character of trait name {name} is not Uppercase')
         self.trait_aliases.append(names)
 
-    def finalize(self):
+    def finalise(self):
         self.clusters.sort(key=lambda v: v.name)
         for c in self.clusters:
-            c.finalize()
+            c.finalise()
         self.traits.sort(key=lambda v: v.name)
 
 
@@ -799,7 +799,7 @@ class Repr:
         self.has_cluster = False
         self.has_trait = False
         self.walk(parsed)
-        self.finalize()
+        self.finalise()
 
     def walk(self, parsed):
         includes: set[str] = set()
@@ -869,10 +869,10 @@ class Repr:
             self.namespaces_dict[name] = Namespace(name, self)
         return self.namespaces_dict[name]
 
-    def finalize(self):
+    def finalise(self):
         self.namespaces = sorted(self.namespaces_dict.values(), key=lambda v: v.name)
         for n in self.namespaces:
-            n.finalize()
+            n.finalise()
         self.has_cluster = any(len(namespace.clusters) != 0 for namespace in self.namespaces)
         self.has_trait = any(len(namespace.traits) != 0 for namespace in self.namespaces)
 

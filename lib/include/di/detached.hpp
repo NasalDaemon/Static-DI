@@ -39,7 +39,7 @@ struct DetachedImpl : Interface, private Node
 
     DI_NODE_USE_PUBLIC_MEMBERS(Node)
     using Types = Node::Types;
-    using Node::finalize;
+    using Node::finalise;
 
     // Use impl from the detached interface
     using Interface::impl;

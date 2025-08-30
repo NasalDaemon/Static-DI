@@ -227,7 +227,7 @@ DI_MODULE_EXPORT
 template<IsTrait Trait, key::IsKey Key, key::IsKey... Keys>
 constexpr IsTraitViewOf<Trait, Key> auto makeTraitView(auto& source, auto target, Trait, Key const& key, Keys const&... keys)
 {
-    return TraitView(key::Trait<Key, Trait>{}, target.ptr->finalize(source, key, keys...), target.types());
+    return TraitView(key::Trait<Key, Trait>{}, target.ptr->finalise(source, key, keys...), target.types());
 }
 
 

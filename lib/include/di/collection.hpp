@@ -7,7 +7,7 @@
 #include "di/detail/concepts.hpp"
 #include "di/empty_types.hpp"
 #include "di/environment.hpp"
-#include "di/finalize.hpp"
+#include "di/finalise.hpp"
 #include "di/global_context.hpp"
 #include "di/global_trait.hpp"
 #include "di/key.hpp"
@@ -107,7 +107,7 @@ struct Collection
                 using TargetNode = Target::Traits::Node;
                 // Remove dynamic environment components from Caller, as the peers are independent instances
                 using Environment = Caller::Environment::RemoveDynamic;
-                using NodeState = WithEnv<Environment, di::ContextToNodeState<detail::Decompress<ContextOf<Caller>>>>;
+                using NodeState = TransferEnv<Environment, di::ContextToNodeState<detail::Decompress<ContextOf<Caller>>>>;
                 static_assert(std::is_same_v<CallerNode, TargetNode>);
                 return std::as_const(collection->elements)
                     | std::views::filter(
@@ -275,33 +275,33 @@ template<class Context>
 template<class Trait>
 struct Collection<ID, NodeHandle>::Node<Context>::AsTrait : Node
 {
-    constexpr auto finalize(this auto& self, auto& source, key::Element<ID> const& key, auto const&... keys)
+    constexpr auto finalise(this auto& self, auto& source, key::Element<ID> const& key, auto const&... keys)
     {
         auto* const element = self.getId(key.id);
         if (element == nullptr) [[unlikely]]
             throw std::out_of_range("Element with given ID does not exist in collection");
         auto target = element->asTrait(detail::AsRef{}, Trait{});
-        return target.ptr->finalize(source, keys...);
+        return target.ptr->finalise(source, keys...);
     }
 
-    constexpr auto finalize(this auto& self, auto& source, key::Element<Handle> const& key, auto const&... keys)
+    constexpr auto finalise(this auto& self, auto& source, key::Element<Handle> const& key, auto const&... keys)
     {
         auto& element = self.elements[key.id.index].node;
         auto target = element.asTrait(detail::AsRef{}, Trait{});
-        return target.ptr->finalize(source, keys...);
+        return target.ptr->finalise(source, keys...);
     }
 
     template<class T>
-    constexpr auto finalize(this auto&, auto&, key::Element<T> const&, auto const&...)
+    constexpr auto finalise(this auto&, auto&, key::Element<T> const&, auto const&...)
     {
         static_assert(std::is_same_v<T, ID>, "T is not ID or Handle type");
     }
 
     template<class Self>
-    DI_INLINE constexpr auto finalize(this Self& self, auto& source, auto const& key, auto const&... keys)
+    DI_INLINE constexpr auto finalise(this Self& self, auto& source, auto const& key, auto const&... keys)
     {
         // Don't consume the key, as we need to consume it for each element
-        return di::finalize<false>(source, self, key, keys...);
+        return di::finalise<false>(source, self, key, keys...);
     }
 
     template<class Self, class Pred, class... Args>
@@ -315,7 +315,7 @@ struct Collection<ID, NodeHandle>::Node<Context>::AsTrait : Node
                     [&](auto const&... ks)
                     {
                         auto target = el.node.asTrait(detail::AsRef{}, Trait{});
-                        target.ptr->finalize(self, ks...)->impl(DI_FWD(args)...);
+                        target.ptr->finalise(self, ks...)->impl(DI_FWD(args)...);
                     },
                     keys);
             }

@@ -20,7 +20,7 @@ struct EnvironmentOverlay : Target
 
 DI_MODULE_EXPORT
 template<class T>
-concept EnvironmentComponent = requires
+concept EnvironmentPart = requires
 {
     typename T::Tag;
     requires std::is_empty_v<typename T::Tag>;
@@ -30,12 +30,14 @@ concept EnvironmentComponent = requires
 };
 
 namespace detail {
+    template<class Env, class... Es>
+    struct InsertMissing;
     template<class Keep, class Rest>
     struct RemoveDynamic;
 }
 
 DI_MODULE_EXPORT
-template<EnvironmentComponent... Es>
+template<EnvironmentPart... Es>
 struct Environment : Es...
 {
     static void resolveEnvironment();
@@ -55,7 +57,7 @@ struct Environment : Es...
     template<class ToReplace, class Old, class Replacement>
     static auto replaceEach(Old, Replacement) -> Old;
 
-    template<EnvironmentComponent E>
+    template<EnvironmentPart E>
     using Replace = Environment<decltype(replaceEach<Get<typename E::Tag>>(Es{}, E{}))...>;
 
     template<class E>
@@ -63,31 +65,16 @@ struct Environment : Es...
     static auto insertOrReplace() -> Replace<E>;
 
     template<class E>
-    static auto insertOrReplace() -> Environment<E, Es...>;
+    static auto insertOrReplace() -> Environment<Es..., E>;
 
     template<class E>
     using InsertOrReplace = decltype(insertOrReplace<E>());
 
     template<class... E2s>
-    requires IsEmpty
-    static auto merge() -> Environment<E2s...>;
-
-    template<class E2, class... E2s>
-    requires (not IsEmpty)
-    static auto merge() -> decltype(InsertOrReplace<E2>::template merge<E2s...>());
+    using InsertMissing = detail::InsertMissing<Environment, E2s...>::type;
 
     template<class... E2s>
-    requires (sizeof...(E2s) == 0)
-    static auto merge() -> Environment;
-
-    template<class... E2s>
-    using Merge = decltype(merge<E2s...>());
-
-    template<class... E2s>
-    static auto mergeEnvironment(Environment<E2s...> const&) -> decltype(merge<E2s...>());
-
-    template<class Env>
-    using MergeEnvironment = decltype(mergeEnvironment(std::declval<Env>()));
+    using Merge = detail::InsertMissing<Environment<E2s...>, Es...>::type;
 
     // Use this when transplanting an environment to a target that is an independent dynamic instance
     // as the existance of a component acts as a stamp of its respective acquisition.
@@ -95,6 +82,26 @@ struct Environment : Es...
 };
 
 namespace detail {
+    template<class Env>
+    struct InsertMissing<Env>
+    {
+        using type = Env;
+    };
+
+    template<class Env, class E, class... Es>
+    requires (Env::template HasTag<typename E::Tag>)
+    struct InsertMissing<Env, E, Es...>
+    {
+        // Drop E as Env already has the part
+        using type = InsertMissing<Env, Es...>::type;
+    };
+
+    template<class... Es, class E, class... Rest>
+    struct InsertMissing<Environment<Es...>, E, Rest...>
+    {
+        using type = InsertMissing<Environment<Es..., E>, Rest...>::type;
+    };
+
     template<class Keep, class E, class... Es>
     requires (E::isDynamic())
     struct RemoveDynamic<Keep, void(E, Es...)>
@@ -113,20 +120,38 @@ namespace detail {
     {
         using type = Environment<Es...>;
     };
+
+    template<class Env, class... Es>
+    consteval bool hasAllTagsOfImpl(Environment<Es...>)
+    {
+        return (... and Env::template HasTag<typename Es::Tag>);
+    }
+
+    template<class Env1, class Env2>
+    inline constexpr bool hasAllTagsOf = hasAllTagsOfImpl<Env1>(Env2{});
+
+    template<class Env, class... Es>
+    auto insertMissingImpl(Environment<Es...>) -> Env::template InsertMissing<Es...>;
+
+    template<class Env1, class Env2>
+    using InsertMissingPartsOf = decltype(insertMissingImpl<Env1>(Env2{}));
 }
 
 DI_MODULE_EXPORT
-template<EnvironmentComponent... Es, class Target>
-constexpr auto& mergeEnv(Target& t)
+template<EnvironmentPart... Es, class Target>
+constexpr auto& mergeEnvParts(Target& t)
 {
-    static_assert(Target::Environment::IsEmpty);
     static_assert(sizeof...(Es) > 0);
-    return detail::downCast<EnvironmentOverlay<Environment<Es...>, std::remove_const_t<Target>>>(t);
+    using NewEnv = Target::Environment::template Merge<Es...>;
+    if constexpr (std::is_same_v<NewEnv, typename Target::Environment>)
+        return t;
+    else
+        return detail::downCast<EnvironmentOverlay<NewEnv, std::remove_const_t<Target>>>(t);
 }
 
 DI_MODULE_EXPORT
 template<class Environment, class Target>
-requires (not EnvironmentComponent<Environment>)
+requires (not EnvironmentPart<Environment>)
 constexpr auto& withEnv(Target& t)
 {
     static_assert(Target::Environment::IsEmpty);
@@ -138,15 +163,15 @@ constexpr auto& withEnv(Target& t)
 
 namespace detail {
     template<class Env, class Target>
-    auto withEnv() -> EnvironmentOverlay<Env, Target>;
+    requires (Env::IsEmpty) or (detail::hasAllTagsOf<typename Target::Environment, Env>)
+    auto transferEnv() -> Target;
     template<class Env, class Target>
-    requires Env::IsEmpty
-    auto withEnv() -> Target;
+    auto transferEnv() -> EnvironmentOverlay<detail::InsertMissingPartsOf<typename Target::Environment, Env>, Target>;
 }
 
 DI_MODULE_EXPORT
 template<class Env, class Target>
-using WithEnv = decltype(detail::withEnv<Env, std::remove_const_t<Target>>());
+using TransferEnv = decltype(detail::transferEnv<Env, std::remove_const_t<Target>>());
 
 }
 

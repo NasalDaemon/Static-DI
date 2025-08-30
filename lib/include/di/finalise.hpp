@@ -1,5 +1,5 @@
-#ifndef INCLUDE_DI_FINALIZE_HPP
-#define INCLUDE_DI_FINALIZE_HPP
+#ifndef INCLUDE_DI_FINALISE_HPP
+#define INCLUDE_DI_FINALISE_HPP
 
 #include "di/alias.hpp"
 #include "di/context_fwd.hpp"
@@ -45,7 +45,7 @@ namespace detail {
 
 DI_MODULE_EXPORT
 template<class Source, class Target>
-DI_INLINE constexpr auto finalize(Source&, Target& target)
+DI_INLINE constexpr auto finalise(Source&, Target& target)
 {
     constexpr auto accessTags = detail::accessTagsRequiredFromKeys<Source, Target>();
     if constexpr (std::tuple_size_v<decltype(accessTags)> != 0)
@@ -56,18 +56,17 @@ DI_INLINE constexpr auto finalize(Source&, Target& target)
 // If ConsumeKey is false, the first key not needed to acquire access will be included in the alias
 DI_MODULE_EXPORT
 template<bool ConsumeKey = true, class Source, class Target, class Key, class... Keys>
-constexpr auto finalize(Source& source, Target& target, Key const& key, Keys const&... keys)
+constexpr auto finalise(Source& source, Target& target, Key const& key, Keys const&... keys)
 {
     if constexpr (detail::shouldAcquireAccess<Source, Target, Key>())
     {
-        // Allow consuming the key to acquire access as we will not know original source after making the alias
+        // Consume the key to acquire access as we will not know original source after making the alias
         auto& target2 = key.acquireAccess(source, target);
-        return finalize(source, target2, keys...);
+        return finalise(source, target2, keys...);
     }
     else
     {
-        using Env = Source::Environment;
-        using WithEnv = di::WithEnv<Env, Target>;
+        using WithEnv = di::TransferEnv<typename Source::Environment, Target>;
         if constexpr (ConsumeKey)
         {
             using FinalInterface = Key::template Interface<WithEnv>;
@@ -82,4 +81,4 @@ constexpr auto finalize(Source& source, Target& target, Key const& key, Keys con
 
 } // namespace di
 
-#endif // INCLUDE_DI_FINALIZE_HPP
+#endif // INCLUDE_DI_FINALISE_HPP

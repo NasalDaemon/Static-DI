@@ -216,7 +216,7 @@ namespace key {
                 // So that downstream nodes know that the correct thread affinity still needs to be asserted
                 constexpr auto threadId = threadAffinityObtained ? ThreadEnvironment::DynamicThreadId : ThreadEnvironment::AnyThreadId;
                 using Env = Environment::template InsertOrReplace<ThreadEnvironment::WithId<threadId>>;
-                return detail::downCast<di::WithEnv<Env, Target>>(target);
+                return detail::downCast<di::TransferEnv<Env, Target>>(target);
             }
             else
             {
@@ -225,7 +225,7 @@ namespace key {
                     ContextOf<Target>::Info::assertAccessible(target);
 
                 using Env = Environment::template InsertOrReplace<ThreadEnvironment::WithId<ThreadEnvironment::DynamicThreadId>>;
-                return detail::downCast<di::WithEnv<Env, Target>>(target);
+                return detail::downCast<di::TransferEnv<Env, Target>>(target);
             }
         }
 
@@ -351,7 +351,7 @@ DI_MODULE_EXPORT
 template<std::size_t ThreadId>
 constexpr auto& withThread(auto& t)
 {
-    return mergeEnv<ThreadEnvironment::WithId<ThreadId>>(t);
+    return mergeEnvParts<ThreadEnvironment::WithId<ThreadId>>(t);
 }
 
 namespace key {
@@ -418,7 +418,7 @@ namespace key {
 
             using Environment = Source::Environment;
             using Env = Environment::template InsertOrReplace<ThreadEnvironment::WithId<requiredThreadId>>;
-            using WithEnv = di::WithEnv<Env, Target>;
+            using WithEnv = di::TransferEnv<Env, Target>;
             return detail::downCast<Interface<WithEnv, currentThreadId>>(target);
         }
 

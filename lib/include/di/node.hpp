@@ -102,9 +102,9 @@ struct Node
     }
 
     template<class Self, class Key = ContextOf<Self>::Info::DefaultKey>
-    constexpr auto finalize(this Self& self, auto& source, Key const& key = {}, auto const&... keys)
+    constexpr auto finalise(this Self& self, auto& source, Key const& key = {}, auto const&... keys)
     {
-        return ContextOf<Self>::Info::finalize(source, self, key, keys...);
+        return ContextOf<Self>::Info::finalise(source, self, key, keys...);
     }
 
     template<class Self>

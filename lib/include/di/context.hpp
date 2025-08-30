@@ -9,7 +9,7 @@
 #include "di/macros.hpp"
 #include "di/node_fwd.hpp"
 
-#include "di/finalize.hpp"
+#include "di/finalise.hpp"
 #include "di/global_context.hpp"
 #include "di/global_trait.hpp"
 #include "di/key.hpp"
@@ -124,9 +124,9 @@ struct NullContext : detail::ContextBase
         static void implicitDependencyAllowed() = delete;
 
         template<class Source, class Target, class Key = ContextOf<Source>::Info::DefaultKey>
-        DI_INLINE static constexpr auto finalize(Source& source, Target& target, Key const& key = {}, auto const&... keys)
+        DI_INLINE static constexpr auto finalise(Source& source, Target& target, Key const& key = {}, auto const&... keys)
         {
-            return di::finalize(source, target, key, keys...);
+            return di::finalise(source, target, key, keys...);
         }
 
         static constexpr void assertAccessible(auto&) {}

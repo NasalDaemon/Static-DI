@@ -11,7 +11,7 @@
 #include "di/context_fwd.hpp"
 #include "di/defer.hpp"
 #include "di/factory.hpp"
-#include "di/finalize.hpp"
+#include "di/finalise.hpp"
 #include "di/link.hpp"
 #include "di/macros.hpp"
 #include "di/node.hpp"
@@ -227,10 +227,10 @@ template<class Trait>
 struct Union<Options...>::Node<Context>::AsTrait : Node
 {
     template<class Source, class Key = ContextOf<Source>::Info::DefaultKey>
-    constexpr auto finalize(this auto& self, Source& source, Key const& key = {}, auto const&... keys)
+    constexpr auto finalise(this auto& self, Source& source, Key const& key = {}, auto const&... keys)
     {
         // Don't consume the key, as it needs to be applied once we know the active option
-        return di::finalize<false>(source, self, key, keys...);
+        return di::finalise<false>(source, self, key, keys...);
     }
 
     template<class Self, class... Args>

@@ -101,10 +101,10 @@ export namespace di {
     // environment.hpp
     using di::Environment;
     using di::EnvironmentOverlay;
-    using di::EnvironmentComponent;
-    using di::mergeEnv;
+    using di::EnvironmentPart;
+    using di::mergeEnvParts;
     using di::withEnv;
-    using di::WithEnv;
+    using di::TransferEnv;
     // factory.hpp
     using di::WithFactory;
     using di::withFactory;
@@ -113,8 +113,8 @@ export namespace di {
     // function.hpp
     using di::Function;
     using di::FunctionPolicy;
-    // finalize.hpp
-    using di::finalize;
+    // finalise.hpp
+    using di::finalise;
     // global_context.hpp
     using di::ContextHasGlobal;
     using di::ContextHasGlobalTrait;

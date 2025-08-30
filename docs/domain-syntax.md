@@ -113,6 +113,16 @@ domain CustomerDomain
     gw --> Accounts
 }
 ```
+> [![ShopDomain](domain-syntax.svg)](domain-syntax.dot)
+<span style="color:blue">trait::CustomerRequest</span>
+<span style="color:red">trait::CustomerResponse</span>
+<span style="color:green">trait::DeliveryRequest</span>
+<span style="color:orange">trait::DeliveryResponse</span>
+<span style="color:purple">trait::OrderRequest</span>
+<span style="color:brown">trait::OrderResponse</span>
+<span style="color:gray">trait::OrderCancel</span>
+<span style="color:darkgoldenrod">trait::CustomerAccounts</span>
+<span style="color:darkgreen">trait::CustomerRegulations</span>
 
 Below is an example of the nexus-node for `ShopDomain`. In handwritten C++ code, it explicitly orchestrates multiple sub-`domain`s in order to complete an `OrderRequest`. This is much more desirable compared to the alternative pipeline approach, i.e., using a chain of nodes, each of which would take responsibility for completing a part of the request. By spreading out the responsibility across multiple nodes, a chain of nodes makes it fundamentally unclear which node has ownership of: (1) completing the request and (2) producing the response. Pipelines tend to be difficult to test for correctness, as one often needs to construct large sections of the pipeline, if not the whole thing, to get meaningful behaviour worth testing. This tight coupling necessitates integration-style testing of the pipeline and prohibits granular unit testing.
 
