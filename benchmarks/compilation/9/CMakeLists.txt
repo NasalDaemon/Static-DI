@@ -10,26 +10,10 @@ if(DI_BUILD_LTO)
     set_property(TARGET di_bench_compile9 PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
 endif()
 
+file(GLOB NODE_IXX_FILES "nodes/*.ixx")
 target_sources(di_bench_compile9
     PUBLIC FILE_SET CXX_MODULES FILES
-        nodes/node1.ixx
-        nodes/node1.impl.ixx
-        nodes/node2.ixx
-        nodes/node2.impl.ixx
-        nodes/node3.ixx
-        nodes/node3.impl.ixx
-        nodes/node4.ixx
-        nodes/node4.impl.ixx
-        nodes/node5.ixx
-        nodes/node5.impl.ixx
-        nodes/node6.ixx
-        nodes/node6.impl.ixx
-        nodes/node7.ixx
-        nodes/node7.impl.ixx
-        nodes/node8.ixx
-        nodes/node8.impl.ixx
-        nodes/node9.ixx
-        nodes/node9.impl.ixx
+        ${NODE_IXX_FILES}
 )
 
 target_generate_di_src(di_bench_compile9

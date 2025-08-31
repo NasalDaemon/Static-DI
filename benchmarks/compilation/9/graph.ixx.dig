@@ -10,16 +10,6 @@ import di.bench.compile9.node7;
 import di.bench.compile9.node8;
 import di.bench.compile9.node9;
 
-import di.bench.compile9.trait.trait1;
-import di.bench.compile9.trait.trait2;
-import di.bench.compile9.trait.trait3;
-import di.bench.compile9.trait.trait4;
-import di.bench.compile9.trait.trait5;
-import di.bench.compile9.trait.trait6;
-import di.bench.compile9.trait.trait7;
-import di.bench.compile9.trait.trait8;
-import di.bench.compile9.trait.trait9;
-
 cluster di::bench::compile9::Graph
 {
     node1 = Node1
