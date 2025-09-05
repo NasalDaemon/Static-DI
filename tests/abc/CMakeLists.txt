@@ -22,7 +22,6 @@ target_generate_di_headers(di_tests_abc_lib INCLUDE_DIR headers/include
 
 target_generate_di_src(di_tests_abc_lib
     # PRECOMPILE_HEADERS
-    # ID 1
     # UNITY
     # COMMON_HEADERS
     #     abc/alice.hpp

@@ -67,7 +67,6 @@ set_property(TARGET your_modules_lib PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
 
 # Generate .cpp files for listed nodes and add them to the target
 target_generate_di_src(your_modules_lib
-    [ID unique]                                # needed if target_generate_di_src(...) is used more than once with the same GRAPH_MODULE
     [COMMON_MODULES module.name...]            # modules to import in all generated .cpp files for this graph
     [COMMON_HEADERS path/to/header.hpp...]     # headers to include in all generated .cpp files for this graph
     GRAPH_MODULE your.app.cluster              # module containing the root cluster within which each listed node exists
@@ -116,7 +115,6 @@ set_property(TARGET your_headers_lib PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
 # Generate .cpp files for listed nodes and add them to the target
 target_generate_di_src(your_headers_lib
     [UNITY]                                    # instantiate all nodes in a single .cpp file
-    [ID unique]                                # needed if target_generate_di_src(...) is used more than once with the same GRAPH_HEADER
     [COMMON_HEADERS path/to/header.hpp...]     # other headers to include in all generated .cpp files
     GRAPH_HEADER your/app/cluster.hxx          # header containing the root cluster within which each listed node exists
     GRAPH_TYPE   di::Graph<your::app::Cluster> # the type of the graph within which each listed node has a context
