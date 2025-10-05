@@ -80,7 +80,7 @@ namespace {{ namespace.name }} {
         {% for require in trait.requires %}
         {{ require }}
         {% endfor %}
-        {% for method in trait.methods if not method.is_template %}
+        {% for method in trait.methods if not method.is_template and not method.optional %}
 
         {% macro require_invoke() -%}
             {{ "const_" if method.is_const else "impl_" }}.impl({{ method.name }}_c

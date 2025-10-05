@@ -13,19 +13,24 @@ namespace di {
     // Opaque and strongly-typed version that can only be compared with another instance
     struct Version
     {
-        static constexpr Version fromMacro(unsigned long long version)
+        static consteval Version fromMacro(unsigned long long version)
         {
             return Version(std::in_place, version);
         }
 
-        constexpr explicit Version(unsigned major, unsigned minor = 0, unsigned patch = 0)
+        consteval explicit Version(unsigned major, unsigned minor = 0, unsigned patch = 0)
             : Version(fromMacro(DI_MAKE_VERSION(major, minor, patch)))
-        {}
+        {
+            if (patch >= 100000u)
+                throw "Patch version must be < 100000";
+            if (minor >= 1000u)
+                throw "Minor version must be < 1000";
+        }
 
         auto operator<=>(Version const&) const = default;
 
     private:
-        constexpr Version(std::in_place_t, unsigned long long version) : version(version) {}
+        consteval Version(std::in_place_t, unsigned long long version) : version(version) {}
         unsigned long long version;
     };
 
@@ -57,15 +62,15 @@ namespace di {
         isClang ? Compiler::Clang : isGcc ? Compiler::GCC : Compiler::MSVC,
         Version::fromMacro(DI_COMPILER_VERSION));
 
-    constexpr Compiler clang(unsigned major, unsigned minor = 0, unsigned patch = 0)
+    consteval Compiler clang(unsigned major, unsigned minor = 0, unsigned patch = 0)
     {
         return {Compiler::Clang, Version(major, minor, patch)};
     }
-    constexpr Compiler gcc(unsigned major, unsigned minor = 0, unsigned patch = 0)
+    consteval Compiler gcc(unsigned major, unsigned minor = 0, unsigned patch = 0)
     {
         return {Compiler::GCC, Version(major, minor, patch)};
     }
-    constexpr Compiler msvc(unsigned major, unsigned minor = 0, unsigned patch = 0)
+    consteval Compiler msvc(unsigned major, unsigned minor = 0, unsigned patch = 0)
     {
         return {Compiler::MSVC, Version(major, minor, patch)};
     }

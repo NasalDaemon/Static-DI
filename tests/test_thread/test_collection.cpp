@@ -150,33 +150,21 @@ TEST_CASE("di::Collection using threads")
             .collection{3,
                 [](auto add)
                 {
-                    add(0, DI_EMPLACE(
-                        .node{
-                            .node1{314},
-                            .node2{315},
-                        },
-                        .threadId = 0,
+                    add(0, 0, DI_EMPLACE(
+                        .node1{314},
+                        .node2{315},
                     ));
-                    add(1, DI_EMPLACE(
-                        .node{
-                            .node1{42},
-                            .node2{43},
-                        },
-                        .threadId = 1,
+                    add(1, 1, DI_EMPLACE(
+                        .node1{42},
+                        .node2{43},
                     ));
-                    add(2, DI_EMPLACE(
-                        .node{
-                            .node1{99},
-                            .node2{100},
-                        },
-                        .threadId = 2,
+                    add(2, 2, DI_EMPLACE(
+                        .node1{99},
+                        .node2{100},
                     ));
                 }
             },
-            .outer{
-                .node{101},
-                .threadId = 3,
-            },
+            .outer{3, 101},
         },
     };
 
@@ -184,6 +172,8 @@ TEST_CASE("di::Collection using threads")
 
     auto mainTask = [&]
     {
+        CHECK(scheduler.isCurrentThread(0));
+        CHECK(not scheduler.inExclusiveMode());
         auto& at0 = graph->collection->atId(0);
         auto& at1 = graph->collection->atId(1);
         auto& at2 = graph->collection->atId(2);
@@ -202,7 +192,7 @@ TEST_CASE("di::Collection using threads")
         CHECK(at2->node1.asTrait(trait::outer).get() == 101);
 
         // Cannot get self as peer node
-        CHECK_THROWS_WITH(at0.node.asTrait(trait::inner, future).getPeer(0).get(),
+        CHECK_THROWS_WITH(at0->asTrait(trait::inner, future).getPeer(0).get(),
             "No peer with the given index found");
         CHECK(at0->asTrait(trait::inner, future).getPeer(1).get() == 42);
         CHECK(at0->asTrait(trait::inner, future).getPeer(2).get() == 99);

@@ -168,8 +168,10 @@ namespace detail {
 
         DI_NODE_USE_PUBLIC_MEMBERS(Node)
 
-        DI_INLINE constexpr decltype(auto) visit(this auto& self, auto&& f)
+        template<class Self>
+        DI_INLINE constexpr decltype(auto) visit(this Self& self, auto&& f)
         {
+            ContextOf<Self>::Info::assertVisitable(self);
             return upCast<Node>(self).visit(DI_FWD(f));
         }
 

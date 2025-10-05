@@ -1,4 +1,3 @@
 jinja2 >= 3.1.5
-lark >= 1.2.2
-# Until fix for parser caching is in an officially released version
-lark @ https://github.com/lark-parser/lark/archive/c2e2048bbdb07f6efd0b36252ee90e419e0ee292.zip
+lark >= 1.3
+MarkupSafe >= 2.0

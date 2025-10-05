@@ -2,6 +2,7 @@
 #define INCLUDE_DI_NODE_FWD_HPP
 
 #include "di/detail/concepts.hpp"
+#include "di/empty_types.hpp"
 #include "di/factory.hpp"
 #include "di/macros.hpp"
 #include "di/trait.hpp"
@@ -42,7 +43,7 @@ DI_MODULE_EXPORT
 template<class T>
 concept IsNodeWrapper = requires {
     typename detail::TakesUnaryClassTemplate<T::template Node>;
-} and std::is_empty_v<T>;
+} and IsStateless<T>;
 
 DI_MODULE_EXPORT
 template<IsNode NodeT>
@@ -125,11 +126,20 @@ concept NodeDependenciesSatisfied = requires { typename Node::Depends::template 
 
 namespace detail {
 
+template<class T>
+auto getUnderlyingNode() -> T;
+template<class T>
+requires requires { typename T::Traits::Node; }
+auto getUnderlyingNode() -> T::Traits::Node;
+
+template<class T>
+using UnderlyingNode = decltype(getUnderlyingNode<T>());
+
 template<class Node>
-struct NodeHasTraitsNodePred
+struct NodeHasUnderlyingNodePred
 {
     template<class T>
-    static constexpr bool value = std::is_same_v<typename T::Traits::Node, Node>;
+    static constexpr bool value = std::is_same_v<UnderlyingNode<T>, Node>;
 };
 
 }

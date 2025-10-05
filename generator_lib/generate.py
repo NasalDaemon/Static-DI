@@ -625,6 +625,7 @@ class Method:
         self.return_type: CppType = CppType("decltype(auto)", is_auto=True)
         self.params: list[tuple[CppType, str]] = []
         self.is_const: bool = False
+        self.optional: bool = False
 
     def add_template(self, children):
         for c in children:
@@ -657,7 +658,8 @@ class Method:
             elif c.data == imported('cpp_type'):
                 self.return_type = CppType.from_tree(c)
             elif c.data == imported('method_name'):
-                self.name = c.children[0].value
+                self.optional = c.children[0].type == imported('OPTIONAL_METHOD')
+                self.name = c.children[-1].value
                 if self.name in self.__reserved_names__:
                     raise SyntaxError(f"{get_pos(c)} '{self.name}' cannot be the name of a method, it is reserved for di::TraitView")
             elif c.data == imported('cpp_func_params'):

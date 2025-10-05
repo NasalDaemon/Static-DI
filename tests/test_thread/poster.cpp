@@ -2,13 +2,13 @@ module;
 #include "di/macros.hpp"
 
 #if !DI_IMPORT_STD
+#include <algorithm>
 #include <atomic>
 #include <condition_variable>
 #include <format>
 #include <functional>
 #include <future>
 #include <iostream>
-#include <latch>
 #include <memory>
 #include <mutex>
 #include <print>
@@ -16,6 +16,7 @@ module;
 #include <stdexcept>
 #include <string>
 #include <thread>
+#include <typeindex>
 #include <vector>
 #endif
 
@@ -75,17 +76,22 @@ private:
 
 struct Scheduler::ThreadContext
 {
-    explicit ThreadContext(std::size_t threadId)
-        : threadId(threadId)
+    explicit ThreadContext(Scheduler* scheduler, std::size_t threadId)
+        : scheduler(scheduler), threadId(threadId)
     {
         Thread::setId(threadId);
     }
 
     bool postTask(auto&& task)
     {
+        if (scheduler->isExclusiveMode()) [[unlikely]]
+        {
+            std::println("Scheduler is in exclusive mode, cannot post task to thread {}", threadId);
+            return false;
+        }
         {
             auto lk = std::lock_guard(mtx);
-            if (stop_on_empty) [[unlikely]]
+            if (stopOnEmpty) [[unlikely]]
             {
                 std::println("Thread {} is stopping, cannot post task", threadId);
                 return false;
@@ -100,7 +106,7 @@ struct Scheduler::ThreadContext
 
     void stop()
     {
-        stop_on_empty = true;
+        stopOnEmpty = true;
         cv.notify_one();
     }
 
@@ -114,7 +120,7 @@ struct Scheduler::ThreadContext
 
     bool isCurrentThread() const
     {
-        return threadIdPtr == Thread::getCurrentThreadIdPtr();
+        return threadIdPtr == Thread::getCurrentThreadIdPtr() or scheduler->isExclusiveMode();
     }
 
     ~ThreadContext()
@@ -127,15 +133,35 @@ private:
 
     void run()
     {
-        while (true)
+        // Main thread does not need to call setBusy as it is always busy until the scheduler is stopped
+        State state = threadId == 0
+            ? scheduler->state.load(std::memory_order_acquire)
+            : scheduler->setBusy();
+        if (not state.isBusy()) [[unlikely]]
         {
-            Function<void()> task;
+            auto lk = std::unique_lock(mtx);
+            pauseLoop(lk, state);
+        }
+
+        for (Function<void()> task; true; )
+        {
             {
                 auto lk = std::unique_lock(mtx);
-                cv.wait(lk, [&] { return not tasks.empty() or stop_on_empty; });
 
-                if (stop_on_empty and tasks.empty())
-                    return;
+                if (tasks.empty()) [[unlikely]]
+                {
+                    state = scheduler->setIdle(threadId);
+                    // Enter pause loop to ensure any exclusive tasks are run before potentially stopping
+                    pauseLoop(lk, state);
+                    if (stopOnEmpty) [[unlikely]]
+                    {
+                        if (state.isExclusive() and state.exclusiveThread == threadId)
+                            state = scheduler->setIdle(threadId);
+
+                        break;
+                    }
+                    continue;
+                }
 
                 task = std::move(tasks.front());
                 tasks.pop();
@@ -144,14 +170,94 @@ private:
         }
     }
 
+    [[using DI_IF_GNU_ELSE(gnu)(msvc): noinline, cold]]
+    void pauseLoop(std::unique_lock<std::mutex>& lk, State& state)
+    {
+        do
+        {
+            if (state.isExclusive() and state.exclusiveThread == threadId)
+            {
+                lk.unlock();
+
+                // Since we are the only thread running, we can don't need to use a mutex to read exclusiveTasks
+                while (not scheduler->exclusiveTasks.empty())
+                {
+                    scheduler->exclusiveTasks.front()();
+                    scheduler->exclusiveTasks.pop();
+                }
+
+                state = scheduler->setIdle(threadId);
+                if (not state.isIdle()) [[unlikely]]
+                    throw TerminateSchedulerThreadException(std::format("Unable to set thread {} to idle from exclusive", threadId));
+
+                lk.lock();
+            }
+
+            // Wait until there is work to do, or we are stopping
+            cv.wait(lk, [this] { return not tasks.empty() or stopOnEmpty; });
+
+            state = scheduler->setBusy();
+        } while (not state.isBusy());
+    }
+
+    Scheduler* scheduler;
     std::size_t const threadId;
     void* const threadIdPtr = Thread::getCurrentThreadIdPtr();
     std::mutex mtx;
     std::condition_variable cv;
     std::queue<Function<void()>> tasks;
-    std::atomic<std::latch*> latch;
-    bool stop_on_empty = false;
+    bool stopOnEmpty = false;
 };
+
+auto Scheduler::setIdle(std::size_t const threadId) -> State
+{
+    auto current  = state.load(std::memory_order_relaxed);
+    while (true)
+    {
+        auto next = current;
+        if (next.busyThreads == 0)
+        {
+            if (not next.isExclusive())
+                throw TerminateSchedulerThreadException(std::format("Trying to set thread {} to idle when all threads are already idle and not in exclusive mode", threadId));
+            if (next.exclusiveThread != threadId)
+                throw TerminateSchedulerThreadException(std::format("Trying to set non-exclusive thread {} to idle when all threads are idle", threadId));
+            next.mode = State::Mode::Idle;
+        }
+        else
+        {
+            next.busyThreads--;
+            if (next.busyThreads == 0)
+            {
+                next.mode = State::Mode::Exclusive;
+                next.exclusiveThread = threadId;
+            }
+        }
+
+        if (state.compare_exchange_strong(current, next, std::memory_order_acq_rel))
+            return next;
+    }
+}
+
+auto Scheduler::setBusy() -> State
+{
+    auto current  = state.load(std::memory_order_relaxed);
+    while (true)
+    {
+        if (current.isExclusive())
+            return current;
+        auto next = current;
+        next.busyThreads++;
+        next.mode = State::Mode::Busy;
+
+        if (state.compare_exchange_strong(current, next, std::memory_order_acq_rel))
+            return next;
+    }
+}
+
+bool Scheduler::isExclusiveMode() const
+{
+    return state.load(std::memory_order_relaxed).isExclusive();
+}
 
 bool postTask(std::weak_ptr<Scheduler::ThreadContext> h, Function<void()> f)
 {
@@ -163,7 +269,7 @@ bool postTask(std::weak_ptr<Scheduler::ThreadContext> h, Function<void()> f)
 
 Scheduler::Scheduler()
 {
-    mainThreadContext = std::make_shared<ThreadContext>(0);
+    mainThreadContext = std::make_shared<ThreadContext>(this, 0);
     threadContexts.push_back(mainThreadContext);
     // signal(SIGINT, [](int)
     // {
@@ -180,7 +286,9 @@ void Scheduler::resetMainThread()
 
 bool Scheduler::isCurrentThread(std::size_t threadId) const
 {
-    return getThread(threadId).lock()->isCurrentThread();
+    if (auto c = getThread(threadId).lock())
+        return c->isCurrentThread();
+    return isExclusiveMode();
 }
 
 std::string Scheduler::currentThreadDetails()
@@ -192,7 +300,7 @@ auto Scheduler::addThread(std::weak_ptr<ThreadContext> previous) -> std::weak_pt
 {
     if (sealed.load(std::memory_order_acquire))
         throw std::runtime_error("Cannot add threads after some have started");
-    auto lk = std::lock_guard(threadsMtx);
+    auto lk = std::lock_guard(mtx);
     if (auto p = previous.lock())
     {
         threadContexts.emplace_back(previous);
@@ -206,7 +314,7 @@ auto Scheduler::addThread(std::weak_ptr<ThreadContext> previous) -> std::weak_pt
             std::shared_ptr<ThreadContext> threadContext;
             try
             {
-                threadContext = std::make_shared<ThreadContext>(threadId);
+                threadContext = std::make_shared<ThreadContext>(this, threadId);
                 threadContexts.emplace_back(threadContext);
                 newTc.set_value(threadContext);
             }
@@ -218,27 +326,34 @@ auto Scheduler::addThread(std::weak_ptr<ThreadContext> previous) -> std::weak_pt
             // Wait until threads have been set up before starting any work
             sealed.wait(false, std::memory_order_acquire);
 
-            auto guard = Defer(
-                [&]
+            while (true)
+            {
+                try
                 {
-                    std::latch* platch = nullptr;
-                    while (platch == nullptr)
-                    {
-                        stop_latch.wait(nullptr, std::memory_order_relaxed);
-                        platch = stop_latch.load(std::memory_order_acquire);
-                    }
-                    platch->count_down();
-                });
-
-            try
-            {
-                threadContext->run();
-            }
-            catch(...)
-            {
-                threadContext.reset();
-                stopAll();
-                throw;
+                    threadContext->run();
+                    break;
+                }
+                catch(TerminateSchedulerThreadException& e)
+                {
+                    std::println("Thread {} terminating on request: {}", threadContext->threadId, e.what());
+                    threadContext.reset();
+                    break;
+                }
+                catch(StopSchedulerException& e)
+                {
+                    std::println("Thread {} stopping all threads on request: {}", threadContext->threadId, e.what());
+                    stopAll();
+                    // Allow thread to exit cleanly
+                    continue;
+                }
+                catch(std::exception& e)
+                {
+                    std::println("Unhandled exception in thread {}: {}", threadContext->threadId, e.what());
+                }
+                catch(...)
+                {
+                    std::println("Unhandled unknown exception in thread {}", threadContext->threadId);
+                }
             }
         }
     };
@@ -263,7 +378,7 @@ void Scheduler::startThreads()
 
 void Scheduler::stopAll()
 {
-    auto lk = std::lock_guard(threadsMtx);
+    auto lk = std::lock_guard(mtx);
     for (auto& tc : threadContexts)
         if (auto c = tc.lock())
             c->stop();
@@ -275,17 +390,57 @@ bool Scheduler::postTask(std::size_t threadId, Function<void()> task)
     return thread::postTask(getThread(threadId), std::move(task));
 }
 
+bool Scheduler::postExclusiveTask(Function<void()> task)
+{
+    if (isExclusiveMode()) [[unlikely]]
+    {
+        task();
+        return true;
+    }
+    std::lock_guard lg(mtx);
+    exclusiveTasks.push(std::move(task));
+    return true;
+}
+
+bool Scheduler::postExclusiveTask(std::type_index ti, Function<void()> task)
+{
+    if (isExclusiveMode()) [[unlikely]]
+    {
+        if (not std::ranges::contains(exclusiveTaskTags, ti))
+            task();
+        return true;
+    }
+    std::lock_guard lg(mtx);
+    if (not std::ranges::contains(exclusiveTaskTags, ti))
+    {
+        exclusiveTaskTags.push_back(ti);
+        exclusiveTasks.push(
+            [this, ti, task = std::move(task)]() mutable
+            {
+                auto const clear = di::Defer([this, ti]{ std::erase(exclusiveTaskTags, ti); });
+                task();
+            });
+    }
+    return true;
+}
+
 void Scheduler::run()
 {
     if (not Thread::isMainThread())
         throw std::runtime_error("run must be run from the main thread");
-    std::latch latch(threads.size());
-    stop_latch.store(&latch, std::memory_order_release);
-    stop_latch.notify_all();
-    mainThreadContext->run();
-    latch.wait();
-    threads.clear();
-    threadContexts.clear();
+    startThreads();
+    if (not threadContexts.empty())
+    {
+        mainThreadContext->run();
+        threads.clear();
+        // Set state to exclusive mode as all threads are now stopped
+        state.store({
+            .busyThreads = 0,
+            .exclusiveThread = 0,
+            .mode = State::Mode::Exclusive
+        }, std::memory_order_release);
+        threadContexts.clear();
+    }
 }
 
 }

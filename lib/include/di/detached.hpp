@@ -2,6 +2,7 @@
 #define INCLUDE_DI_DETACHED_HPP
 
 #include "di/detail/cast.hpp"
+#include "di/empty_types.hpp"
 #include "di/macros.hpp"
 #include "di/node_fwd.hpp"
 #include "di/context_fwd.hpp"
@@ -35,7 +36,7 @@ DI_MODULE_EXPORT
 template<class Node, IsDetachedInterface Interface>
 struct DetachedImpl : Interface, private Node
 {
-    static_assert(std::is_empty_v<Interface>);
+    static_assert(IsStateless<Interface>);
 
     DI_NODE_USE_PUBLIC_MEMBERS(Node)
     using Types = Node::Types;
@@ -47,7 +48,7 @@ struct DetachedImpl : Interface, private Node
     template<class Self>
     constexpr decltype(auto) visit(this Self& self, auto&&... args)
     {
-        ContextOf<Self>::Info::assertAccessible(self);
+        ContextOf<Self>::Info::assertVisitable(self);
         return self.Node::visit(DI_FWD(args)...);
     }
 

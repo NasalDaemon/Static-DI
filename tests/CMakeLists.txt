@@ -32,12 +32,14 @@ add_executable(di_tests_mock
 
 if(NOT CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "15.1.0")
     add_executable(di_tests_thread
-        test_thread/test_thread.cpp
         test_thread/test_collection.cpp
+        test_thread/test_thread.cpp
+        test_thread/test_union.cpp
     )
     target_generate_di_modules(di_tests_thread
         GLOB test_thread
         EMBED test_thread/test_collection.cpp
+        EMBED test_thread/test_union.cpp
     )
     target_sources(di_tests_thread
         PUBLIC FILE_SET CXX_MODULES FILES

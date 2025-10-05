@@ -38,7 +38,7 @@ namespace detail {
                 node.asTrait(Trait{})->visit(visitor);
         }
 
-        Visitor&& visitor;
+        Visitor const& visitor;
     };
 }
 
@@ -65,7 +65,7 @@ struct Cluster
     requires IsRootContext<ContextParameterOf<Self>>
     void visitTrait(this Self& self, Trait, Visitor&& visitor)
     {
-        self.visit(detail::TraitVisitor<Trait, Visitor>{DI_FWD(visitor)});
+        self.visit(detail::TraitVisitor<Trait, std::remove_cvref_t<Visitor>>{visitor});
     }
 
     template<IsTrait Trait, class Self, class Key = ContextParameterOf<Self>::Info::DefaultKey>
@@ -73,6 +73,12 @@ struct Cluster
     {
         auto target = cluster.getNode(detail::AsRef{}, trait);
         return makeTraitView(cluster, target, trait, key, keys...);
+    }
+
+    template<IsTrait Trait, class Self, class Key = ContextParameterOf<Self>::Info::DefaultKey>
+    constexpr IsTraitViewOf<Trait, Key> auto getGlobal(this Self& cluster, Trait trait = {}, Key key = {}, auto const&... keys)
+    {
+        return cluster.getNode(di::global(trait), key, keys...);
     }
 
     template<IsTrait Trait, class Self>
@@ -126,6 +132,14 @@ struct Cluster
 };
 
 DI_MODULE_EXPORT
+template<class T>
+concept IsCluster = std::derived_from<T, Cluster>;
+
+DI_MODULE_EXPORT
+template<class T>
+concept IsRootCluster = IsCluster<T> and IsRootContext<ContextParameterOf<T>>;
+
+DI_MODULE_EXPORT
 struct DomainParams
 {
     std::size_t MaxDepth = 3;
@@ -144,9 +158,23 @@ struct Domain : Cluster
     }
 };
 
+namespace detail {
+    template<class T>
+    inline constexpr bool isDomain = false;
+    template<DomainParams Params>
+    constexpr bool isDomain<Domain<Params>> = true;
+
+    template<class T>
+    concept IsDomain = isDomain<std::remove_cvref_t<T>>;
+}
+
 DI_MODULE_EXPORT
 template<class T>
-concept IsCluster = std::derived_from<T, Cluster>;
+concept IsDomain = IsCluster<T> and detail::IsDomain<T>;
+
+DI_MODULE_EXPORT
+template<class T>
+concept IsRootDomain = IsDomain<T> and IsRootCluster<T>;
 
 } // namespace di
 

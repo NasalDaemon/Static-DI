@@ -3,6 +3,8 @@
 
 #include "di/detail/as_ref.hpp"
 #include "di/detail/select.hpp"
+#include "di/cluster.hpp"
+#include "di/empty_types.hpp"
 #include "di/factory.hpp"
 #include "di/global_context.hpp"
 #include "di/global_trait.hpp"
@@ -10,7 +12,10 @@
 #include "di/macros.hpp"
 #include "di/node.hpp"
 #include "di/traits.hpp"
+#include "di/traits/dynamic_node.hxx"
 #include "di/virtual_fwd.hpp"
+#include "di/traits/dynamic_node.hpp"
+#include "di/traits/scheduler.hpp"
 
 #if !DI_IMPORT_STD
 #include <concepts>
@@ -29,13 +34,11 @@ struct detail::INodeBase : Node
     requires IsVirtualContext<ContextOf<Self>>
     constexpr auto exchangeImpl(this Self& self, auto&&... args)
     {
-        static_assert(not std::is_const_v<Self>);
+        static_assert(not std::is_const_v<Self>, "Cannot exchange implementation of a node in a const context");
         return ContextOf<Self>::template exchangeImpl<T>(self, DI_FWD(args)...);
     }
 
     constexpr auto* asInterface(this auto& self) { return std::addressof(self); }
-
-    virtual void onGraphConstructed() {}
 };
 
 DI_MODULE_EXPORT
@@ -64,6 +67,9 @@ struct Virtual
             }
             Node* getVirtualHost() const { return virtualHost; }
             auto* getGlobalNode() const { return globalNode.get(); }
+
+            virtual void onGraphConstructed() = 0;
+            virtual void visitExchangeImpl() = 0;
 
         private:
             Node* virtualHost;
@@ -158,6 +164,21 @@ struct Virtual
                 return self.ImplBase::getGlobalNode();
             }
 
+            void onGraphConstructed() final
+            {
+                impl.visit(detail::OnGraphConstructedVisitor{});
+            }
+
+            void visitExchangeImpl() final
+            {
+                auto visitor = []<class DN>(DN node)
+                {
+                    if constexpr (IsDynamicContext<ContextOf<DN>>)
+                        node.exchangeImpl();
+                };
+                impl.visit(detail::TraitVisitor<trait::DynamicNode, decltype(visitor)>{visitor});
+            }
+
             void setVirtualHost(Node* newVirtualHost) final
             {
                 ImplBase::setVirtualHost(newVirtualHost);
@@ -176,13 +197,26 @@ struct Virtual
         struct AsInterface;
 
         template<class Trait>
+        struct Resolver;
+
+        template<class Trait>
         requires (... || detail::TraitsHasTrait<typename Interfaces::Traits, Trait>)
-        struct Resolver
+        struct Resolver<Trait>
         {
             using TraitInterface = InterfaceOf<Trait>;
             using Types = TraitInterface::Traits::template ResolveTypes<Trait>;
             using Interface = AsInterface<TraitInterface>;
             DI_ASSERT_IMPLEMENTS(TraitInterface, Types, Trait);
+        };
+
+        // di::Virtual implements di::trait::DynamicNode::exchangeImpl by visiting all contained nodes
+        // that also implement di::trait::DynamicNode and calling their exchangeImpl method.
+        // This allows nested di::Virtual graphs to exchange their implementation in a single pass.
+        template<std::same_as<trait::DynamicNode> Trait>
+        struct Resolver<Trait>
+        {
+            using Types = EmptyTypes;
+            using Interface = Node;
         };
 
     public:
@@ -208,14 +242,22 @@ struct Virtual
         requires (... and std::derived_from<ImplInterface<T>, Interfaces>)
         constexpr ImplOf<T>& emplace(auto&&... args)
         {
+            if constexpr (ContextHasGlobalTrait<Context, Global<trait::Scheduler>>)
+            {
+                if (not getGlobal(trait::scheduler).inExclusiveMode())
+                    throw std::runtime_error("di::Union::emplace can only be called when the scheduler is in exclusive mode");
+            }
+
             if constexpr (detail::injectVirtualHost<T>)
             {
                 auto [next, prev] = init<T>(this, DI_FWD(args)...);
+                onGraphConstructed();
                 return next->impl;
             }
             else
             {
                 auto [next, prev] = init<T>(DI_FWD(args)...);
+                onGraphConstructed();
                 return next->impl;
             }
         }
@@ -232,7 +274,12 @@ struct Virtual
 
         constexpr void onGraphConstructed()
         {
-            get<0>(interfaces)->onGraphConstructed();
+            implBase->onGraphConstructed();
+        }
+
+        constexpr void impl(trait::DynamicNode::exchangeImpl)
+        {
+            implBase->visitExchangeImpl();
         }
 
     protected:
@@ -250,20 +297,58 @@ struct Virtual
             return std::pair(p, std::exchange(implBase, std::unique_ptr<ImplBase>(p)));
         }
 
-        template<IsNodeHandle T>
-        constexpr auto exchangeImpl(auto& current, auto&&... args)
+        // RAII placeholder when exchange is deferred via scheduler
+        struct ExchangedDeferred
         {
-            if (get<0>(interfaces) != current.asInterface())
+            constexpr KeepAlive keepAlive() { return {}; }
+            constexpr operator KeepAlive() { return keepAlive(); }
+        };
+
+        template<IsNodeHandle T, class Current>
+        constexpr auto exchangeImpl(Current& current, auto&&... args)
+        {
+            if (get<0>(interfaces) != current.asInterface()) [[unlikely]]
                 throw std::runtime_error("Not exchanging the current interface");
 
+            if constexpr (ContextHasGlobalTrait<Context, Global<trait::Scheduler>>)
+            {
+                static_assert(ContextHasTrait<ContextOf<Current>, trait::DynamicNode>,
+                    "Node inside di::Virtual can only exchange its implementation with a scheduler when it has the di::trait::DynamicNode trait");
+                auto scheduler = this->getGlobal(trait::scheduler);
+                if (not scheduler.inExclusiveMode())
+                {
+                    // Defer actual exchange until exclusive mode; schedule a pass over dynamic nodes.
+                    scheduler.postExclusiveTask(
+                        trait::DynamicNode::exchangeImpl{},
+                        Context{}.template getParentNode<typename Context::Root::Context>(*this),
+                        [](auto& graph)
+                        {
+                            graph.visitTrait(
+                                trait::dynamicNode,
+                                []<class DN>(DN dynamicNode)
+                                {
+                                    if constexpr (IsDynamicContext<ContextOf<DN>>)
+                                    {
+                                        dynamicNode.exchangeImpl();
+                                    }
+                                });
+                        }
+                    );
+                    // The returned Exchanged object is deferred; callers must check deferred()/empty() before using getNext().
+                    return Exchanged(nullptr, nullptr);
+                }
+            }
+
+            // Immediate (exclusive or no scheduler) path
             auto [next, prev] = init<T>(DI_FWD(args)...);
-            return Exchanged(next->impl, std::move(prev));
+            onGraphConstructed();
+            return Exchanged(std::addressof(next->impl), std::move(prev));
         }
 
         template<class Next>
         struct [[nodiscard, maybe_unused]] Exchanged
         {
-            constexpr Exchanged(Next& next, std::unique_ptr<ImplBase> previous)
+            constexpr Exchanged(Next* next, std::unique_ptr<ImplBase> previous)
                 : next(next)
                 , previous(std::move(previous))
             {}
@@ -278,9 +363,14 @@ struct Virtual
 
             // Access to next only allowed when ExchangeHandle is an lvalue to ensure that
             // previous lifetime has at least been extended to the block scope of the exchangeImpl caller
-            constexpr Next& getNext() const & { return next; }
+            constexpr Next* getNext() const & { return next; }
+
+            constexpr bool empty() const { return next == nullptr; }
+            constexpr bool deferred() const { return empty(); }
+            constexpr operator bool() const { return not empty(); }
+
         private:
-            Next& next;
+            Next* next;
             std::unique_ptr<ImplBase> previous;
         };
     };
@@ -311,6 +401,6 @@ struct Virtual<Interfaces...>::Node<Context>::AsInterface : Node
     }
 };
 
-}
+} // namespace di
 
 #endif // INCLUDE_DI_VIRTUAL_HPP

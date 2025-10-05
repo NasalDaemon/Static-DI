@@ -5,6 +5,7 @@
 #include "di/detail/compress.hpp"
 
 #include "di/context_fwd.hpp"
+#include "di/empty_types.hpp"
 #include "di/global_trait.hpp"
 #include "di/macros.hpp"
 #include "di/node_fwd.hpp"
@@ -19,7 +20,7 @@ DI_MODULE_EXPORT
 template<class T>
 concept IsInfoMapper = requires {
     typename detail::TakesUnaryClassTemplate<T::template MapInfo>;
-} and std::is_empty_v<T>;
+} and IsStateless<T>;
 
 namespace detail {
     template<class Context, IsInfoMapper InfoMapper>
@@ -32,7 +33,7 @@ namespace detail {
             return context.getNode(node, trait);
         }
 
-        using Info = InfoMapper::template MapInfo<typename Context::Info>;
+        using Info = InfoMapper::template MapInfo<Context>;
 
         static_assert(std::derived_from<Info, typename Context::Info>);
     };

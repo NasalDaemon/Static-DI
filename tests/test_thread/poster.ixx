@@ -6,11 +6,12 @@ module;
 #include <cstddef>
 #include <format>
 #include <future>
-#include <latch>
 #include <memory>
 #include <mutex>
+#include <queue>
 #include <thread>
 #include <type_traits>
+#include <typeindex>
 #include <utility>
 #include <vector>
 #endif
@@ -28,11 +29,36 @@ private:
     std::shared_ptr<ThreadContext> mainThreadContext{};
     std::vector<std::weak_ptr<ThreadContext>> threadContexts{};
     std::vector<std::jthread> threads{};
-    std::mutex threadsMtx{};
+    std::mutex mtx{};
     std::atomic_bool sealed = false;
-    std::atomic<std::latch*> stop_latch{nullptr};
+
+    struct State
+    {
+        enum class Mode : std::uint32_t
+        {
+            Busy, Idle, Exclusive,
+        };
+
+        // Initially one busy thread (the main thread)
+        std::uint16_t busyThreads = 1;
+        std::uint16_t exclusiveThread = 0;
+        Mode mode = Mode::Busy;
+
+        bool isBusy() const { return mode == Mode::Busy; }
+        bool isIdle() const { return mode == Mode::Idle; }
+        bool isExclusive() const { return mode == Mode::Exclusive; }
+    };
+
+    std::atomic<State> state;
+    static_assert(decltype(state)::is_always_lock_free);
+
+    std::queue<Function<void()>> exclusiveTasks;
+    std::vector<std::type_index> exclusiveTaskTags;
 
     static void resetMainThread();
+
+    State setBusy();
+    State setIdle(std::size_t threadId);
 
 public:
     Scheduler();
@@ -41,6 +67,8 @@ public:
 
     bool isCurrentThread(std::size_t threadId) const;
     static std::string currentThreadDetails();
+    bool isExclusiveMode() const;
+
     std::weak_ptr<ThreadContext> addThread(std::weak_ptr<ThreadContext> previous = {});
     std::weak_ptr<ThreadContext> getThread(std::size_t id) const;
     void startThreads();
@@ -48,6 +76,8 @@ public:
     void run();
 
     [[nodiscard]] bool postTask(std::size_t threadId, Function<void()> task);
+    [[nodiscard]] bool postExclusiveTask(Function<void()> task);
+    [[nodiscard]] bool postExclusiveTask(std::type_index tag, Function<void()> task);
 
     void stopAll();
 
@@ -75,6 +105,7 @@ struct FireAndForget : di::key::ThreadPost<FireAndForget>
                 return scheduler.postTask(requiredThreadId, DI_FWD(task));
             }
         }
+
         // Already known to be on correct thread
         task();
         return true;

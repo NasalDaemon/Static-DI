@@ -2,7 +2,9 @@
 #define INCLUDE_DI_FUNCTION_HPP
 
 #include "di/detail/select.hpp"
+
 #include "di/compiler.hpp"
+#include "di/empty_types.hpp"
 #include "di/macros.hpp"
 
 #if !DI_IMPORT_STD
@@ -23,10 +25,14 @@ struct FunctionPolicy
     auto operator<=>(FunctionPolicy const&) const = default;
 };
 
+DI_MODULE_EXPORT
+template<class F, class... Args>
+concept StatelessInvocable = IsStateless<F> and std::invocable<F, Args...>;
+
 // Lightweight function wrapper that can be used to store any callable object in a single pointer
 // It supports mutable and/or immutable calls, and can be made copyable
 // Takes a function signature as a template parameter, e.g. `Function<void(int)>`
-// Stores a single pointer: sizeof(Function<void(int)>) == sizeof(void*)
+// Stores a single pointer: `sizeof(Function<void(int)>) == sizeof(void*)`
 // Default policy is a move-only object with only a mutable call
 DI_MODULE_EXPORT
 template<class F, FunctionPolicy = FunctionPolicy{.copyable=false, .mutableCall=true, .constCall=false}>
@@ -52,6 +58,7 @@ struct Function<R(Args...), Policy_>
     }
 
     template<std::invocable<Args...> F>
+    requires (not std::same_as<std::remove_cvref_t<F>, Function>)
     constexpr Function(F&& f) : callable{new Callable<std::remove_cvref_t<F>>(DI_FWD(f))}
     {}
 
@@ -65,7 +72,9 @@ struct Function<R(Args...), Policy_>
         return callable->immutableFunction(callable.get(), DI_FWD(args)...);
     }
 
-    constexpr operator bool() const { return callable; }
+    constexpr operator bool() const { return callable != nullptr; }
+
+    constexpr void reset() { callable.reset(); }
 
 private:
     struct CallableBase
@@ -91,7 +100,7 @@ private:
     struct Callable : CallableBase
     {
         constexpr explicit Callable(auto&& f)
-            : CallableBase{.destroy{[](CallableBase* base) -> void { delete static_cast<Callable<F>*>(base); }}}
+            : CallableBase{.destroy{[](CallableBase* base) -> void { delete static_cast<Callable*>(base); }}}
             , f(DI_FWD(f))
         {
             if constexpr (Policy.mutableCall)
@@ -100,9 +109,9 @@ private:
                     [](CallableBase* base, Args... args) -> R
                     {
                         if constexpr (compiler < gcc(15))
-                            return std::invoke(static_cast<Callable<F>*>(base)->f, DI_FWD(args)...);
+                            return std::invoke(static_cast<Callable*>(base)->f, DI_FWD(args)...);
                         else
-                            return std::invoke_r<R>(static_cast<Callable<F>*>(base)->f, DI_FWD(args)...);
+                            return std::invoke_r<R>(static_cast<Callable*>(base)->f, DI_FWD(args)...);
                     };
             }
             if constexpr (Policy.constCall)
@@ -111,9 +120,9 @@ private:
                     [](CallableBase const* base, Args... args) -> R
                     {
                         if constexpr (compiler < gcc(15))
-                            return std::invoke(static_cast<Callable<F> const*>(base)->f, DI_FWD(args)...);
+                            return std::invoke(static_cast<Callable const*>(base)->f, DI_FWD(args)...);
                         else
-                            return std::invoke_r<R>(static_cast<Callable<F> const*>(base)->f, DI_FWD(args)...);
+                            return std::invoke_r<R>(static_cast<Callable const*>(base)->f, DI_FWD(args)...);
                     };
             }
             if constexpr (Policy.copyable)
@@ -121,7 +130,7 @@ private:
                 this->copy =
                     [](CallableBase const* base) -> CallableBase*
                     {
-                        return new Callable<F>(*static_cast<Callable<F> const*>(base));
+                        return new Callable(*static_cast<Callable const*>(base));
                     };
             }
         }

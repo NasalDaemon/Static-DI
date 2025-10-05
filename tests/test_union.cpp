@@ -143,7 +143,7 @@ TEST_CASE("di::Union")
     {
         di::Defer keepAlive;
         {
-            auto d = cat.onion->get<0>().exchangeImpl<Dog>();
+            auto d = cat.onion->getIf<0>()->exchangeImpl<Dog>();
             CHECK(cat.onion.asTrait(trait::Name{}).get() == 141);
             keepAlive = std::move(d);
         }

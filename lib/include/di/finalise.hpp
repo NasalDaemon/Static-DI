@@ -44,7 +44,7 @@ namespace detail {
 } // namespace detail
 
 DI_MODULE_EXPORT
-template<class Source, class Target>
+template<bool ConsumeKey = true, class Source, class Target>
 DI_INLINE constexpr auto finalise(Source&, Target& target)
 {
     constexpr auto accessTags = detail::accessTagsRequiredFromKeys<Source, Target>();
@@ -62,7 +62,7 @@ constexpr auto finalise(Source& source, Target& target, Key const& key, Keys con
     {
         // Always consume the key to acquire access as we will lose the original source after finalising
         auto& target2 = key.acquireAccess(source, target);
-        return finalise(source, target2, keys...);
+        return finalise<ConsumeKey>(source, target2, keys...);
     }
     else
     {

@@ -28,11 +28,12 @@ TEST_CASE("TestThread")
             .a{1},
             .b{2},
             .c{3},
-            .dynA{.node{4}, .threadId = 1},
-            .dynB{.node{5}, .threadId = 2},
-            .dynC{.node{6}, .threadId = 3},
+            .dynA{1, 4},
+            .dynB{2, 5},
+            .dynC{3, 6},
         },
     };
+    g.onConstructed();
 
     CHECK(1 == di::withThread<1>(g->a)->i);
 
@@ -48,10 +49,10 @@ TEST_CASE("TestThread")
             CHECK(2 == g->a.asTrait(trait::a, future).getB().get());
 
             // Getting a detached node on the wrong thread should now throw
-            auto aOnThread0 = g->dynA.node.asTrait(trait::a);
+            auto aOnThread0 = g->dynA->asTrait(trait::a);
             // Accessing the state will throw an exception
             CHECK_THROWS_WITH(aOnThread0.getA(), "Access denied to node with thread affinity 1 from current thread: ID: 0");
-            CHECK(5 == g->dynA.node.asTrait(trait::a, future).getB().get());
+            CHECK(5 == g->dynA->asTrait(trait::a, future).getB().get());
 
             scheduler.stop();
          };

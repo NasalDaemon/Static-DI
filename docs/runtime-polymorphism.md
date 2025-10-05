@@ -242,13 +242,17 @@ struct Sheep final : IAnimal
     void impl(trait::Animal::evolve) override
     {
         auto handle = exchangeImpl<Goat>();
+        // In the context of a global scheduler, this exchange will be deferred until
+        // all scheduler tasks have been drained and the scheduler is in exclusive mode (idle).
+        // For the sake of simplicity, we assume there is no global scheduler here.
+        assert(not handle.deferred());
 
         // This node is still alive in a detached state
         // It can call into itself and other nodes, but other nodes can't reach it
         std::println(asTrait(trait::animal).speak());
         // prints: barbar or baa!
 
-        std::println(handle.getNext().asTrait(trait::animal).speak());
+        std::println(handle.getNext()->asTrait(trait::animal).speak());
         // prints: meeh!
     }
 
@@ -275,13 +279,14 @@ struct Goat final : IAnimal
     void impl(trait::Animal::evolve) override
     {
         auto handle = exchangeImpl<Cow>(false);
+        assert(not handle.deferred());
 
         // This node is still alive in a detached state
         // It can call into itself and other nodes, but other nodes can't reach it
         std::println(asTrait(trait::animal).speak());
         // prints: meeh!
 
-        std::println(handle.getNext().asTrait(trait::animal).speak());
+        std::println(handle.getNext()->asTrait(trait::animal).speak());
         // prints: mmmooooo!
     }
 };
@@ -330,13 +335,14 @@ struct IAnimalFacade final : IAnimal
     void impl(trait::Animal::evolve) override
     {
         auto handle = exchangeImpl<Cow>(true);
+        assert(not handle.deferred());
 
         // This node is still alive in a detached state
         // It can call into itself and other nodes, but other nodes can't reach it
         std::println(asTrait(trait::animal).speak());
         // prints: yip! (assuming it adapted Fox)
 
-        std::println(handle.getNext().asTrait(trait::animal).speak());
+        std::println(handle.getNext()->asTrait(trait::animal).speak());
         // prints: moo!
     }
 };

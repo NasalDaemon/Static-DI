@@ -98,8 +98,8 @@ struct AppleEgg
                     CHECK(asTrait(trait::apple).seeds() == 34);
                     auto handle = exchangeImpl<AppleEgg>(11, 3);
                     allowDestroy = false;
-                    REQUIRE(std::addressof(handle.getNext()) != this);
-                    CHECK(handle.getNext().asTrait(trait::apple).seeds() == 47);
+                    REQUIRE(handle.getNext() != this);
+                    CHECK(handle.getNext()->asTrait(trait::apple).seeds() == 47);
                     // Using current node still works, but "re-entry" to this context from apple
                     // will go to the new node that was just emplaced into the graph instead
                     CHECK(asTrait(trait::apple).seeds() == 46);
@@ -146,7 +146,7 @@ struct Bread
             return getNode(trait::egg).yolks() * slices;
         }
 
-        void onGraphConstructed() final
+        void onGraphConstructed()
         {
             CHECK(getGlobal(trait::global).get() == 9);
             CHECK(slices == 314);
@@ -290,7 +290,7 @@ struct BreadFacade
                 auto handle = exchangeImpl<di::Adapt<StaticBread, BreadFacade>>();
                 int expected = 99 + 42 + 1;
                 CHECK(asTrait(trait::bread).slices() == expected);
-                CHECK(handle.getNext().asTrait(trait::bread).slices() == expected);
+                CHECK(handle.getNext()->asTrait(trait::bread).slices() == expected);
                 return true;
             }
             return false;

@@ -13,6 +13,7 @@
 #include "di/key.hpp"
 #include "di/macros.hpp"
 #include "di/node.hpp"
+#include "di/node_fwd.hpp"
 #include "di/traits/peer.hxx"
 #include "di/traits.hpp"
 
@@ -103,10 +104,10 @@ struct Collection
             template<class Caller, class Target>
             constexpr auto getPeers(detail::MemberPtr<Element, Target> elToNodeMemPtr) const
             {
-                using CallerNode = Caller::Traits::Node;
-                using TargetNode = Target::Traits::Node;
+                using CallerNode = detail::UnderlyingNode<Caller>;
+                using TargetNode = detail::UnderlyingNode<Target>;
                 // Remove dynamic environment components from Caller, as the peers are independent instances
-                using Environment = Caller::Environment::RemoveDynamic;
+                using Environment = Caller::Environment::template RemoveDynamic<>;
                 using NodeState = TransferEnv<Environment, di::ContextToNodeState<detail::Decompress<ContextOf<Caller>>>>;
                 static_assert(std::is_same_v<CallerNode, TargetNode>);
                 return std::as_const(collection->elements)
@@ -204,6 +205,7 @@ struct Collection
         std::vector<Element> elements;
         std::vector<ID> ids;
 
+        // All elements must be added in one go in the constructor, so this is private
         constexpr void add(ID const& id, auto&&... args)
         {
             // Nodes must not be invalidated by insertions, so the vector must not be resized.
@@ -248,7 +250,7 @@ struct Collection
 
         [[nodiscard]] constexpr bool hasId(ID const& id) const
         {
-            return std::find(ids.begin(), ids.end(), id) != ids.end();
+            return std::ranges::contains(ids, id);
         }
 
         [[nodiscard]] constexpr auto* getId(this auto& self, ID const& id)

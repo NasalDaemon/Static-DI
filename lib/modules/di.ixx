@@ -37,8 +37,11 @@ export namespace di {
     }
     // cluster.hpp
     using di::Cluster;
+    using di::IsRootCluster;
     using di::IsCluster;
     using di::Domain;
+    using di::IsDomain;
+    using di::IsRootDomain;
     using di::DomainParams;
     // collection.hpp
     namespace key {
@@ -63,14 +66,17 @@ export namespace di {
     // context_fwd.hpp
     using di::Context;
     using di::IsContext;
+    using di::IsSameContext;
     using di::IsElementContext;
     using di::ContextParameterOf;
     using di::ContextOf;
+    using di::HasContext;
     using di::ContextToNode;
     using di::ContextToNodeState;
     using di::NullContext;
     using di::RootContext;
     using di::IsRootContext;
+    using di::HasContext;
     using di::InlineContext;
     // context.hpp
     using di::ContextHasTrait;
@@ -88,8 +94,15 @@ export namespace di {
     using di::HasDetachedContext;
     // defer.hpp
     using di::Defer;
+    // traits/dynamic_node.hxx
+    using di::IsDynamicContext;
+    namespace trait {
+        using trait::DynamicNode;
+        using trait::dynamicNode;
+    }
     // empty_types.hpp
     using di::EmptyTypes;
+    using di::IsStateless;
     // ensure.hpp
     using di::Ensure;
     namespace pred {
@@ -111,6 +124,7 @@ export namespace di {
     using di::Constructor;
     using di::Emplace;
     // function.hpp
+    using di::StatelessInvocable;
     using di::Function;
     using di::FunctionPolicy;
     // finalise.hpp
@@ -186,6 +200,8 @@ export namespace di {
     using di::ResolveRoot;
     using di::ResolveInfo;
     // traits/scheduler.hpp
+    using di::TerminateSchedulerThreadException;
+    using di::StopSchedulerException;
     namespace trait {
         using trait::Scheduler;
         using trait::scheduler;

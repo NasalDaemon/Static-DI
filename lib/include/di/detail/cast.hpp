@@ -55,7 +55,7 @@ template<class Base, class Derived>
 concept IsVirtualBaseOf = std::is_virtual_base_of_v<Base, Derived>;
 #else
 template<class Base, class Derived>
-constexpr bool IsVirtualBaseOf = std::is_base_of_v<Base, Derived>
+concept IsVirtualBaseOf = std::is_base_of_v<Base, Derived>
     and requires(Base* base, Derived* derived)
     {
         // Check if Derived* can be converted to Base*
@@ -83,19 +83,21 @@ struct MemberPtr
     template<class InnerMember>
     DI_INLINE MemberPtr<Class, InnerMember> operator+(MemberPtr<Member, InnerMember> inner) const
     {
-        using Int = IntFor<InnerMember Class::*>;
-        return MemberPtr<Class, InnerMember>(std::bit_cast<InnerMember Class::*>(static_cast<Int>(toOffset() + inner.toOffset())));
+        return fromOffset<Class, InnerMember>(toOffset() + inner.toOffset());
     }
 
     template<class OuterClass>
     DI_INLINE MemberPtr<OuterClass, Member> operator+(MemberPtr<OuterClass, Class> outer) const
     {
-        using Int = IntFor<Member OuterClass::*>;
-        return MemberPtr<OuterClass, Member>(std::bit_cast<Member OuterClass::*>(static_cast<Int>(outer.toOffset() + toOffset())));
+        return fromOffset<OuterClass, Member>(outer.toOffset() + toOffset());
     }
 
     DI_INLINE auto toOffset() const
     {
+        // Not constexpr, but well defined (ABI implementation defined)
+        // Safe to assume that the member pointer is represented as an offset
+        // since we guarantee it does not point to a member of a virtual base class.
+        // All supported ABIs represent such a pointer-to-data-member as an offset.
         return std::bit_cast<IntFor<decltype(memPtr)>>(memPtr);
     }
 
@@ -122,11 +124,19 @@ private:
 
     DI_INLINE auto invert() const
     {
-        // Not constexpr, but well defined (modulo ABI)
-        // Safe since we guarantee that the member pointer is represented as an offset
-        // because it does not point to a member of a virtual base class
         using Int = IntFor<Class Member::*>;
         return std::bit_cast<Class Member::*>(-static_cast<Int>(toOffset()));
+    }
+
+    template<class C, class M>
+    DI_INLINE static MemberPtr<C, M> fromOffset(std::integral auto offset)
+    {
+
+        // Not constexpr, but well defined (ABI implementation defined)
+        // Safe to assume that the member pointer is represented as an offset
+        // since we guarantee it does not point to a member of a virtual base class.
+        // All supported ABIs represent such a pointer-to-data-member as an offset.
+        return std::bit_cast<M C::*>(static_cast<IntFor<M C::*>>(offset));
     }
 };
 

@@ -3,6 +3,7 @@
 
 #include "di/detail/concepts.hpp"
 
+#include "di/empty_types.hpp"
 #include "di/macros.hpp"
 #include "di/node_fwd.hpp"
 
@@ -19,11 +20,15 @@ namespace detail {
 
 DI_MODULE_EXPORT
 template<class T>
-concept IsContext = std::is_base_of_v<detail::ContextBase, T> and std::is_empty_v<T> and requires {
+concept IsContext = std::is_base_of_v<detail::ContextBase, T> and IsStateless<T> and requires {
     typename T::Root;
     typename T::Info;
     T::Depth;
 };
+
+DI_MODULE_EXPORT
+template<class C1, class C2>
+concept IsSameContext = std::same_as<detail::Decompress<C1>, detail::Decompress<C2>>;
 
 DI_MODULE_EXPORT
 template<class Context>
@@ -53,8 +58,12 @@ template<class T>
 using ContextOf = decltype(detail::getContext<T>());
 
 DI_MODULE_EXPORT
+template<class T, class Context>
+concept HasContext = std::same_as<Context, ContextOf<T>>;
+
+DI_MODULE_EXPORT
 template<IsContext Context>
-using ContextToNode = Context::template NodeTmpl<Context>;
+using ContextToNode = Context::template NodeTmpl<detail::Decompress<Context>>;
 
 DI_MODULE_EXPORT
 template<IsContext Context>
@@ -69,7 +78,7 @@ struct RootContext;
 
 DI_MODULE_EXPORT
 template<class T>
-concept IsRootContext = IsContext<T> and T::Depth == 0 and not requires { typename T::Parent; };
+concept IsRootContext = IsContext<T> and std::same_as<T, typename T::Root::Context>;
 
 DI_MODULE_EXPORT
 template<class Parent_, IsNodeHandle NodeHandle>

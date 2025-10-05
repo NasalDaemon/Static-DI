@@ -3,6 +3,7 @@
 
 #include "di/detail/compress.hpp"
 #include "di/detail/concepts.hpp"
+#include "di/empty_types.hpp"
 #include "di/macros.hpp"
 
 #if !DI_IMPORT_STD
@@ -44,12 +45,12 @@ DI_MODULE_EXPORT
 template<class T>
 concept IsTrait = requires (T trait) {
     requires std::is_base_of_v<Trait, T>;
-    requires std::is_empty_v<T>;
+    requires IsStateless<T>;
     requires std::is_default_constructible_v<T>;
-    std::is_empty_v<typename T::Meta>;
-    std::is_empty_v<typename T::Meta::Applicable>;
-    std::is_empty_v<typename T::Meta::Methods>;
-    std::is_empty_v<typename T::Meta::DuckMethods>;
+    requires IsStateless<typename T::Meta>;
+    requires IsStateless<typename T::Meta::Applicable>;
+    requires IsStateless<typename T::Meta::Methods>;
+    requires IsStateless<typename T::Meta::DuckMethods>;
     trait.expects();
     typename detail::TakesNaryClassTemplate<T::template Implements>;
 };

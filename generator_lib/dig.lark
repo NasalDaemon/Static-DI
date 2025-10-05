@@ -41,8 +41,10 @@ trait_requires_block: "requires" [cpp_func_params] "{" cpp_requires_statement "}
 trait_method: [template_params] method_name cpp_func_params [method_qualifier] ["->" cpp_type] -> trait_method_signature
             | NAME "(...)"                                                                     -> trait_method_elipsis
 
-method_name: NAME
+method_name: [OPTIONAL_METHOD] NAME
 method_qualifier: "const"
+
+OPTIONAL_METHOD: "~"
 
 template_params: "template" "<" template_param ("," template_param)* ">"
 

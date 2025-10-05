@@ -1,6 +1,7 @@
 #ifndef INCLUDE_DI_UNION_HPP
 #define INCLUDE_DI_UNION_HPP
 
+#include "di/context.hpp"
 #include "di/detail/cast.hpp"
 #include "di/detail/concepts.hpp"
 #include "di/detail/select.hpp"
@@ -8,15 +9,24 @@
 #include "di/detail/with_index.hpp"
 
 #include "di/alias.hpp"
+#include "di/cluster.hpp"
 #include "di/context_fwd.hpp"
 #include "di/defer.hpp"
 #include "di/factory.hpp"
 #include "di/finalise.hpp"
+#include "di/global_context.hpp"
+#include "di/global_trait.hpp"
+#include "di/key.hpp"
 #include "di/link.hpp"
 #include "di/macros.hpp"
 #include "di/node.hpp"
 #include "di/resolve.hpp"
+#include "di/trait.hpp"
 #include "di/traits.hpp"
+#include "di/traits/dynamic_node.hpp"
+#include "di/traits/dynamic_node.hxx"
+#include "di/traits/scheduler.hpp"
+#include "di/union_fwd.hpp"
 
 #if !DI_IMPORT_STD
 #include <cstddef>
@@ -26,16 +36,6 @@
 #endif
 
 namespace di {
-
-namespace detail {
-    struct IsUnionContextTag {};
-}
-
-DI_MODULE_EXPORT
-template<class Context>
-concept IsUnionContext = IsContext<Context> and requires {
-    { Context::isUnionContext(detail::IsUnionContextTag()) } -> std::same_as<detail::Decompress<Context>>;
-};
 
 DI_MODULE_EXPORT
 template<IsNodeHandle... Options>
@@ -50,31 +50,75 @@ struct Union
         {
             static InnerContext isUnionContext(detail::IsUnionContextTag);
 
-            template<IsNodeHandle T, class Current>
-            requires (not std::is_const_v<Current>)
-            static constexpr auto exchangeImpl(Current& current, auto&&... args)
+            template<IsNodeHandle T, class Option>
+            static constexpr auto exchangeImpl(Option& option, auto&&... args)
             {
+                static_assert(not std::is_const_v<Option>, "Cannot exchange implementation of a node in a const context");
                 static_assert((... or std::is_same_v<T, Options>), "Cannot exchange with a node that is not listed as an option in the hosting di::Union");
-                auto const nodePtr = di::detail::memberPtr<Node>(std::bit_cast<Current Node::*>(&Node::bytes));
-                Node& node = nodePtr.getClassFromMember(current);
-                // Take args by value in case they come from the current node's state, which will be invalidated during the call to emplace
-                return di::Defer(
-                    [&node, ...args = DI_FWD(args)]() mutable
+                auto const nodePtr = di::detail::memberPtr<Node>(std::bit_cast<Option Node::*>(&Node::bytes));
+                Node& node = nodePtr.getClassFromMember(option);
+                if constexpr (ContextHasGlobalTrait<Context, Global<trait::Scheduler>>)
+                {
+                    static_assert(ContextHasTrait<ContextOf<Option>, trait::DynamicNode>,
+                        "Node inside di::Union can only exchange its implementation with a scheduler when it has the di::trait::DynamicNode trait");
+                    auto const scheduler = node.getGlobal(trait::scheduler);
+                    // Only execute the exchange if the scheduler is in exclusive mode as this is the
+                    // way to guarantee there will be no dangling references to the old implementation
+                    if (scheduler.inExclusiveMode())
                     {
-                        node.template emplace<T>(std::move(args)...);
-                    });
+                        return di::Defer<>(
+                            [&node, ...args = DI_FWD(args)]() mutable
+                            {
+                                node.template emplace<T>(std::move(args)...);
+                            });
+                    }
+                    else
+                    {
+                        scheduler.postExclusiveTask(
+                            trait::DynamicNode::exchangeImpl{},
+                            Context{}.template getParentNode<typename Context::Root::Context>(node),
+                            [](auto& graph)
+                            {
+                                graph.visitTrait(
+                                    trait::dynamicNode,
+                                    []<class DN>(DN dynamicNode)
+                                    {
+                                        if constexpr (IsDynamicContext<ContextOf<DN>>)
+                                        {
+                                            dynamicNode.exchangeImpl();
+                                        }
+                                    });
+                            }
+                        );
+                        return di::Defer();
+                    }
+                }
+                else
+                {
+                    // Take args by value in case they come from the current node's state, which will be invalidated during the call to emplace
+                    return di::Defer(
+                        [&node, ...args = DI_FWD(args)]() mutable
+                        {
+                            node.template emplace<T>(std::move(args)...);
+                        });
+                }
             }
 
             template<class Option, IsTrait Trait>
-            requires detail::HasLink<Context, Trait>
+            requires detail::HasLink<Context, Trait> or detail::IsGlobalTrait<Trait>
             static constexpr auto getNode(Option& option, Trait trait)
             {
                 using OptionNode = detail::SelectIf<
-                    detail::NodeHasTraitsNodePred<typename Option::Traits::Node>,
+                    detail::NodeHasUnderlyingNodePred<detail::UnderlyingNode<Option>>,
                     ToNode<Options>...
                 >;
                 auto const nodePtr = detail::memberPtr<Node>(std::bit_cast<OptionNode Node::*>(&Node::bytes));
                 return Context{}.getNode(nodePtr.getClassFromMember(option), trait);
+            }
+
+            constexpr auto& getGlobalNode(auto& node)
+            {
+                return Context{}.getGlobalNode(getParentNode<Context>(node));
             }
 
             template<IsContext Parent>
@@ -94,7 +138,7 @@ struct Union
                 else
                 {
                     using OptionNode = detail::SelectIf<
-                        detail::NodeHasTraitsNodePred<typename Option::Traits::Node>,
+                    detail::NodeHasUnderlyingNodePred<detail::UnderlyingNode<Option>>,
                         ToNode<Options>...
                     >;
                     auto const nodePtr = detail::memberPtr<Node>(std::bit_cast<OptionNode Node::*>(&Node::bytes));
@@ -140,16 +184,23 @@ struct Union
         explicit(false) constexpr Node(std::in_place_index_t<I>, auto&&... args)
             : index(I)
         {
-            new (bytes) NodeAt<I>{DI_FWD(args)...};
+            new (bytes) NodeAt<I>(DI_FWD(args)...);
         }
 
         template<std::size_t I>
         requires (I < sizeof...(Options))
         constexpr NodeAt<I>& emplace(auto&&... args)
         {
+            if constexpr (ContextHasGlobalTrait<Context, Global<trait::Scheduler>>)
+            {
+                if (not getGlobal(trait::scheduler).inExclusiveMode())
+                    throw std::runtime_error("di::Union::emplace can only be called when the scheduler is in exclusive mode");
+            }
             destroy();
             index = I;
-            return *new (bytes) NodeAt<I>{DI_FWD(args)...};
+            NodeAt<I>& next = *new (bytes) NodeAt<I>(DI_FWD(args)...);
+            next.visit(detail::OnGraphConstructedVisitor{});
+            return next;
         }
 
         template<class Option>
@@ -164,20 +215,41 @@ struct Union
         requires (... || std::same_as<Option, Options>)
         constexpr ToNode<Option>& emplace(auto&&... args)
         {
+            if constexpr (ContextHasGlobalTrait<Context, Global<trait::Scheduler>>)
+            {
+                if (not getGlobal(trait::scheduler).inExclusiveMode())
+                    throw std::runtime_error("di::Union::emplace can only be called when the scheduler is in exclusive mode");
+            }
             destroy();
             index = findIndex<Option>();
-            return *new (bytes) ToNode<Option>{DI_FWD(args)...};
+            ToNode<Option>& next = *new (bytes) ToNode<Option>{DI_FWD(args)...};
+            next.visit(detail::OnGraphConstructedVisitor{});
+            return next;
         }
 
         template<class Visitor>
         constexpr decltype(auto) visit(this auto& self, Visitor&& visitor)
         {
-            return withIndex(
-                self.index,
-                [&](auto i) -> decltype(auto)
+            return self.withNode(
+                [&](auto& node) -> decltype(auto)
                 {
-                    return std::invoke(DI_FWD(Visitor, visitor), self.template get<i>());
+                    return node.visit(DI_FWD(Visitor, visitor));
                 });
+        }
+
+        template<std::size_t Index>
+        constexpr auto* getIf(this auto& self)
+        {
+            return self.index == Index
+                ? self.template get<Index>()
+                : nullptr;
+        }
+
+        template<class Option>
+        requires (... || std::same_as<Option, Options>)
+        constexpr auto* getIf(this auto& self)
+        {
+            return self.template getIf<findIndex<Option>()>();
         }
 
         constexpr ~Node()
@@ -185,22 +257,33 @@ struct Union
             destroy();
         }
 
-        template<std::size_t Index>
-        constexpr auto& get() &
-        {
-            return *std::launder(reinterpret_cast<NodeAt<Index>*>(bytes));
-        }
-
-        template<std::size_t Index>
-        constexpr auto const& get() const &
-        {
-            return *std::launder(reinterpret_cast<NodeAt<Index> const*>(bytes));
-        }
-
     private:
+        template<std::size_t Index>
+        constexpr auto* get() &
+        {
+            return std::launder(reinterpret_cast<NodeAt<Index>*>(bytes));
+        }
+
+        template<std::size_t Index>
+        constexpr auto const* get() const &
+        {
+            return std::launder(reinterpret_cast<NodeAt<Index> const*>(bytes));
+        }
+
+        template<class F>
+        constexpr decltype(auto) withNode(this auto& self, F&& f)
+        {
+            return withIndex(
+                self.index,
+                [&](auto i) -> decltype(auto)
+                {
+                    return std::invoke(DI_FWD(F, f), *self.template get<i>());
+                });
+        }
+
         constexpr void destroy()
         {
-            visit([]<class T>(T& impl) -> void { impl.~T(); });
+            withNode([]<class T>(T& node) -> void { node.~T(); });
         }
 
         template<class Option>
@@ -237,16 +320,22 @@ struct Union<Options...>::Node<Context>::AsTrait : Node
     constexpr decltype(auto) implWithKey(this Self& self, auto const& key, auto const& keys, Args&&... args)
     {
         using Environment = Self::Environment;
-        return self.visit(
-            [&](auto& option) -> decltype(auto)
+        return self.withNode(
+            [&](auto& node) -> decltype(auto)
             {
                 return std::apply(
                     [&](auto const&... ks) -> decltype(auto)
                     {
-                        return withEnv<Environment>(option).asTrait(Trait{}, key, ks...).impl(DI_FWD(Args, args)...);
+                        return withEnv<Environment>(node).asTrait(Trait{}, key, ks...).impl(DI_FWD(Args, args)...);
                     },
                     keys);
             });
+    }
+
+    template<class Self>
+    constexpr decltype(auto) impl(this Self& self, auto&&... args)
+    {
+        return self.implWithKey(typename ContextOf<Self>::Info::DefaultKey{}, std::tuple(), DI_FWD(args)...);
     }
 };
 

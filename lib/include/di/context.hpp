@@ -115,7 +115,10 @@ namespace detail {
 struct NullContext : detail::ContextBase
 {
     // May not be overridden
-    struct Root{};
+    struct Root
+    {
+        using Context = NullContext;
+    };
     // May be overridden
     struct Info
     {
@@ -130,6 +133,7 @@ struct NullContext : detail::ContextBase
         }
 
         static constexpr void assertAccessible(auto&) {}
+        static constexpr void assertVisitable(auto&) {}
 
         template<class Source, class Target>
         static consteval std::tuple<> requiresKeysToTarget()
@@ -144,7 +148,10 @@ struct NullContext : detail::ContextBase
 template<class Root_>
 struct RootContext : NullContext
 {
-    using Root = Root_;
+    struct Root : Root_
+    {
+        using Context = RootContext;
+    };
 };
 
 template<class Parent_, IsNodeHandle NodeHandle>

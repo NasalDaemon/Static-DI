@@ -74,6 +74,12 @@ struct Adapt
             : target{targs.template get<TArgs>()...}
             , facade{fargs.template get<FArgs>()...}
         {}
+
+        constexpr void visit(this auto& self, auto&& visitor)
+        {
+            self.target.visit(visitor);
+            self.facade.visit(visitor);
+        }
     };
 };
 

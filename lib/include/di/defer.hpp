@@ -42,6 +42,9 @@ struct [[nodiscard, maybe_unused]] Defer
         return *this;
     }
 
+    constexpr bool empty() const { return not onExit.has_value(); }
+    constexpr explicit operator bool() const { return not empty(); }
+
     ~Defer()
     {
         if (onExit)
@@ -53,7 +56,7 @@ private:
     requires std::invocable<F2> or (compiler < gcc(15))
     friend struct Defer;
 
-    [[no_unique_address]] std::optional<F> onExit;
+    std::optional<F> onExit;
 };
 
 template<class F>

@@ -2,6 +2,7 @@
 #define INCLUDE_DI_ENVIRONMENT_HPP
 
 #include "di/detail/cast.hpp"
+#include "di/empty_types.hpp"
 #include "di/macros.hpp"
 
 #if !DI_IMPORT_STD
@@ -23,10 +24,10 @@ template<class T>
 concept EnvironmentPart = requires
 {
     typename T::Tag;
-    requires std::is_empty_v<typename T::Tag>;
+    requires IsStateless<typename T::Tag>;
     { T::resolveEnvironment(typename T::Tag{}) } -> std::same_as<T>;
     { T::isDynamic() } -> std::convertible_to<bool>;
-    requires std::is_empty_v<T>;
+    requires IsStateless<T>;
 };
 
 namespace detail {
@@ -77,7 +78,8 @@ struct Environment : Es...
     using Merge = detail::InsertMissing<Environment<E2s...>, Es...>::type;
 
     // Use this when transplanting an environment to a target that is an independent dynamic instance
-    // as the existance of a component acts as a stamp of its respective acquisition.
+    // as the existance of a part acts as a stamp of its respective acquisition to its environment.
+    template<class = void>
     using RemoveDynamic = detail::RemoveDynamic<void(), void(Es...)>::type;
 };
 
@@ -122,19 +124,19 @@ namespace detail {
     };
 
     template<class Env, class... Es>
-    consteval bool hasAllTagsOfImpl(Environment<Es...>)
+    consteval bool lhasAllTagsOfRImpl(Environment<Es...>)
     {
         return (... and Env::template HasTag<typename Es::Tag>);
     }
 
-    template<class Env1, class Env2>
-    inline constexpr bool hasAllTagsOf = hasAllTagsOfImpl<Env1>(Env2{});
+    template<class EnvL, class EnvR>
+    inline constexpr bool lHasAllTagsOfR = lhasAllTagsOfRImpl<EnvL>(EnvR{});
 
     template<class Env, class... Es>
     auto insertMissingImpl(Environment<Es...>) -> Env::template InsertMissing<Es...>;
 
-    template<class Env1, class Env2>
-    using InsertMissingPartsOf = decltype(insertMissingImpl<Env1>(Env2{}));
+    template<class EnvL, class EnvR>
+    using InsertMissingPartsOfRtoL = decltype(insertMissingImpl<EnvL>(EnvR{}));
 }
 
 DI_MODULE_EXPORT
@@ -163,12 +165,14 @@ constexpr auto& withEnv(Target& t)
 
 namespace detail {
     template<class Env, class Target>
-    requires (Env::IsEmpty) or (detail::hasAllTagsOf<typename Target::Environment, Env>)
+    requires (Env::IsEmpty) or (detail::lHasAllTagsOfR<typename Target::Environment, Env>)
     auto transferEnv() -> Target;
     template<class Env, class Target>
-    auto transferEnv() -> EnvironmentOverlay<detail::InsertMissingPartsOf<typename Target::Environment, Env>, Target>;
+    auto transferEnv() -> EnvironmentOverlay<detail::InsertMissingPartsOfRtoL<typename Target::Environment, Env>, Target>;
 }
 
+// Any new tags in Env are added to Target's environment
+// Existing tags in Target are not replaced
 DI_MODULE_EXPORT
 template<class Env, class Target>
 using TransferEnv = decltype(detail::transferEnv<Env, std::remove_const_t<Target>>());

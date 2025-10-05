@@ -3,6 +3,7 @@
 #include "di/detail/cast.hpp"
 #include "di/detail/compress.hpp"
 #include "di/function.hpp"
+#include "di/global_trait.hpp"
 #include "di/link.hpp"
 #include "di/macros.hpp"
 #include "di/node.hpp"
@@ -35,7 +36,7 @@ struct Lazy
         struct InnerContext : Context
         {
             template<IsTrait Trait>
-            requires detail::HasLink<Context, Trait>
+            requires detail::HasLink<Context, Trait> or IsGlobalTrait<Trait>
             static constexpr auto getNode(auto& state, Trait trait)
             {
                 // Assumption that variant-to-element offset=0 is tested in test_lazy.cpp

@@ -3,10 +3,18 @@
 
 #include "di/macros.hpp"
 
+#if !DI_IMPORT_STD
+#include <type_traits>
+#endif
+
 namespace di {
 
 DI_MODULE_EXPORT
 struct EmptyTypes{};
+
+DI_MODULE_EXPORT
+template<class T>
+concept IsStateless = std::is_empty_v<T>;
 
 } // namespace di
 

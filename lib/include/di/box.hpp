@@ -109,6 +109,13 @@ namespace detail {
                 outVirtual->template emplace<Adapt<OutNode>>(outNode);
             }
 
+            constexpr void visit(this auto& self, auto&& visitor)
+            {
+                self.main.visit(visitor);
+                self.inFacade.visit(visitor);
+                self.outVirtual.visit(visitor);
+            }
+
         private:
             template<class OutNode>
             static constexpr auto getAdapt() -> di::Adapt<OuterNodeProxy<OutNode>, OutFacade>;
